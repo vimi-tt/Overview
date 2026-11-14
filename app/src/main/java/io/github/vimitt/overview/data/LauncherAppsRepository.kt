@@ -124,7 +124,7 @@ class LauncherAppsRepository(
             val options = buildLaunchOptions(sourceView, sourceBounds, reducedMotion)
             service.startMainActivity(
                 app.toComponentName(),
-                app.userHandle,
+                app.userHandle ?: android.os.Process.myUserHandle(),
                 sourceBounds,
                 options?.toBundle(),
             )
