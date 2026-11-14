@@ -1,8 +1,5 @@
 package io.github.vimitt.overview.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -20,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewTween
 
 /**
  * Barra de busca no estilo Adwaita para filtrar aplicativos no Overview.
@@ -52,9 +49,9 @@ fun OverviewSearchBar(
     onClear: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
-    val reducedMotion = OverviewTheme.reducedMotion
     var isFocused by remember { mutableStateOf(false) }
 
     val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
@@ -107,17 +104,22 @@ fun OverviewSearchBar(
             )
         }
 
-        AnimatedVisibility(
-            visible = query.isNotEmpty(),
-            enter = fadeIn(overviewTween(reducedMotion, durationMillis = 150)),
-            exit = fadeOut(overviewTween(reducedMotion, durationMillis = 150)),
-        ) {
+        if (query.isNotEmpty()) {
             IconButton(onClick = onClear) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.clear_search_content_description),
                     tint = colors.onSurfaceMuted,
                     modifier = Modifier.size(18.dp),
+                )
+            }
+        } else if (onOpenSettings != null) {
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.open_settings_content_description),
+                    tint = colors.onSurfaceMuted,
+                    modifier = Modifier.size(19.dp),
                 )
             }
         }

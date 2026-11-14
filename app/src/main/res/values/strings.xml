@@ -4,6 +4,34 @@
     <string name="search_apps_content_description">Pesquisar aplicativos</string>
     <string name="clear_search_content_description">Limpar pesquisa</string>
     <string name="open_overview_content_description">Abrir visão geral de aplicativos</string>
+    <string name="open_settings_content_description">Personalizar Overview</string>
     <string name="no_apps_found">Nenhum aplicativo encontrado</string>
     <string name="loading_apps">Carregando aplicativos…</string>
+
+    <!-- Menu da tela inicial e personalização -->
+    <string name="home_menu_title">Tela inicial</string>
+    <string name="home_menu_customize">Personalizar Overview</string>
+    <string name="home_menu_wallpaper">Alterar papel de parede</string>
+    <string name="wallpaper_chooser_title">Escolher papel de parede</string>
+
+    <string name="settings_title">Personalização</string>
+    <string name="settings_back_content_description">Voltar</string>
+    <string name="settings_section_appearance">Aparência</string>
+    <string name="settings_theme_label">Tema</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Escuro</string>
+    <string name="settings_accent_label">Cor de destaque</string>
+    <string name="settings_blur_label">Desfoque do Overview</string>
+    <string name="settings_blur_off">Desativado</string>
+
+    <string name="settings_section_home">Tela inicial</string>
+    <string name="settings_show_clock">Mostrar relógio</string>
+    <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
+    <string name="settings_wallpaper_row">Papel de parede do sistema</string>
+
+    <string name="settings_section_dash">Dash (favoritos)</string>
+    <string name="settings_dash_subtitle">Selecione até 5 aplicativos para fixar no Dash</string>
+    <string name="settings_dash_reset">Usar padrão automático</string>
+    <string name="settings_dash_auto_badge">Automático</string>
 </resources>

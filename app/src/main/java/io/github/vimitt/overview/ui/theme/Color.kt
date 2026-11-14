@@ -21,6 +21,17 @@ object AdwaitaPalette {
     val Purple = Color(0xFF9141AC)
     val Slate = Color(0xFF6F8396)
 
+    val AccentPresets: List<Pair<String, Long>> = listOf(
+        "Azul" to 0xFF3584E4L,
+        "Turquesa" to 0xFF2190A4L,
+        "Verde" to 0xFF3A944AL,
+        "Amarelo" to 0xFFC88800L,
+        "Laranja" to 0xFFED5B00L,
+        "Vermelho" to 0xFFE62D42L,
+        "Roxo" to 0xFF9141ACL,
+        "Ardósia" to 0xFF6F8396L,
+    )
+
     // Superfícies claras
     val LightWindowBackground = Color(0xFFFAFAFA)
     val LightSurface = Color(0xFFFFFFFF)
