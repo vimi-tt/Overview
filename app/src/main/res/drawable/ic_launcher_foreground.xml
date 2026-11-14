@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ícone geométrico próprio representando uma visão geral de janelas e dash -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,31C30,27.686 32.686,25 36,25H50C53.314,25 56,27.686 56,31V47C56,50.314 53.314,53 50,53H36C32.686,53 30,50.314 30,47V31Z" />
+    <path
+        android:fillColor="#DDEBFB"
+        android:pathData="M61,31C61,27.686 63.686,25 67,25H72C75.314,25 78,27.686 78,31V47C78,50.314 75.314,53 72,53H67C63.686,53 61,50.314 61,47V31Z" />
+    <path
+        android:fillColor="#DDEBFB"
+        android:pathData="M30,61C30,58.791 31.791,57 34,57H74C76.209,57 78,58.791 78,61V69C78,71.209 76.209,73 74,73H34C31.791,73 30,71.209 30,69V61Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,79C36,77.895 36.895,77 38,77H70C71.105,77 72,77.895 72,79C72,80.105 71.105,81 70,81H38C36.895,81 36,80.105 36,79Z" />
+</vector>

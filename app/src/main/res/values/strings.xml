@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Overview</string>
+    <string name="search_apps_hint">Pesquisar aplicativos…</string>
+    <string name="search_apps_content_description">Pesquisar aplicativos</string>
+    <string name="clear_search_content_description">Limpar pesquisa</string>
+    <string name="open_overview_content_description">Abrir visão geral de aplicativos</string>
+    <string name="no_apps_found">Nenhum aplicativo encontrado</string>
+    <string name="loading_apps">Carregando aplicativos…</string>
+</resources>
