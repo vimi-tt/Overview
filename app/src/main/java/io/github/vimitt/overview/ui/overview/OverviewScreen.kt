@@ -10,17 +10,23 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +59,9 @@ import kotlin.math.ceil
 /**
  * Tela do Overview inspirada no GNOME Shell: barra de busca no topo e grade
  * paginada horizontalmente com os aplicativos ordenados alfabeticamente.
+ *
+ * Não aplica `imePadding()` no contêiner da grade paginada para evitar recálculo
+ * de linhas/páginas a cada frame da animação do teclado.
  */
 @Composable
 fun OverviewScreen(
@@ -61,6 +70,7 @@ fun OverviewScreen(
     onClearSearch: () -> Unit,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onClose: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
@@ -97,7 +107,6 @@ fun OverviewScreen(
             }
             .statusBarsPadding()
             .navigationBarsPadding()
-            .imePadding()
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -105,6 +114,10 @@ fun OverviewScreen(
             query = uiState.searchQuery,
             onQueryChange = onSearchQueryChange,
             onClear = onClearSearch,
+            onOpenSettings = {
+                keyboardController?.hide()
+                onOpenSettings()
+            },
             onSubmit = {
                 if (uiState.apps.size == 1) {
                     keyboardController?.hide()
@@ -120,22 +133,67 @@ fun OverviewScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        if (uiState.apps.isEmpty()) {
-            EmptyOverviewState(
-                isSearching = uiState.isSearching,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            PaginatedAppGrid(
-                apps = uiState.apps,
-                searchQuery = uiState.searchQuery,
-                onAppClick = { app, view, bounds ->
-                    keyboardController?.hide()
-                    onAppClick(app, view, bounds)
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+        when {
+            uiState.apps.isEmpty() -> {
+                EmptyOverviewState(
+                    isSearching = uiState.isSearching,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            uiState.isSearching -> {
+                SearchResultsGrid(
+                    apps = uiState.apps,
+                    onAppClick = { app, view, bounds ->
+                        keyboardController?.hide()
+                        onAppClick(app, view, bounds)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                )
+            }
+
+            else -> {
+                PaginatedAppGrid(
+                    apps = uiState.apps,
+                    onAppClick = { app, view, bounds ->
+                        keyboardController?.hide()
+                        onAppClick(app, view, bounds)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsGrid(
+    apps: List<AppInfo>,
+    onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 84.dp),
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items(
+            items = apps,
+            key = { it.key },
+        ) { app ->
+            AppIconItem(
+                app = app,
+                onClick = onAppClick,
+                iconSize = 54.dp,
+                showLabel = true,
             )
         }
     }
@@ -144,7 +202,6 @@ fun OverviewScreen(
 @Composable
 private fun PaginatedAppGrid(
     apps: List<AppInfo>,
-    searchQuery: String,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -152,7 +209,7 @@ private fun PaginatedAppGrid(
         val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
         // Reserva espaço inferior para os indicadores de página.
         val gridAvailableHeight = (maxHeight - 28.dp).coerceAtLeast(120.dp)
-        val rows = (gridAvailableHeight / 106.dp).toInt().coerceIn(3, 6)
+        val rows = (gridAvailableHeight / 108.dp).toInt().coerceIn(3, 6)
         val pageSize = columns * rows
         val pageCount = remember(apps.size, pageSize) {
             ceil(apps.size / pageSize.toFloat()).toInt().coerceAtLeast(1)
@@ -163,10 +220,9 @@ private fun PaginatedAppGrid(
             pageCount = { pageCount },
         )
 
-        // Ao digitar uma nova busca, retorna suavemente à primeira página.
-        LaunchedEffect(searchQuery, pageCount) {
-            if (pagerState.currentPage >= pageCount || searchQuery.isNotEmpty()) {
-                pagerState.scrollToPage(0)
+        LaunchedEffect(pageCount) {
+            if (pagerState.currentPage >= pageCount) {
+                pagerState.scrollToPage((pageCount - 1).coerceAtLeast(0))
             }
         }
 

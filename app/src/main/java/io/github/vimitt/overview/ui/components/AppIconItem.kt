@@ -17,21 +17,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalView
@@ -45,9 +44,13 @@ import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewSpring
 import kotlin.math.roundToInt
 
+private class CoordinatesHolder {
+    var coordinates: LayoutCoordinates? = null
+}
+
 /**
- * Item reutilizável de aplicativo (ícone + rótulo opcional) com captura de posição
- * na tela para animar a abertura coerente via `LauncherApps.startMainActivity`.
+ * Item reutilizável de aplicativo (ícone + rótulo opcional) com captura sob demanda
+ * da posição na tela para animar a abertura via `LauncherApps.startMainActivity`.
  */
 @Composable
 fun AppIconItem(
@@ -61,7 +64,8 @@ fun AppIconItem(
     val reducedMotion = OverviewTheme.reducedMotion
     val view = LocalView.current
 
-    var iconBounds by remember { mutableStateOf<Rect?>(null) }
+    // Armazena as coordenadas sem acionar escrita de estado Compose durante o layout.
+    val coordinatesHolder = remember { CoordinatesHolder() }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -77,11 +81,25 @@ fun AppIconItem(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = { onClick(app, view, iconBounds) },
+                onClick = {
+                    val coords = coordinatesHolder.coordinates
+                    val bounds = if (coords != null && coords.isAttached) {
+                        val rect = coords.boundsInWindow()
+                        Rect(
+                            rect.left.roundToInt(),
+                            rect.top.roundToInt(),
+                            rect.right.roundToInt(),
+                            rect.bottom.roundToInt(),
+                        )
+                    } else {
+                        null
+                    }
+                    onClick(app, view, bounds)
+                },
             )
             .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
     ) {
         Box(
             modifier = Modifier
@@ -91,13 +109,7 @@ fun AppIconItem(
                     scaleY = pressScale
                 }
                 .onGloballyPositioned { coordinates ->
-                    val bounds = coordinates.boundsInWindow()
-                    iconBounds = Rect(
-                        bounds.left.roundToInt(),
-                        bounds.top.roundToInt(),
-                        bounds.right.roundToInt(),
-                        bounds.bottom.roundToInt(),
-                    )
+                    coordinatesHolder.coordinates = coordinates
                 },
             contentAlignment = Alignment.Center,
         ) {
@@ -110,7 +122,6 @@ fun AppIconItem(
                     contentScale = ContentScale.Fit,
                 )
             } else {
-                // Placeholder limpo enquanto o ícone carrega ou em apps sem bitmap válido.
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -133,6 +144,7 @@ fun AppIconItem(
                 text = app.label,
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurface,
+                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
