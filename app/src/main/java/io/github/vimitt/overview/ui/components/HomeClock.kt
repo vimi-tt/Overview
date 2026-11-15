@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,10 +37,13 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
@@ -200,6 +204,36 @@ fun HomeClock(
             borderColor = colors.hairlineBorder,
             modifier = modifier,
         )
+
+        HomeClockStyle.FULL_PILL -> {
+            val formattedDate = remember(dateFullText, locale) {
+                dateFullText.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase(locale) else ch.toString()
+                }
+            }
+            val hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
+            val greeting = when (hourOfDay) {
+                in 5..11 -> stringResource(R.string.clock_greeting_morning)
+                in 12..17 -> stringResource(R.string.clock_greeting_afternoon)
+                else -> stringResource(R.string.clock_greeting_evening)
+            }
+            FullPillSummaryClock(
+                timeText = timeText,
+                dateText = if (compact) shortDateText else formattedDate,
+                greeting = greeting,
+                compact = compact,
+                primaryColor = primaryForeground,
+                secondaryColor = secondaryForeground,
+                accentColor = colors.accent,
+                containerColor = if (useWallpaperColors) {
+                    colors.surface.copy(alpha = 0.56f)
+                } else {
+                    colors.surfaceElevated
+                },
+                borderColor = colors.hairlineBorder,
+                modifier = modifier,
+            )
+        }
     }
 }
 
@@ -603,6 +637,81 @@ private fun PillClock(
             text = shortDateText,
             style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
             color = secondaryColor,
+        )
+    }
+}
+
+@Composable
+private fun FullPillSummaryClock(
+    timeText: String,
+    dateText: String,
+    greeting: String,
+    compact: Boolean,
+    primaryColor: Color,
+    secondaryColor: Color,
+    accentColor: Color,
+    containerColor: Color,
+    borderColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(containerColor)
+            .border(1.dp, borderColor, shape)
+            .padding(
+                horizontal = if (compact) 18.dp else 22.dp,
+                vertical = if (compact) 11.dp else 15.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = dateText,
+                style = (if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
+                    .copy(fontWeight = FontWeight.SemiBold),
+                color = primaryColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(accentColor),
+                )
+                Text(
+                    text = greeting,
+                    style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                    color = secondaryColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        Text(
+            text = timeText,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = if (compact) 22.sp else 28.sp,
+                lineHeight = if (compact) 26.sp else 32.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFeatureSettings = "tnum",
+            ),
+            color = primaryColor,
         )
     }
 }

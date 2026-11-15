@@ -129,6 +129,7 @@ fun HomeSettingsScreen(
                 HomeClockStyle.ANALOG to stringResource(R.string.settings_home_clock_style_analog),
                 HomeClockStyle.SIDE_BY_SIDE to stringResource(R.string.settings_home_clock_style_side),
                 HomeClockStyle.PILL to stringResource(R.string.settings_home_clock_style_pill),
+                HomeClockStyle.FULL_PILL to stringResource(R.string.settings_home_clock_style_full_pill),
             )
 
             SettingsGroup(title = stringResource(R.string.settings_section_home_clock)) {

@@ -16,7 +16,7 @@ _Pendente: capturas de tela da Home, Dash e Overview em dispositivo físico com 
 
 ## Funcionalidades atuais
 
-- **Tela inicial transparente**: exibe o papel de parede do sistema (`windowShowWallpaper`), relógio personalizável (GNOME Clássico, Empilhado, Analógico Adwaita, Editorial lateral e Cápsula compacta), atalhos/widgets redimensionáveis na grade e o **Dash** fixo na parte inferior.
+- **Tela inicial transparente**: exibe o papel de parede do sistema (`windowShowWallpaper`), relógio personalizável (GNOME Clássico, Empilhado, Analógico Adwaita, Editorial lateral, Cápsula compacta e Cápsula completa estilo Resumo), atalhos/widgets redimensionáveis na grade e o **Dash** fixo na parte inferior.
 - **Dash de favoritos**: de 3 a 6 aplicativos selecionados automaticamente ou fixados pelo usuário, com opacidade configurável e barra de busca rápida opcional.
 - **Overview por gestos**: deslize para cima na tela inicial (ou toque no indicador/busca do Dash) para abrir o Overview com acompanhamento contínuo do gesto; deslize para baixo, pressione Voltar ou aperte Home para retornar. Arraste apps direto da grade para a tela inicial.
 - **Desfoque e animações do Overview**: `RenderEffect` e blur de janela (Android 12+), escurecimento do fundo configurável, estilo de transição (*GNOME Shell*, *Deslizar* ou *Esmaecer*), velocidade de animação, efeito de profundidade na tela inicial e animação de abertura dos aplicativos.

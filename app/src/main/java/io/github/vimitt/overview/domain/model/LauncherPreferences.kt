@@ -176,6 +176,7 @@ enum class HomeClockStyle {
     ANALOG,
     SIDE_BY_SIDE,
     PILL,
+    FULL_PILL,
 }
 
 /**

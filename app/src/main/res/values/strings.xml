@@ -119,6 +119,10 @@
     <string name="settings_home_clock_style_analog">Analógico Adwaita</string>
     <string name="settings_home_clock_style_side">Editorial lateral</string>
     <string name="settings_home_clock_style_pill">Cápsula compacta</string>
+    <string name="settings_home_clock_style_full_pill">Cápsula completa (Resumo)</string>
+    <string name="clock_greeting_morning">Bom dia</string>
+    <string name="clock_greeting_afternoon">Boa tarde</string>
+    <string name="clock_greeting_evening">Boa noite</string>
     <string name="settings_home_clock_preview_hint">Toque para alternar entre os estilos</string>
     <string name="settings_wallpaper_row">Papel de parede do sistema</string>
 
