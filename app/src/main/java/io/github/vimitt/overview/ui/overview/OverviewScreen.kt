@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
@@ -236,6 +237,13 @@ fun OverviewScreen(
         }
     }
 
+    val handleFolderClick = remember(keyboardController) {
+        { folderId: String ->
+            keyboardController?.hide()
+            openFolderId = folderId
+        }
+    }
+
     BackHandler(
         enabled = isActive &&
             actionTargetApp == null &&
@@ -387,10 +395,7 @@ fun OverviewScreen(
                         folderPreviewStyle = uiState.folderSettings.previewStyle,
                         scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
                         onAppClick = handleAppClick,
-                        onFolderClick = { folderId ->
-                            keyboardController?.hide()
-                            openFolderId = folderId
-                        },
+                        onFolderClick = handleFolderClick,
                         onAppDragStart = handleAppDragStart,
                         onAppDragMove = onAppDragMove,
                         onAppDragEnd = handleAppDragEnd,
@@ -413,10 +418,7 @@ fun OverviewScreen(
                         animationDurationScale = animationDurationScale,
                         scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
                         onAppClick = handleAppClick,
-                        onFolderClick = { folderId ->
-                            keyboardController?.hide()
-                            openFolderId = folderId
-                        },
+                        onFolderClick = handleFolderClick,
                         onAppDragStart = handleAppDragStart,
                         onAppDragMove = onAppDragMove,
                         onAppDragEnd = handleAppDragEnd,
@@ -590,18 +592,24 @@ private fun ContinuousAppGrid(
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val safeColumns = columns.coerceIn(3, 6)
+    val contentPadding = remember(imeBottom) { PaddingValues(bottom = imeBottom + 16.dp) }
+    val gridState = rememberLazyGridState()
 
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Fixed(safeColumns),
         userScrollEnabled = scrollEnabled,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(
             items = entries,
             key = { it.key },
+            contentType = { entry ->
+                if (entry is OverviewGridEntry.Folder) "folder" else "app"
+            },
         ) { entry ->
             OverviewGridEntryCell(
                 entry = entry,
@@ -810,11 +818,14 @@ private fun OverviewGridEntryCell(
         }
 
         is OverviewGridEntry.Folder -> {
+            val openThisFolder = remember(entry.folder.id, onFolderClick) {
+                { onFolderClick(entry.folder.id) }
+            }
             FolderIconItem(
                 entry = entry,
                 previewStyle = folderPreviewStyle,
                 iconSize = iconSize,
-                onClick = { onFolderClick(entry.folder.id) },
+                onClick = openThisFolder,
                 modifier = modifier,
             )
         }
