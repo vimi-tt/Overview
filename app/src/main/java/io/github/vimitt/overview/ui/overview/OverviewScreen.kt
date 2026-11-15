@@ -66,6 +66,7 @@ import kotlin.math.ceil
  */
 @Composable
 fun OverviewScreen(
+    isActive: Boolean,
     searchQuery: String,
     uiState: OverviewUiState,
     onSearchQueryChange: (String) -> Unit,
@@ -78,7 +79,7 @@ fun OverviewScreen(
     val colors = OverviewTheme.colors
     val keyboardController = LocalSoftwareKeyboardController.current
     val rootView = LocalView.current
-    val swipeDownThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
+    val swipeDownThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
     val isSearching = searchQuery.isNotBlank()
     val handleAppClick = remember(onAppClick, keyboardController) {
         { app: AppInfo, view: View, bounds: Rect? ->
@@ -87,7 +88,7 @@ fun OverviewScreen(
         }
     }
 
-    BackHandler {
+    BackHandler(enabled = isActive) {
         keyboardController?.hide()
         onClose()
     }
@@ -96,11 +97,20 @@ fun OverviewScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.overviewScrim)
-            .pointerInput(swipeDownThresholdPx) {
+            .pointerInput(isActive, swipeDownThresholdPx) {
+                if (!isActive) return@pointerInput
                 var totalDragY = 0f
                 var triggered = false
                 detectVerticalDragGestures(
                     onDragStart = {
+                        totalDragY = 0f
+                        triggered = false
+                    },
+                    onDragEnd = {
+                        totalDragY = 0f
+                        triggered = false
+                    },
+                    onDragCancel = {
                         totalDragY = 0f
                         triggered = false
                     },
@@ -153,6 +163,7 @@ fun OverviewScreen(
             isSearching -> {
                 SearchResultsGrid(
                     apps = uiState.apps,
+                    scrollEnabled = isActive,
                     onAppClick = handleAppClick,
                     modifier = Modifier
                         .weight(1f)
@@ -163,6 +174,7 @@ fun OverviewScreen(
             else -> {
                 PaginatedAppGrid(
                     apps = uiState.apps,
+                    scrollEnabled = isActive,
                     onAppClick = handleAppClick,
                     modifier = Modifier
                         .weight(1f)
@@ -176,6 +188,7 @@ fun OverviewScreen(
 @Composable
 private fun SearchResultsGrid(
     apps: List<AppInfo>,
+    scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -185,6 +198,7 @@ private fun SearchResultsGrid(
         val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
+            userScrollEnabled = scrollEnabled,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -208,6 +222,7 @@ private fun SearchResultsGrid(
 @Composable
 private fun PaginatedAppGrid(
     apps: List<AppInfo>,
+    scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -238,6 +253,7 @@ private fun PaginatedAppGrid(
         ) {
             HorizontalPager(
                 state = pagerState,
+                userScrollEnabled = scrollEnabled,
                 beyondViewportPageCount = 1,
                 key = { page -> page },
                 modifier = Modifier

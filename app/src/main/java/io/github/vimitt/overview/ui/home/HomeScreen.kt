@@ -67,7 +67,7 @@ fun HomeScreen(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val swipeThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
+    val swipeThresholdPx = with(LocalDensity.current) { 36.dp.toPx() }
     val haptic = LocalHapticFeedback.current
 
     Box(
@@ -86,6 +86,14 @@ fun HomeScreen(
                 var triggered = false
                 detectVerticalDragGestures(
                     onDragStart = {
+                        totalDragY = 0f
+                        triggered = false
+                    },
+                    onDragEnd = {
+                        totalDragY = 0f
+                        triggered = false
+                    },
+                    onDragCancel = {
                         totalDragY = 0f
                         triggered = false
                     },

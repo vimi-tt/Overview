@@ -62,7 +62,6 @@ import io.github.vimitt.overview.ui.settings.SettingsScreen
 import io.github.vimitt.overview.ui.settings.SettingsUiState
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewSpring
 import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.roundToInt
 
@@ -154,9 +153,9 @@ fun LauncherRoot(
         val enterTransition = if (reducedMotion) {
             fadeIn(overviewTween(reducedMotion = true))
         } else {
-            fadeIn(overviewTween(reducedMotion = false, durationMillis = 200)) +
+            fadeIn(overviewTween(reducedMotion = false, durationMillis = 180)) +
                 slideInVertically(
-                    animationSpec = overviewSpring(reducedMotion = false),
+                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 200),
                     initialOffsetY = { fullHeight -> fullHeight / 10 },
                 )
         }
@@ -164,19 +163,21 @@ fun LauncherRoot(
         val exitTransition = if (reducedMotion) {
             fadeOut(overviewTween(reducedMotion = true))
         } else {
-            fadeOut(overviewTween(reducedMotion = false, durationMillis = 180)) +
+            fadeOut(overviewTween(reducedMotion = false, durationMillis = 140)) +
                 slideOutVertically(
-                    animationSpec = overviewSpring(reducedMotion = false),
+                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 140),
                     targetOffsetY = { fullHeight -> fullHeight / 12 },
                 )
         }
 
+        val overviewActive = isOverviewOpen && !isSettingsOpen
         AnimatedVisibility(
-            visible = isOverviewOpen && !isSettingsOpen,
+            visible = overviewActive,
             enter = enterTransition,
             exit = exitTransition,
         ) {
             OverviewScreen(
+                isActive = overviewActive,
                 searchQuery = searchQuery,
                 uiState = overviewUiState,
                 onSearchQueryChange = onSearchQueryChange,
