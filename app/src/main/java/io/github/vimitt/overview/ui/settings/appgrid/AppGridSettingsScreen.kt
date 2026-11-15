@@ -10,9 +10,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppSortOrder
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
+import io.github.vimitt.overview.ui.settings.components.SegmentedRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
@@ -26,6 +28,7 @@ fun AppGridSettingsScreen(
     uiState: AppGridSettingsUiState,
     onColumnsChange: (Int) -> Unit,
     onIconScaleChange: (Float) -> Unit,
+    onLayoutModeChange: (AppGridLayoutMode) -> Unit,
     onSortOrderChange: (AppSortOrder) -> Unit,
     onOpenHiddenApps: () -> Unit,
     onBack: () -> Unit,
@@ -41,6 +44,21 @@ fun AppGridSettingsScreen(
     ) {
         item(key = "app_grid_layout_group") {
             SettingsGroup(title = stringResource(R.string.settings_section_drawer_layout)) {
+                SegmentedRow(
+                    title = stringResource(R.string.settings_app_grid_layout_mode),
+                    subtitle = when (settings.layoutMode) {
+                        AppGridLayoutMode.PAGED -> stringResource(R.string.settings_app_grid_layout_paged_subtitle)
+                        AppGridLayoutMode.CONTINUOUS -> stringResource(R.string.settings_app_grid_layout_continuous_subtitle)
+                    },
+                    options = listOf(
+                        AppGridLayoutMode.PAGED to stringResource(R.string.settings_app_grid_layout_paged),
+                        AppGridLayoutMode.CONTINUOUS to stringResource(R.string.settings_app_grid_layout_continuous),
+                    ),
+                    selected = settings.layoutMode,
+                    onSelect = onLayoutModeChange,
+                    useButtonGroup = true,
+                )
+                SettingsDivider()
                 SliderRow(
                     title = stringResource(R.string.settings_app_grid_columns),
                     value = settings.columns.toFloat(),

@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.vimitt.overview.domain.model.AppFolder
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppGridSettings
 import io.github.vimitt.overview.domain.model.AppSortOrder
 import io.github.vimitt.overview.domain.model.AppearanceSettings
@@ -572,6 +573,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setAppGridLayoutMode(mode: AppGridLayoutMode) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_APP_GRID_LAYOUT_MODE] = mode.name
+        }
+    }
+
     suspend fun setAppSortOrder(order: AppSortOrder) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_APP_SORT_ORDER] = order.name
@@ -749,6 +756,10 @@ class SettingsRepository(
         val iconScale = (prefs[KEY_APP_GRID_ICON_SCALE] ?: SettingsDefaults.DEFAULT_ICON_SCALE)
             .coerceIn(SettingsDefaults.MIN_ICON_SCALE, SettingsDefaults.MAX_ICON_SCALE)
 
+        val layoutMode = prefs[KEY_APP_GRID_LAYOUT_MODE]
+            ?.let { raw -> runCatching { AppGridLayoutMode.valueOf(raw) }.getOrNull() }
+            ?: AppGridLayoutMode.PAGED
+
         val sortOrder = prefs[KEY_APP_SORT_ORDER]
             ?.let { raw -> runCatching { AppSortOrder.valueOf(raw) }.getOrNull() }
             ?: AppSortOrder.ALPHABETICAL_ASC
@@ -759,6 +770,7 @@ class SettingsRepository(
         return AppGridSettings(
             columns = columns,
             iconScale = iconScale,
+            layoutMode = layoutMode,
             sortOrder = sortOrder,
             hiddenAppKeys = hiddenKeys,
             showHiddenInSearch = showHiddenInSearch,
@@ -909,6 +921,7 @@ class SettingsRepository(
         // Chaves de Grade de aplicativos
         val KEY_APP_GRID_COLUMNS = intPreferencesKey("app_grid_columns")
         val KEY_APP_GRID_ICON_SCALE = floatPreferencesKey("app_grid_icon_scale")
+        val KEY_APP_GRID_LAYOUT_MODE = stringPreferencesKey("app_grid_layout_mode")
         val KEY_APP_SORT_ORDER = stringPreferencesKey("app_sort_order")
         val KEY_HIDDEN_APPS = stringSetPreferencesKey("hidden_app_keys")
         val KEY_SHOW_HIDDEN_IN_SEARCH = booleanPreferencesKey("show_hidden_in_search")

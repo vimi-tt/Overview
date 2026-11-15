@@ -88,6 +88,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppFolder
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.FolderPreviewStyle
 import io.github.vimitt.overview.domain.model.FolderSettings
@@ -376,6 +377,30 @@ fun OverviewScreen(
                     )
                 }
 
+                uiState.gridLayoutMode == AppGridLayoutMode.CONTINUOUS -> {
+                    ContinuousAppGrid(
+                        entries = uiState.gridEntries,
+                        columns = uiState.gridColumns,
+                        iconSize = iconSize,
+                        showNotificationDots = uiState.showNotificationDots,
+                        badgePackages = uiState.badgePackages,
+                        folderPreviewStyle = uiState.folderSettings.previewStyle,
+                        scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
+                        onAppClick = handleAppClick,
+                        onFolderClick = { folderId ->
+                            keyboardController?.hide()
+                            openFolderId = folderId
+                        },
+                        onAppDragStart = handleAppDragStart,
+                        onAppDragMove = onAppDragMove,
+                        onAppDragEnd = handleAppDragEnd,
+                        onAppDragCancel = handleAppDragCancel,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    )
+                }
+
                 else -> {
                     PaginatedAppGrid(
                         entries = uiState.gridEntries,
@@ -547,6 +572,55 @@ private fun SearchResultsGrid(
 }
 
 @Composable
+private fun ContinuousAppGrid(
+    entries: List<OverviewGridEntry>,
+    columns: Int,
+    iconSize: Dp,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
+    folderPreviewStyle: FolderPreviewStyle,
+    scrollEnabled: Boolean,
+    onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onFolderClick: (folderId: String) -> Unit,
+    onAppDragStart: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Unit,
+    onAppDragCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val safeColumns = columns.coerceIn(3, 6)
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(safeColumns),
+        userScrollEnabled = scrollEnabled,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items(
+            items = entries,
+            key = { it.key },
+        ) { entry ->
+            OverviewGridEntryCell(
+                entry = entry,
+                iconSize = iconSize,
+                showNotificationDots = showNotificationDots,
+                badgePackages = badgePackages,
+                folderPreviewStyle = folderPreviewStyle,
+                onAppClick = onAppClick,
+                onFolderClick = onFolderClick,
+                onAppDragStart = onAppDragStart,
+                onAppDragMove = onAppDragMove,
+                onAppDragEnd = onAppDragEnd,
+                onAppDragCancel = onAppDragCancel,
+            )
+        }
+    }
+}
+
+@Composable
 private fun PaginatedAppGrid(
     entries: List<OverviewGridEntry>,
     columns: Int,
@@ -677,43 +751,72 @@ private fun AppGridPage(
                 for (column in 0 until columns) {
                     val index = row * columns + column
                     val entry = entries.getOrNull(index)
-                    when (entry) {
-                        is OverviewGridEntry.App -> {
-                            key(entry.key) {
-                                AppIconItem(
-                                    app = entry.app,
-                                    onClick = onAppClick,
-                                    onDragStart = onAppDragStart,
-                                    onDragMove = onAppDragMove,
-                                    onDragEnd = onAppDragEnd,
-                                    onDragCancel = onAppDragCancel,
-                                    iconSize = iconSize,
-                                    showLabel = true,
-                                    showNotificationDot = showNotificationDots &&
-                                        entry.app.packageName in badgePackages,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
+                    if (entry != null) {
+                        key(entry.key) {
+                            OverviewGridEntryCell(
+                                entry = entry,
+                                iconSize = iconSize,
+                                showNotificationDots = showNotificationDots,
+                                badgePackages = badgePackages,
+                                folderPreviewStyle = folderPreviewStyle,
+                                onAppClick = onAppClick,
+                                onFolderClick = onFolderClick,
+                                onAppDragStart = onAppDragStart,
+                                onAppDragMove = onAppDragMove,
+                                onAppDragEnd = onAppDragEnd,
+                                onAppDragCancel = onAppDragCancel,
+                                modifier = Modifier.weight(1f),
+                            )
                         }
-
-                        is OverviewGridEntry.Folder -> {
-                            key(entry.key) {
-                                FolderIconItem(
-                                    entry = entry,
-                                    previewStyle = folderPreviewStyle,
-                                    iconSize = iconSize,
-                                    onClick = { onFolderClick(entry.folder.id) },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-
-                        null -> {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun OverviewGridEntryCell(
+    entry: OverviewGridEntry,
+    iconSize: Dp,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
+    folderPreviewStyle: FolderPreviewStyle,
+    onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onFolderClick: (folderId: String) -> Unit,
+    onAppDragStart: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Unit,
+    onAppDragCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (entry) {
+        is OverviewGridEntry.App -> {
+            AppIconItem(
+                app = entry.app,
+                onClick = onAppClick,
+                onDragStart = onAppDragStart,
+                onDragMove = onAppDragMove,
+                onDragEnd = onAppDragEnd,
+                onDragCancel = onAppDragCancel,
+                iconSize = iconSize,
+                showLabel = true,
+                showNotificationDot = showNotificationDots &&
+                    entry.app.packageName in badgePackages,
+                modifier = modifier,
+            )
+        }
+
+        is OverviewGridEntry.Folder -> {
+            FolderIconItem(
+                entry = entry,
+                previewStyle = folderPreviewStyle,
+                iconSize = iconSize,
+                onClick = { onFolderClick(entry.folder.id) },
+                modifier = modifier,
+            )
         }
     }
 }

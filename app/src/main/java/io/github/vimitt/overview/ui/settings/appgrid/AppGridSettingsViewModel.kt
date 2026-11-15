@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.vimitt.overview.data.AppsRepository
 import io.github.vimitt.overview.data.SettingsRepository
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppGridSettings
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.AppSortOrder
@@ -70,6 +71,12 @@ class AppGridSettingsViewModel(
     fun onIconScaleChange(scale: Float) {
         viewModelScope.launch {
             settingsRepository.setAppGridIconScale(scale)
+        }
+    }
+
+    fun onLayoutModeChange(mode: AppGridLayoutMode) {
+        viewModelScope.launch {
+            settingsRepository.setAppGridLayoutMode(mode)
         }
     }
 

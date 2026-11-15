@@ -264,6 +264,7 @@ fun SettingsNavHost(
                 uiState = uiState,
                 onColumnsChange = viewModel::onColumnsChange,
                 onIconScaleChange = viewModel::onIconScaleChange,
+                onLayoutModeChange = viewModel::onLayoutModeChange,
                 onSortOrderChange = viewModel::onSortOrderChange,
                 onOpenHiddenApps = { navController.navigate(SettingsRoute.HIDDEN_APPS) },
                 onBack = { navController.popBackStack() },

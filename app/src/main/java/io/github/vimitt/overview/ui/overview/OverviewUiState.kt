@@ -2,6 +2,7 @@ package io.github.vimitt.overview.ui.overview
 
 import androidx.compose.runtime.Immutable
 import io.github.vimitt.overview.domain.model.AppFolder
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.FolderSettings
 import io.github.vimitt.overview.domain.model.SearchSettings
@@ -41,6 +42,7 @@ data class OverviewUiState(
     val apps: List<AppInfo> = emptyList(),
     val gridEntries: List<OverviewGridEntry> = emptyList(),
     val gridColumns: Int = SettingsDefaults.DEFAULT_APP_GRID_COLUMNS,
+    val gridLayoutMode: AppGridLayoutMode = AppGridLayoutMode.PAGED,
     val iconScale: Float = SettingsDefaults.DEFAULT_ICON_SCALE,
     val showNotificationDots: Boolean = false,
     val badgePackages: Set<String> = emptySet(),

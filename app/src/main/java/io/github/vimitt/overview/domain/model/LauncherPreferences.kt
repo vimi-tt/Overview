@@ -139,6 +139,14 @@ enum class FolderPreviewStyle {
 }
 
 /**
+ * Modo de navegação da grade de aplicativos no Overview.
+ */
+enum class AppGridLayoutMode {
+    PAGED,
+    CONTINUOUS,
+}
+
+/**
  * Ação executável por gestos configuráveis na tela inicial.
  */
 enum class LauncherGestureAction {
@@ -295,6 +303,7 @@ data class DockSettings(
 data class AppGridSettings(
     val columns: Int = SettingsDefaults.DEFAULT_APP_GRID_COLUMNS,
     val iconScale: Float = SettingsDefaults.DEFAULT_ICON_SCALE,
+    val layoutMode: AppGridLayoutMode = AppGridLayoutMode.PAGED,
     val sortOrder: AppSortOrder = AppSortOrder.ALPHABETICAL_ASC,
     val hiddenAppKeys: Set<String> = emptySet(),
     val showHiddenInSearch: Boolean = false,

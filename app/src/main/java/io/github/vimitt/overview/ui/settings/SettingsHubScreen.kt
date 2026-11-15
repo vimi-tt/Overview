@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.BuildConfig
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppSortOrder
 import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.FolderPreviewStyle
@@ -99,7 +100,11 @@ fun SettingsHubScreen(
         AppSortOrder.RECENTLY_INSTALLED -> stringResource(R.string.settings_sort_recent)
     }
     val columnsText = stringResource(R.string.settings_app_grid_columns_format, prefs.appGrid.columns)
-    val appGridSubtitle = "$columnsText · $sortLabel"
+    val layoutLabel = when (prefs.appGrid.layoutMode) {
+        AppGridLayoutMode.PAGED -> stringResource(R.string.settings_app_grid_layout_paged)
+        AppGridLayoutMode.CONTINUOUS -> stringResource(R.string.settings_app_grid_layout_continuous)
+    }
+    val appGridSubtitle = "$columnsText · $layoutLabel · $sortLabel"
 
     val blurText = if (prefs.overview.blurRadiusDp < 1f) {
         stringResource(R.string.settings_overview_blur_summary_off)

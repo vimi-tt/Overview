@@ -204,6 +204,11 @@
     <!-- Categoria: Grade de apps -->
     <string name="settings_section_drawer_layout">Grade</string>
     <string name="settings_section_drawer_apps">Organização e visibilidade</string>
+    <string name="settings_app_grid_layout_mode">Rolagem da grade</string>
+    <string name="settings_app_grid_layout_paged">Paginada</string>
+    <string name="settings_app_grid_layout_continuous">Contínua</string>
+    <string name="settings_app_grid_layout_paged_subtitle">Páginas horizontais no estilo GNOME</string>
+    <string name="settings_app_grid_layout_continuous_subtitle">Lista contínua para baixo</string>
     <string name="settings_app_grid_columns">Colunas</string>
     <string name="settings_app_grid_columns_format">%1$d colunas</string>
     <string name="settings_app_grid_icon_scale">Tamanho dos ícones</string>

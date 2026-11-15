@@ -76,6 +76,7 @@ class OverviewViewModel(
             apps = filteredApps,
             gridEntries = entries,
             gridColumns = gridSettings.columns,
+            gridLayoutMode = gridSettings.layoutMode,
             iconScale = gridSettings.iconScale,
             showNotificationDots = appearance.notificationDotsEnabled,
             badgePackages = badges,
