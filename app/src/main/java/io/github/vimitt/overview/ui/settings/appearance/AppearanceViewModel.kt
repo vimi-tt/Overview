@@ -9,8 +9,14 @@ import io.github.vimitt.overview.data.IconPackRepository
 import io.github.vimitt.overview.data.NotificationBadgeRepository
 import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.domain.model.AppearanceSettings
+import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.IconShape
+import io.github.vimitt.overview.domain.model.MotionIntensity
+import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.domain.model.ShapeFamily
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.domain.model.TypographyWeightMode
+import io.github.vimitt.overview.domain.model.VisualStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +27,7 @@ import kotlinx.coroutines.launch
 @Immutable
 data class AppearanceUiState(
     val settings: AppearanceSettings = AppearanceSettings(),
+    val overviewBlurRadiusDp: Float = SettingsDefaults.DEFAULT_BLUR_RADIUS_DP,
     val installedIconPacks: List<IconPackInfo> = emptyList(),
     val isLoadingIconPacks: Boolean = true,
     val hasNotificationAccess: Boolean = false,
@@ -42,12 +49,14 @@ class AppearanceViewModel(
 
     val uiState: StateFlow<AppearanceUiState> = combine(
         settingsRepository.appearanceSettings,
+        settingsRepository.overviewSettings,
         installedPacks,
         loadingPacks,
         notificationAccess,
-    ) { settings, packs, isLoading, hasAccess ->
+    ) { settings, overviewSettings, packs, isLoading, hasAccess ->
         AppearanceUiState(
             settings = settings,
+            overviewBlurRadiusDp = overviewSettings.blurRadiusDp,
             installedIconPacks = packs,
             isLoadingIconPacks = isLoading,
             hasNotificationAccess = hasAccess,
@@ -67,9 +76,21 @@ class AppearanceViewModel(
         }
     }
 
+    fun onVisualStyleChange(style: VisualStyle) {
+        viewModelScope.launch {
+            settingsRepository.setVisualStyle(style)
+        }
+    }
+
     fun onThemeModeChange(mode: ThemeMode) {
         viewModelScope.launch {
             settingsRepository.setThemeMode(mode)
+        }
+    }
+
+    fun onColorSourceModeChange(mode: ColorSourceMode) {
+        viewModelScope.launch {
+            settingsRepository.setColorSourceMode(mode)
         }
     }
 
@@ -79,15 +100,57 @@ class AppearanceViewModel(
         }
     }
 
-    fun onIconPackSelect(packageName: String?) {
+    fun onCustomAccentColorChange(argb: Long) {
         viewModelScope.launch {
-            settingsRepository.setIconPackPackage(packageName)
+            settingsRepository.setCustomAccentColor(argb)
+        }
+    }
+
+    fun onMotionIntensityChange(intensity: MotionIntensity) {
+        viewModelScope.launch {
+            settingsRepository.setMotionIntensity(intensity)
+        }
+    }
+
+    fun onShapeFamilyChange(family: ShapeFamily) {
+        viewModelScope.launch {
+            settingsRepository.setShapeFamily(family)
         }
     }
 
     fun onIconShapeChange(shape: IconShape) {
         viewModelScope.launch {
             settingsRepository.setIconShape(shape)
+        }
+    }
+
+    fun onIconRoundnessChange(roundness: Float) {
+        viewModelScope.launch {
+            settingsRepository.setIconRoundness(roundness)
+        }
+    }
+
+    fun onTypographyWeightModeChange(mode: TypographyWeightMode) {
+        viewModelScope.launch {
+            settingsRepository.setTypographyWeightMode(mode)
+        }
+    }
+
+    fun onIconPackSelect(packageName: String?) {
+        viewModelScope.launch {
+            settingsRepository.setIconPackPackage(packageName)
+        }
+    }
+
+    fun onOverviewBlurEnabledChange(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setOverviewBlurEnabled(enabled)
+        }
+    }
+
+    fun onOverviewBlurRadiusChange(radiusDp: Float) {
+        viewModelScope.launch {
+            settingsRepository.setOverviewBlurRadius(radiusDp)
         }
     }
 

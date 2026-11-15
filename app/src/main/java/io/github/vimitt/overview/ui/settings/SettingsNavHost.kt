@@ -146,12 +146,21 @@ fun SettingsNavHost(
             AppearanceSettingsScreen(
                 uiState = uiState,
                 notificationBadgeRepository = appContainer.notificationBadgeRepository,
+                onVisualStyleChange = viewModel::onVisualStyleChange,
                 onThemeModeChange = viewModel::onThemeModeChange,
+                onColorSourceModeChange = viewModel::onColorSourceModeChange,
                 onAccentColorChange = viewModel::onAccentColorChange,
-                onIconPackSelect = viewModel::onIconPackSelect,
+                onCustomAccentColorChange = viewModel::onCustomAccentColorChange,
+                onMotionIntensityChange = viewModel::onMotionIntensityChange,
+                onShapeFamilyChange = viewModel::onShapeFamilyChange,
                 onIconShapeChange = viewModel::onIconShapeChange,
+                onIconRoundnessChange = viewModel::onIconRoundnessChange,
+                onTypographyWeightModeChange = viewModel::onTypographyWeightModeChange,
+                onIconPackSelect = viewModel::onIconPackSelect,
                 onNotificationDotsToggle = viewModel::onNotificationDotsToggle,
                 onRefreshNotificationAccess = viewModel::refreshNotificationAccess,
+                onOverviewBlurEnabledChange = viewModel::onOverviewBlurEnabledChange,
+                onOverviewBlurRadiusChange = viewModel::onOverviewBlurRadiusChange,
                 onBack = { navController.popBackStack() },
             )
         }

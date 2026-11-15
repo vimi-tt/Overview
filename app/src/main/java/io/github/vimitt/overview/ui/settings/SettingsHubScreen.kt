@@ -15,9 +15,11 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.BuildConfig
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppSortOrder
+import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.FolderPreviewStyle
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.domain.model.VisualStyle
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
@@ -45,17 +47,27 @@ fun SettingsHubScreen(
     val colors = OverviewTheme.colors
     val prefs = uiState.preferences
 
-    val accentName = AdwaitaPalette.AccentPresets
-        .firstOrNull { it.second == prefs.appearance.accentColorArgb }
-        ?.first
-        ?: AdwaitaPalette.AccentPresets.first().first
+    val styleLabel = when (prefs.appearance.visualStyle) {
+        VisualStyle.GNOME -> stringResource(R.string.settings_visual_style_gnome)
+        VisualStyle.EXPRESSIVE -> stringResource(R.string.settings_visual_style_expressive)
+    }
+
+    val colorSourceLabel = when (prefs.appearance.colorSourceMode) {
+        ColorSourceMode.GNOME -> AdwaitaPalette.AccentPresets
+            .firstOrNull { it.second == prefs.appearance.accentColorArgb }
+            ?.first
+            ?: AdwaitaPalette.AccentPresets.first().first
+
+        ColorSourceMode.DYNAMIC -> stringResource(R.string.settings_color_source_dynamic)
+        ColorSourceMode.CUSTOM -> stringResource(R.string.settings_color_source_custom)
+    }
 
     val themeLabel = when (prefs.appearance.themeMode) {
         ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
         ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
         ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
     }
-    val appearanceSubtitle = "$accentName · $themeLabel"
+    val appearanceSubtitle = "$styleLabel · $colorSourceLabel · $themeLabel"
 
     val homeSubtitle = if (prefs.home.lockLayout) {
         stringResource(

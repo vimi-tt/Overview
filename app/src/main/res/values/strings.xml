@@ -50,14 +50,63 @@
     <string name="settings_hub_about">Sobre</string>
 
     <!-- Categoria: Aparência -->
+    <string name="settings_section_visual_style">Estilo visual</string>
+    <string name="settings_visual_style_label">Identidade visual</string>
+    <string name="settings_visual_style_gnome">GNOME</string>
+    <string name="settings_visual_style_gnome_sub">Adwaita clássico, formas limpas e transições contidas</string>
+    <string name="settings_visual_style_expressive">Expressive</string>
+    <string name="settings_visual_style_expressive_sub">GNOME × Material 3 Expressive: molas, morphing e superfícies tonais</string>
+    <string name="settings_visual_style_preview_title">Pré-visualização ao vivo</string>
+    <string name="settings_visual_style_preview_action">Testar</string>
+    <string name="settings_visual_style_preview_toggle_cd">Alternar estilo visual</string>
+    <string name="settings_visual_style_preview_gnome_pill">Limpo e previsível</string>
+    <string name="settings_visual_style_preview_expressive_pill">Molas, morphing e tom</string>
+
     <string name="settings_section_theme">Tema e cores</string>
-    <string name="settings_section_icons">Ícones e emblemas</string>
+    <string name="settings_section_motion_type">Movimento e tipografia</string>
+    <string name="settings_section_icons">Formas e ícones</string>
+    <string name="settings_section_appearance_effects">Efeitos e transparência</string>
+
     <string name="settings_theme_label">Tema</string>
     <string name="settings_theme_system">Automático</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Escuro</string>
+    <string name="settings_color_source_label">Origem das cores</string>
+    <string name="settings_color_source_gnome">GNOME</string>
+    <string name="settings_color_source_dynamic">Dinâmica</string>
+    <string name="settings_color_source_custom">Personalizada</string>
+    <string name="settings_color_source_subtitle_gnome">Paleta fixa inspirada no libadwaita</string>
+    <string name="settings_color_source_subtitle_dynamic">Cores dinâmicas do sistema (Material You)</string>
+    <string name="settings_color_source_subtitle_custom">Cor escolhida manualmente com contraste adaptado</string>
     <string name="settings_accent_label">Cor de destaque</string>
     <string name="settings_accent_subtitle">Inspirada na paleta Adwaita</string>
+    <string name="settings_custom_accent_label">Cor personalizada</string>
+    <string name="settings_custom_accent_hex">Código HEX (#RRGGBB)</string>
+    <string name="settings_custom_accent_apply">Aplicar</string>
+    <string name="settings_custom_accent_reset">Padrão</string>
+    <string name="settings_custom_accent_invalid_hex">Digite 6 dígitos hexadecimais (ex.: 6750A4)</string>
+
+    <string name="settings_motion_intensity_label">Intensidade do movimento</string>
+    <string name="settings_motion_intensity_low">Baixa</string>
+    <string name="settings_motion_intensity_medium">Média</string>
+    <string name="settings_motion_intensity_high">Alta</string>
+    <string name="settings_motion_intensity_subtitle_low">Molas discretas e estáveis, com overshoot mínimo</string>
+    <string name="settings_motion_intensity_subtitle_medium">Física de mola equilibrada para o estilo Expressive</string>
+    <string name="settings_motion_intensity_subtitle_high">Molas expressivas com overshoot acentuado</string>
+    <string name="settings_motion_intensity_subtitle_gnome">Curvas suaves lineares ativas no estilo GNOME</string>
+    <string name="settings_typography_weight_label">Peso da tipografia</string>
+    <string name="settings_typography_weight_normal">Normal</string>
+    <string name="settings_typography_weight_emphatic">Enfático</string>
+    <string name="settings_typography_weight_subtitle_normal">Hierarquia limpa e moderada</string>
+    <string name="settings_typography_weight_subtitle_emphatic">Títulos e seções mais encorpados</string>
+
+    <string name="settings_shape_family_label">Família de formas</string>
+    <string name="settings_shape_family_soft">Discreta</string>
+    <string name="settings_shape_family_rounded">Padrão</string>
+    <string name="settings_shape_family_expressive">Expressiva</string>
+    <string name="settings_shape_family_subtitle_soft">Cantos mais contidos em cards, dock e menus</string>
+    <string name="settings_shape_family_subtitle_rounded">Arredondamento equilibrado no padrão GNOME</string>
+    <string name="settings_shape_family_subtitle_expressive">Raios ampliados com morphing expressivo ao tocar</string>
     <string name="settings_icon_pack_label">Pacote de ícones</string>
     <string name="settings_icon_pack_system">Ícones do sistema</string>
     <string name="settings_icon_pack_loading">Buscando pacotes instalados…</string>
@@ -65,13 +114,23 @@
     <string name="settings_icon_shape_label">Forma dos ícones</string>
     <string name="settings_icon_shape_circle">Círculo</string>
     <string name="settings_icon_shape_rounded">Quadrado arredondado</string>
+    <string name="settings_icon_shape_squircle">Squircle</string>
     <string name="settings_icon_shape_square">Quadrado</string>
+    <string name="settings_icon_shape_clover">Trevo</string>
+    <string name="settings_icon_shape_flower">Flor</string>
+    <string name="settings_icon_roundness_label">Arredondamento dos ícones</string>
+    <string name="settings_icon_roundness_value">%1$d%%</string>
     <string name="settings_notification_dots">Pontos de notificação</string>
     <string name="settings_notification_dots_subtitle">Mostra um ponto discreto quando há notificações ativas</string>
     <string name="settings_notification_permission_title">Permitir acesso às notificações</string>
     <string name="settings_notification_permission_body">Para exibir pontos de notificação nos ícones, conceda acesso ao serviço do Overview nas configurações do sistema.</string>
     <string name="settings_notification_permission_grant">Abrir configurações</string>
     <string name="settings_notification_permission_missing">Permissão de notificações não concedida</string>
+
+    <string name="settings_appearance_blur_toggle">Desfoque do fundo</string>
+    <string name="settings_appearance_blur_toggle_on">Ativado · %1$d dp com RenderEffect</string>
+    <string name="settings_appearance_blur_toggle_off">Desativado · sem custo extra de GPU</string>
+    <string name="settings_appearance_blur_intensity">Intensidade do desfoque</string>
 
     <!-- Categoria: Overview -->
     <string name="settings_section_overview_blur">Desfoque e fundo</string>
