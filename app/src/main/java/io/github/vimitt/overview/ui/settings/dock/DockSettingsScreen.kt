@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +34,6 @@ import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SliderRow
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.roundToInt
 
@@ -142,7 +140,7 @@ private fun DockPinnedAppRow(
     onToggle: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Small)
+    val shape = OverviewTheme.shapes.small
 
     Row(
         modifier = Modifier

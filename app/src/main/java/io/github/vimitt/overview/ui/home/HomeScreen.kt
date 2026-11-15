@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
@@ -70,7 +69,6 @@ import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.components.HomeClock
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -350,7 +348,7 @@ private fun HomeWorkspaceGrid(
         val cellHeight = maxHeight / safeRows
 
         if (isDraggingOverGrid) {
-            val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
+            val cellShape = OverviewTheme.shapes.medium
             for (y in 0 until safeRows) {
                 for (x in 0 until safeColumns) {
                     Box(
@@ -374,7 +372,7 @@ private fun HomeWorkspaceGrid(
                 } else {
                     Color(0xFFE01B24)
                 }
-                val targetShape = RoundedCornerShape(OverviewCornerRadius.Large)
+                val targetShape = OverviewTheme.shapes.large
                 Box(
                     modifier = Modifier
                         .offset(
@@ -395,7 +393,7 @@ private fun HomeWorkspaceGrid(
             for (y in 0 until safeRows) {
                 for (x in 0 until safeColumns) {
                     val canPlace = canPlaceMovingItemAt(x, y)
-                    val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
+                    val cellShape = OverviewTheme.shapes.medium
                     Box(
                         modifier = Modifier
                             .offset(x = cellWidth * x, y = cellHeight * y)
@@ -489,7 +487,7 @@ private fun HomeWorkspaceGrid(
                                             Modifier.border(
                                                 width = 2.dp,
                                                 color = colors.accent,
-                                                shape = RoundedCornerShape(OverviewCornerRadius.Large),
+                                                shape = OverviewTheme.shapes.large,
                                             )
                                         } else {
                                             Modifier
@@ -510,7 +508,7 @@ private fun RemoveDropZonePill(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
     val dangerColor = Color(0xFFE01B24)
 
     Row(
@@ -552,7 +550,7 @@ private fun MoveModeBanner(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
 
     Row(
         modifier = modifier
@@ -583,12 +581,13 @@ private fun OverviewHandlePill(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
+    val pillShape = OverviewTheme.shapes.pill
     val label = stringResource(R.string.open_overview_content_description)
     val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+            .clip(pillShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -602,7 +601,7 @@ private fun OverviewHandlePill(
         Box(
             modifier = Modifier
                 .size(width = 40.dp, height = 4.dp)
-                .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                .clip(pillShape)
                 .background(colors.wallpaperForeground.copy(alpha = 0.72f)),
         )
     }
@@ -615,7 +614,7 @@ private fun DockSearchBarPill(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
 

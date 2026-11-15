@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -61,7 +60,6 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -277,7 +275,7 @@ private fun WidgetAppGroupCard(
     onSelectWidget: (WidgetEntry) -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Medium)
+    val shape = OverviewTheme.shapes.medium
 
     Column(
         modifier = Modifier
@@ -386,7 +384,7 @@ fun HomeItemActionOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val cardShape = OverviewTheme.shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
 

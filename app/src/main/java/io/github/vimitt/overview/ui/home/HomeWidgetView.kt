@@ -20,7 +20,6 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.abs
 
@@ -154,7 +152,7 @@ fun HomeWidgetView(
             },
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(OverviewCornerRadius.Large)),
+                .clip(OverviewTheme.shapes.large),
         )
     }
 }
@@ -169,7 +167,7 @@ private fun UnavailableWidgetCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Medium)
+    val shape = OverviewTheme.shapes.medium
     val haptic = LocalHapticFeedback.current
     val coordinatesHolder = remember { WidgetCoordinatesHolder() }
     val currentOnDragStart by rememberUpdatedState(onDragStart)

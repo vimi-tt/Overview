@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,7 +31,6 @@ import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 @Composable
@@ -42,6 +40,7 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
+    val shapes = OverviewTheme.shapes
     val githubUrl = stringResource(R.string.settings_about_github_url)
     val versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
@@ -60,9 +59,9 @@ fun AboutScreen(
                 Box(
                     modifier = Modifier
                         .size(72.dp)
-                        .clip(RoundedCornerShape(OverviewCornerRadius.Large))
+                        .clip(shapes.large)
                         .background(colors.accent.copy(alpha = 0.16f))
-                        .border(1.5.dp, colors.accent.copy(alpha = 0.6f), RoundedCornerShape(OverviewCornerRadius.Large)),
+                        .border(1.5.dp, colors.accent.copy(alpha = 0.6f), shapes.large),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -39,7 +38,6 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 @Composable
@@ -114,7 +112,7 @@ private fun HiddenAppsFilterBar(
     onClear: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
 
     Row(
         modifier = Modifier
@@ -177,7 +175,7 @@ private fun HiddenAppToggleRow(
     onToggle: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Small)
+    val shape = OverviewTheme.shapes.small
 
     Row(
         modifier = Modifier

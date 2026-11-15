@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -568,7 +566,7 @@ private fun SideBySideClock(
             modifier = Modifier
                 .width(3.dp)
                 .height(if (compact) 30.dp else 44.dp)
-                .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                .clip(OverviewTheme.shapes.pill)
                 .background(accentColor),
         )
 
@@ -604,7 +602,7 @@ private fun PillClock(
     borderColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
 
     Row(
         modifier = modifier
@@ -659,7 +657,7 @@ private fun FullPillSummaryClock(
     borderColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
 
     Row(
         modifier = modifier

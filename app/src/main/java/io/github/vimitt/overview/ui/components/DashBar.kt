@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -17,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.domain.model.AppInfo
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -35,7 +33,7 @@ fun DashBar(
     if (apps.isEmpty()) return
 
     val colors = OverviewTheme.colors
-    val dashShape = RoundedCornerShape(OverviewCornerRadius.Dash)
+    val dashShape = OverviewTheme.shapes.dash
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val borderColor = colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * clampedAlpha)
 

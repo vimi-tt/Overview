@@ -3,12 +3,16 @@ package io.github.vimitt.overview.ui.components
 import android.graphics.Rect
 import android.os.SystemClock
 import android.view.View
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,13 +22,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -47,7 +52,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.domain.model.AppInfo
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.roundToInt
 
@@ -84,6 +88,9 @@ fun AppIconItem(
     onDragCancel: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
+    val shapes = OverviewTheme.shapes
+    val motion = OverviewTheme.motion
+    val components = OverviewTheme.components
     val view = LocalView.current
     val haptic = LocalHapticFeedback.current
     val iconCoordinatesHolder = remember { CoordinatesHolder() }
@@ -96,6 +103,32 @@ fun AppIconItem(
     val currentOnDragMove by rememberUpdatedState(onDragMove)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnDragCancel by rememberUpdatedState(onDragCancel)
+
+    val usePressMorph = components.useShapeMorphOnPress
+    val pressInteractionSource = if (usePressMorph) {
+        remember { MutableInteractionSource() }
+    } else {
+        null
+    }
+    val pressProgressState: State<Float>? = if (pressInteractionSource != null) {
+        val isPressed by pressInteractionSource.collectIsPressedAsState()
+        animateFloatAsState(
+            targetValue = if (isPressed) 1f else 0f,
+            animationSpec = motion.expressiveSpec(durationMillis = 150),
+            label = "iconPressMorph",
+        )
+    } else {
+        null
+    }
+    val iconMorphShape = if (usePressMorph && pressProgressState != null) {
+        remember(shapes.iconPressMorph, pressProgressState) {
+            MorphPolygonShape(shapes.iconPressMorph) {
+                pressProgressState.value.coerceIn(0f, 1f)
+            }
+        }
+    } else {
+        null
+    }
 
     val triggerClick: () -> Unit = {
         val elapsedSinceDrag = SystemClock.uptimeMillis() - dragState.lastDragEndUptimeMs
@@ -116,9 +149,18 @@ fun AppIconItem(
         }
     }
 
+    val indication = if (pressInteractionSource != null) LocalIndication.current else null
     val interactionModifier = if (onDragStart != null) {
-        Modifier
-            .clickable(onClick = triggerClick)
+        val clickMod = if (pressInteractionSource != null) {
+            Modifier.clickable(
+                interactionSource = pressInteractionSource,
+                indication = indication,
+                onClick = triggerClick,
+            )
+        } else {
+            Modifier.clickable(onClick = triggerClick)
+        }
+        clickMod
             .pointerInput(app.key) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { localOffset ->
@@ -154,6 +196,20 @@ fun AppIconItem(
                     },
                 )
             }
+    } else if (pressInteractionSource != null) {
+        Modifier.combinedClickable(
+            interactionSource = pressInteractionSource,
+            indication = indication,
+            onClick = triggerClick,
+            onLongClick = if (onLongClick != null) {
+                {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick(app)
+                }
+            } else {
+                null
+            },
+        )
     } else {
         Modifier.combinedClickable(
             onClick = triggerClick,
@@ -173,7 +229,7 @@ fun AppIconItem(
             .onPlaced { coordinates ->
                 rootCoordinatesHolder.coordinates = coordinates
             }
-            .clip(RoundedCornerShape(OverviewCornerRadius.Medium))
+            .clip(shapes.medium)
             .then(interactionModifier)
             .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -187,27 +243,47 @@ fun AppIconItem(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            val bitmap = app.icon
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = app.label,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
+            val iconSurfaceModifier = if (iconMorphShape != null && pressProgressState != null) {
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val p = pressProgressState.value.coerceIn(0f, 1f)
+                        val scale = 1f - 0.08f * p
+                        scaleX = scale
+                        scaleY = scale
+                        clip = true
+                        shape = iconMorphShape
+                    }
             } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(OverviewCornerRadius.Medium))
-                        .background(colors.surfaceElevated),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Home,
+                Modifier.fillMaxSize()
+            }
+
+            Box(
+                modifier = iconSurfaceModifier,
+                contentAlignment = Alignment.Center,
+            ) {
+                val bitmap = app.icon
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
                         contentDescription = app.label,
-                        tint = colors.onSurfaceMuted,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(shapes.medium)
+                            .background(colors.surfaceElevated),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Home,
+                            contentDescription = app.label,
+                            tint = colors.onSurfaceMuted,
+                        )
+                    }
                 }
             }
 

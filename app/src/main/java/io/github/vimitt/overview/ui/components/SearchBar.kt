@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,7 +40,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -73,7 +71,7 @@ fun OverviewSearchBar(
         }
     }
 
-    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val shape = OverviewTheme.shapes.pill
     val borderColor = if (isFocused) colors.accent else colors.hairlineBorder
     val borderWidth = if (isFocused) 1.5.dp else 1.dp
 

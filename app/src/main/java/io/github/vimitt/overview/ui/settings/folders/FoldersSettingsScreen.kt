@@ -55,7 +55,6 @@ import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 @Composable
@@ -262,7 +261,7 @@ private fun FolderEditorDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(OverviewCornerRadius.Medium))
+                                .clip(OverviewTheme.shapes.medium)
                                 .clickable(role = Role.Checkbox) {
                                     if (isSelected) {
                                         selectedKeys.remove(app.key)

@@ -36,7 +36,6 @@ import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SingleChoiceRow
 import io.github.vimitt.overview.ui.settings.components.SliderRow
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.roundToInt
 
@@ -210,7 +209,7 @@ private fun HomeClockPreview(
     onCycleStyle: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Medium)
+    val shape = OverviewTheme.shapes.medium
 
     Column(
         modifier = Modifier
@@ -254,7 +253,7 @@ private fun HomeGridPreview(
     rows: Int,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.Small)
+    val shape = OverviewTheme.shapes.small
 
     Row(
         modifier = Modifier
