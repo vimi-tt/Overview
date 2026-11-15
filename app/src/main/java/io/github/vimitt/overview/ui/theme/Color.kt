@@ -18,6 +18,7 @@ object AdwaitaPalette {
     val Yellow = Color(0xFFC88800)
     val Orange = Color(0xFFED5B00)
     val Red = Color(0xFFE62D42)
+    val Pink = Color(0xFFD56199)
     val Purple = Color(0xFF9141AC)
     val Slate = Color(0xFF6F8396)
 
@@ -28,6 +29,7 @@ object AdwaitaPalette {
         "Amarelo" to 0xFFC88800L,
         "Laranja" to 0xFFED5B00L,
         "Vermelho" to 0xFFE62D42L,
+        "Rosa" to 0xFFD56199L,
         "Roxo" to 0xFF9141ACL,
         "Ardósia" to 0xFF6F8396L,
     )
@@ -35,6 +37,7 @@ object AdwaitaPalette {
     // Superfícies claras
     val LightWindowBackground = Color(0xFFFAFAFA)
     val LightSurface = Color(0xFFFFFFFF)
+    val LightSurfaceContainer = Color(0xFFFFFFFF)
     val LightSurfaceElevated = Color(0xFFEBEBEB)
     val LightSearchFill = Color(0xFFEAEAEA)
     val LightOnSurface = Color(0xFF242424)
@@ -44,6 +47,7 @@ object AdwaitaPalette {
     // Superfícies escuras
     val DarkWindowBackground = Color(0xFF242424)
     val DarkSurface = Color(0xFF303030)
+    val DarkSurfaceContainer = Color(0xFF303030)
     val DarkSurfaceElevated = Color(0xFF383838)
     val DarkSearchFill = Color(0xFF3A3A3A)
     val DarkOnSurface = Color(0xFFFFFFFF)
@@ -71,6 +75,7 @@ data class OverviewColors(
     val onAccent: Color,
     val windowBackground: Color,
     val surface: Color,
+    val surfaceContainer: Color,
     val surfaceElevated: Color,
     val searchFieldBackground: Color,
     val onSurface: Color,
@@ -103,6 +108,7 @@ fun overviewColors(
             onAccent = Color(0xFF101820),
             windowBackground = AdwaitaPalette.DarkWindowBackground,
             surface = AdwaitaPalette.DarkSurface,
+            surfaceContainer = AdwaitaPalette.DarkSurfaceContainer,
             surfaceElevated = AdwaitaPalette.DarkSurfaceElevated,
             searchFieldBackground = AdwaitaPalette.DarkSearchFill,
             onSurface = AdwaitaPalette.DarkOnSurface,
@@ -120,6 +126,7 @@ fun overviewColors(
             onAccent = Color.White,
             windowBackground = AdwaitaPalette.LightWindowBackground,
             surface = AdwaitaPalette.LightSurface,
+            surfaceContainer = AdwaitaPalette.LightSurfaceContainer,
             surfaceElevated = AdwaitaPalette.LightSurfaceElevated,
             searchFieldBackground = AdwaitaPalette.LightSearchFill,
             onSurface = AdwaitaPalette.LightOnSurface,

@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
  */
 object OverviewCornerRadius {
     val Small = 10.dp
+    val SettingsGroup = 14.dp
     val Medium = 16.dp
     val Large = 24.dp
     val Dash = 28.dp
