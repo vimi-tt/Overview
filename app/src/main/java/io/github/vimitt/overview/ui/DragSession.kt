@@ -1,5 +1,7 @@
 package io.github.vimitt.overview.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +35,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInWindow
@@ -43,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -178,21 +181,36 @@ fun DragGhostOverlay(
     if (activeDrag == null || !activeDrag.hasMovedPastSlop) return
 
     val colors = OverviewTheme.colors
+    val motion = OverviewTheme.motion
+    val shapes = OverviewTheme.shapes
     val density = LocalDensity.current
     var overlayOriginInWindow by remember { mutableStateOf(Offset.Zero) }
     var ghostWidthPx by remember { mutableStateOf(0) }
     var ghostHeightPx by remember { mutableStateOf(0) }
+    var isPickedUp by remember(activeDrag) { mutableStateOf(false) }
+    LaunchedEffect(activeDrag) {
+        isPickedUp = true
+    }
+    val pickupScale by animateFloatAsState(
+        targetValue = if (isPickedUp) 1.04f else 0.94f,
+        animationSpec = motion.expressiveSpec(durationMillis = 160),
+        label = "dragGhostPickupScale",
+    )
 
     val localPointer = activeDrag.pointerInWindow - overlayOriginInWindow
     val verticalLiftPx = with(density) { 44.dp.roundToPx() }
     val offsetX = (localPointer.x - ghostWidthPx / 2f).roundToInt()
     val offsetY = (localPointer.y - ghostHeightPx / 2f - verticalLiftPx).roundToInt()
 
-    val borderColor = if (isOverRemoveZone) {
-        Color(0xFFE01B24)
-    } else {
-        colors.accent.copy(alpha = 0.85f)
-    }
+    val borderColor by animateColorAsState(
+        targetValue = if (isOverRemoveZone) {
+            Color(0xFFE01B24)
+        } else {
+            colors.accent.copy(alpha = 0.85f)
+        },
+        animationSpec = motion.effectSpec(durationMillis = 120),
+        label = "dragGhostBorder",
+    )
 
     Box(
         modifier = modifier
@@ -204,6 +222,10 @@ fun DragGhostOverlay(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX, offsetY) }
+                .graphicsLayer {
+                    scaleX = pickupScale
+                    scaleY = pickupScale
+                }
                 .onPlaced { coords ->
                     ghostWidthPx = coords.size.width
                     ghostHeightPx = coords.size.height
@@ -211,13 +233,23 @@ fun DragGhostOverlay(
         ) {
             when (val payload = activeDrag.payload) {
                 is DragPayload.FromOverview -> {
-                    ShortcutDragGhost(app = payload.app, borderColor = borderColor)
+                    ShortcutDragGhost(
+                        app = payload.app,
+                        borderColor = borderColor,
+                        cardShape = shapes.large,
+                        fallbackShape = shapes.medium,
+                    )
                 }
 
                 is DragPayload.FromHome -> {
                     when (val item = payload.item) {
                         is HomeWorkspaceItem.Shortcut -> {
-                            ShortcutDragGhost(app = item.app, borderColor = borderColor)
+                            ShortcutDragGhost(
+                                app = item.app,
+                                borderColor = borderColor,
+                                cardShape = shapes.large,
+                                fallbackShape = shapes.medium,
+                            )
                         }
 
                         is HomeWorkspaceItem.Widget -> {
@@ -226,6 +258,7 @@ fun DragGhostOverlay(
                                 spanX = item.item.spanX,
                                 spanY = item.item.spanY,
                                 borderColor = borderColor,
+                                cardShape = shapes.large,
                             )
                         }
                     }
@@ -239,16 +272,18 @@ fun DragGhostOverlay(
 private fun ShortcutDragGhost(
     app: AppInfo,
     borderColor: Color,
+    cardShape: androidx.compose.ui.graphics.Shape,
+    fallbackShape: androidx.compose.ui.graphics.Shape,
 ) {
     val colors = OverviewTheme.colors
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .shadow(12.dp, RoundedCornerShape(OverviewCornerRadius.Large))
-            .clip(RoundedCornerShape(OverviewCornerRadius.Large))
+            .shadow(12.dp, cardShape)
+            .clip(cardShape)
             .background(colors.surfaceElevated.copy(alpha = 0.94f))
-            .border(1.5.dp, borderColor, RoundedCornerShape(OverviewCornerRadius.Large))
+            .border(1.5.dp, borderColor, cardShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         val bitmap = app.icon
@@ -263,7 +298,7 @@ private fun ShortcutDragGhost(
             Box(
                 modifier = Modifier
                     .size(58.dp)
-                    .clip(RoundedCornerShape(OverviewCornerRadius.Medium))
+                    .clip(fallbackShape)
                     .background(colors.surfaceElevated),
                 contentAlignment = Alignment.Center,
             ) {
@@ -292,16 +327,17 @@ private fun WidgetDragGhost(
     spanX: Int,
     spanY: Int,
     borderColor: Color,
+    cardShape: androidx.compose.ui.graphics.Shape,
 ) {
     val colors = OverviewTheme.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .shadow(14.dp, RoundedCornerShape(OverviewCornerRadius.Large))
-            .clip(RoundedCornerShape(OverviewCornerRadius.Large))
+            .shadow(14.dp, cardShape)
+            .clip(cardShape)
             .background(colors.surfaceElevated.copy(alpha = 0.94f))
-            .border(1.5.dp, borderColor, RoundedCornerShape(OverviewCornerRadius.Large))
+            .border(1.5.dp, borderColor, cardShape)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {

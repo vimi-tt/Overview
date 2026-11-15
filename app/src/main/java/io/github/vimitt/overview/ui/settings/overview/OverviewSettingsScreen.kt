@@ -50,9 +50,7 @@ import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SliderRow
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.roundToInt
 
 @Composable
@@ -162,7 +160,7 @@ fun OverviewSettingsScreen(
 @Composable
 private fun ReducedMotionNoticeBanner() {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.SettingsGroup)
+    val shape = OverviewTheme.shapes.settingsGroup
 
     Row(
         modifier = Modifier
@@ -193,26 +191,31 @@ private fun OverviewEffectsPreview(
     settings: OverviewSettings,
 ) {
     val colors = OverviewTheme.colors
+    val motion = OverviewTheme.motion
+    val shapes = OverviewTheme.shapes
     val reducedMotion = OverviewTheme.reducedMotion
     val density = LocalDensity.current
     var isPreviewOpen by remember { mutableStateOf(true) }
 
-    val durationMs = (240f * settings.animationSpeed.durationScale).roundToInt()
     val progress by animateFloatAsState(
         targetValue = if (isPreviewOpen) 1f else 0f,
-        animationSpec = overviewTween(reducedMotion = reducedMotion, durationMillis = durationMs),
+        animationSpec = motion.spatialSpec(
+            durationMillis = 240,
+            durationScale = settings.animationSpeed.durationScale,
+        ),
         label = "overviewSettingsPreviewProgress",
     )
 
-    val blurPx = with(density) { (settings.blurRadiusDp * 0.45f * progress).dp.toPx() }
+    val clampedBlurFraction = progress.coerceIn(0f, 1.05f)
+    val blurPx = with(density) { (settings.blurRadiusDp * 0.45f * clampedBlurFraction).dp.toPx() }
     val homeScale = if (settings.homeDepthEffect && !reducedMotion) {
         1f - (0.06f * progress)
     } else {
         1f
     }
 
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.SettingsGroup)
-    val baseScrim = colors.overviewScrim.copy(alpha = settings.scrimAlpha * progress)
+    val cardShape = shapes.settingsGroup
+    val baseScrim = colors.overviewScrim.copy(alpha = (settings.scrimAlpha * progress).coerceIn(0f, 1f))
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -259,13 +262,13 @@ private fun OverviewEffectsPreview(
                 Box(
                     modifier = Modifier
                         .size(width = 64.dp, height = 16.dp)
-                        .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                        .clip(shapes.pill)
                         .background(Color.White.copy(alpha = 0.85f)),
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                        .clip(shapes.pill)
                         .background(colors.dashBackground)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
@@ -287,7 +290,7 @@ private fun OverviewEffectsPreview(
                         .fillMaxSize()
                         .background(baseScrim)
                         .graphicsLayer {
-                            alpha = progress
+                            alpha = progress.coerceIn(0f, 1f)
                             when (settings.transitionStyle) {
                                 OverviewTransitionStyle.GNOME_SHELL -> {
                                     val s = 0.92f + 0.08f * progress
@@ -311,7 +314,7 @@ private fun OverviewEffectsPreview(
                         modifier = Modifier
                             .fillMaxWidth(0.72f)
                             .height(16.dp)
-                            .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                            .clip(shapes.pill)
                             .background(colors.searchFieldBackground),
                     )
                     repeat(2) {

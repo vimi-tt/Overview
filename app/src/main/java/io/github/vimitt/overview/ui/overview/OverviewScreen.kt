@@ -5,6 +5,7 @@ import android.graphics.Rect
 import android.net.Uri
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
@@ -40,6 +41,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -96,10 +98,7 @@ import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewSpring
-import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.ceil
 
 /**
@@ -138,6 +137,7 @@ fun OverviewScreen(
     onCloseDragEnd: (shouldClose: Boolean) -> Unit = {},
 ) {
     val colors = OverviewTheme.colors
+    val motion = OverviewTheme.motion
     val reducedMotion = OverviewTheme.reducedMotion
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
@@ -192,8 +192,7 @@ fun OverviewScreen(
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (isDraggingToHome) 0f else 1f,
-        animationSpec = overviewTween(
-            reducedMotion = reducedMotion,
+        animationSpec = motion.effectSpec(
             durationMillis = 140,
             durationScale = animationDurationScale,
         ),
@@ -383,6 +382,7 @@ fun OverviewScreen(
                         showNotificationDots = uiState.showNotificationDots,
                         badgePackages = uiState.badgePackages,
                         folderPreviewStyle = uiState.folderSettings.previewStyle,
+                        animationDurationScale = animationDurationScale,
                         scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
                         onAppClick = handleAppClick,
                         onFolderClick = { folderId ->
@@ -552,6 +552,7 @@ private fun PaginatedAppGrid(
     showNotificationDots: Boolean,
     badgePackages: Set<String>,
     folderPreviewStyle: FolderPreviewStyle,
+    animationDurationScale: Float,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onFolderClick: (folderId: String) -> Unit,
@@ -561,6 +562,7 @@ private fun PaginatedAppGrid(
     onAppDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motion = OverviewTheme.motion
     val safeColumns = columns.coerceIn(3, 6)
 
     BoxWithConstraints(modifier = modifier) {
@@ -584,6 +586,14 @@ private fun PaginatedAppGrid(
             }
         }
 
+        val flingBehavior = PagerDefaults.flingBehavior(
+            state = pagerState,
+            snapAnimationSpec = motion.spatialSpec(
+                durationMillis = 240,
+                durationScale = animationDurationScale,
+            ),
+        )
+
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -591,6 +601,7 @@ private fun PaginatedAppGrid(
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = scrollEnabled,
+                flingBehavior = flingBehavior,
                 beyondViewportPageCount = 1,
                 key = { page -> page },
                 modifier = Modifier
@@ -713,12 +724,13 @@ private fun FolderIconItem(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val tileShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val shapes = OverviewTheme.shapes
+    val tileShape = shapes.large
     val previewApps = remember(entry.apps) { entry.apps.take(4) }
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(OverviewCornerRadius.Medium))
+            .clip(shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -832,9 +844,18 @@ private fun FolderPopupOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val shapes = OverviewTheme.shapes
+    val motion = OverviewTheme.motion
+    val cardShape = shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = motion.spatialSpec(durationMillis = 180),
+        label = "folderPopupEntry",
+    )
     val columns = folderSettings.folderColumns.coerceIn(
         SettingsDefaults.MIN_FOLDER_COLUMNS,
         SettingsDefaults.MAX_FOLDER_COLUMNS,
@@ -846,7 +867,7 @@ private fun FolderPopupOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.42f))
+            .background(Color.Black.copy(alpha = 0.42f * entryProgress.coerceIn(0f, 1f)))
             .clickable(
                 interactionSource = backdropInteraction,
                 indication = null,
@@ -861,6 +882,12 @@ private fun FolderPopupOverlay(
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
+                .graphicsLayer {
+                    val scale = 0.90f + 0.10f * entryProgress
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = entryProgress.coerceIn(0f, 1f)
+                }
                 .clip(cardShape)
                 .background(colors.surface)
                 .border(1.dp, colors.hairlineBorder, cardShape)
@@ -962,16 +989,25 @@ private fun OverviewAppActionOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val shapes = OverviewTheme.shapes
+    val motion = OverviewTheme.motion
+    val cardShape = shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = motion.spatialSpec(durationMillis = 160),
+        label = "overviewAppActionEntry",
+    )
 
     BackHandler(onBack = onDismiss)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.36f))
+            .background(Color.Black.copy(alpha = 0.36f * entryProgress.coerceIn(0f, 1f)))
             .clickable(
                 interactionSource = backdropInteraction,
                 indication = null,
@@ -985,6 +1021,13 @@ private fun OverviewAppActionOverlay(
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
+                .graphicsLayer {
+                    val scale = 0.94f + 0.06f * entryProgress
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = entryProgress.coerceIn(0f, 1f)
+                    translationY = (1f - entryProgress) * 28f
+                }
                 .clip(cardShape)
                 .background(colors.surface)
                 .border(1.dp, colors.hairlineBorder, cardShape)
@@ -1113,9 +1156,18 @@ private fun FolderPickerOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val shapes = OverviewTheme.shapes
+    val motion = OverviewTheme.motion
+    val cardShape = shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = motion.spatialSpec(durationMillis = 170),
+        label = "folderPickerEntry",
+    )
     var isCreating by remember { mutableStateOf(folders.isEmpty()) }
     var newFolderName by remember { mutableStateOf("") }
 
@@ -1124,7 +1176,7 @@ private fun FolderPickerOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.42f))
+            .background(Color.Black.copy(alpha = 0.42f * entryProgress.coerceIn(0f, 1f)))
             .clickable(
                 interactionSource = backdropInteraction,
                 indication = null,
@@ -1139,6 +1191,12 @@ private fun FolderPickerOverlay(
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
+                .graphicsLayer {
+                    val scale = 0.92f + 0.08f * entryProgress
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = entryProgress.coerceIn(0f, 1f)
+                }
                 .clip(cardShape)
                 .background(colors.surface)
                 .border(1.dp, colors.hairlineBorder, cardShape)
@@ -1272,7 +1330,7 @@ private fun WebSearchSuggestionPill(
         WebSearchEngine.STARTPAGE -> stringResource(R.string.settings_search_engine_startpage)
         WebSearchEngine.ECOSIA -> stringResource(R.string.settings_search_engine_ecosia)
     }
-    val pillShape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val pillShape = OverviewTheme.shapes.pill
 
     Row(
         modifier = modifier
@@ -1307,7 +1365,8 @@ private fun PageIndicator(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val reducedMotion = OverviewTheme.reducedMotion
+    val motion = OverviewTheme.motion
+    val shapes = OverviewTheme.shapes
     val currentPage = currentPageProvider()
 
     Row(
@@ -1319,13 +1378,13 @@ private fun PageIndicator(
             val isSelected = page == currentPage
             val width by animateDpAsState(
                 targetValue = if (isSelected) 20.dp else 7.dp,
-                animationSpec = overviewSpring(reducedMotion),
+                animationSpec = motion.indicatorSpec(visibilityThreshold = Dp.VisibilityThreshold),
                 label = "pageDotWidth",
             )
             Box(
                 modifier = Modifier
                     .size(width = width, height = 7.dp)
-                    .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
+                    .clip(shapes.pill)
                     .background(
                         if (isSelected) colors.accent else colors.onSurfaceMuted.copy(alpha = 0.45f),
                     ),

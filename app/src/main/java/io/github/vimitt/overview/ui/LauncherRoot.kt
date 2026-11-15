@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -27,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -59,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
@@ -79,9 +81,7 @@ import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.overview.OverviewScreen
 import io.github.vimitt.overview.ui.overview.OverviewUiState
 import io.github.vimitt.overview.ui.settings.SettingsNavHost
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -155,6 +155,8 @@ fun LauncherRoot(
     modifier: Modifier = Modifier,
 ) {
     val reducedMotion = OverviewTheme.reducedMotion
+    val motion = OverviewTheme.motion
+    val shapes = OverviewTheme.shapes
     val density = LocalDensity.current
     val context = LocalContext.current
     val viewConfig = LocalViewConfiguration.current
@@ -229,7 +231,7 @@ fun LauncherRoot(
         isDraggingFromOverviewActive,
         lastClosedByDrag,
         overviewSettings.animationSpeed,
-        reducedMotion,
+        motion,
     ) {
         if (isDraggingFromOverviewActive) {
             overviewProgress.snapTo(0f)
@@ -241,8 +243,7 @@ fun LauncherRoot(
         } else if (overviewActive) {
             overviewProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = overviewTween(
-                    reducedMotion = reducedMotion,
+                animationSpec = motion.spatialSpec(
                     durationMillis = 200,
                     durationScale = overviewSettings.animationSpeed.durationScale,
                 ),
@@ -252,8 +253,7 @@ fun LauncherRoot(
         } else {
             overviewProgress.animateTo(
                 targetValue = 0f,
-                animationSpec = overviewTween(
-                    reducedMotion = reducedMotion,
+                animationSpec = motion.spatialSpec(
                     durationMillis = 160,
                     durationScale = overviewSettings.animationSpeed.durationScale,
                 ),
@@ -267,7 +267,7 @@ fun LauncherRoot(
         interactiveDragFraction != null ||
         (activeDrag?.payload is DragPayload.FromOverview)
 
-    val blurFraction = if (isDraggingFromOverviewActive) 0f else currentOverviewProgress
+    val blurFraction = if (isDraggingFromOverviewActive) 0f else currentOverviewProgress.coerceIn(0f, 1.05f)
     val homeBlurPx = with(density) { (overviewSettings.blurRadiusDp * blurFraction).dp.toPx() }
     val windowBlurPx = with(density) {
         (overviewSettings.blurRadiusDp * blurFraction).dp.toPx().roundToInt().coerceIn(0, 48)
@@ -359,21 +359,29 @@ fun LauncherRoot(
 
         val modalDurationScale = overviewSettings.animationSpeed.durationScale
         val enterTransition = if (reducedMotion) {
-            fadeIn(overviewTween(reducedMotion = true))
+            fadeIn(motion.effectSpec())
         } else {
-            fadeIn(overviewTween(reducedMotion = false, durationMillis = 180, durationScale = modalDurationScale)) +
+            fadeIn(motion.effectSpec(durationMillis = 180, durationScale = modalDurationScale)) +
                 slideInVertically(
-                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 200, durationScale = modalDurationScale),
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 200,
+                        durationScale = modalDurationScale,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
                     initialOffsetY = { fullHeight -> fullHeight / 10 },
                 )
         }
 
         val exitTransition = if (reducedMotion) {
-            fadeOut(overviewTween(reducedMotion = true))
+            fadeOut(motion.effectSpec())
         } else {
-            fadeOut(overviewTween(reducedMotion = false, durationMillis = 140, durationScale = modalDurationScale)) +
+            fadeOut(motion.effectSpec(durationMillis = 140, durationScale = modalDurationScale)) +
                 slideOutVertically(
-                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 140, durationScale = modalDurationScale),
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 140,
+                        durationScale = modalDurationScale,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
                     targetOffsetY = { fullHeight -> fullHeight / 12 },
                 )
         }
@@ -384,7 +392,7 @@ fun LauncherRoot(
                     .fillMaxSize()
                     .graphicsLayer {
                         val p = if (isDraggingFromOverviewActive) 1f else currentOverviewProgress
-                        alpha = p
+                        alpha = p.coerceIn(0f, 1f)
                         if (!reducedMotion && !isDraggingFromOverviewActive) {
                             when (overviewSettings.transitionStyle) {
                                 OverviewTransitionStyle.GNOME_SHELL -> {
@@ -475,8 +483,8 @@ fun LauncherRoot(
 
         AnimatedVisibility(
             visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen,
-            enter = fadeIn(overviewTween(reducedMotion, durationMillis = 160)),
-            exit = fadeOut(overviewTween(reducedMotion, durationMillis = 140)),
+            enter = fadeIn(motion.effectSpec(durationMillis = 160)),
+            exit = fadeOut(motion.effectSpec(durationMillis = 140)),
         ) {
             HomeContextMenuOverlay(
                 onAddApp = {
@@ -569,16 +577,25 @@ private fun HomeContextMenuOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val shapes = OverviewTheme.shapes
+    val motion = OverviewTheme.motion
+    val cardShape = shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = motion.spatialSpec(durationMillis = 160),
+        label = "homeContextMenuEntry",
+    )
 
     BackHandler(onBack = onDismiss)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.36f))
+            .background(Color.Black.copy(alpha = 0.36f * entryProgress.coerceIn(0f, 1f)))
             .clickable(
                 interactionSource = backdropInteraction,
                 indication = null,
@@ -592,6 +609,13 @@ private fun HomeContextMenuOverlay(
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
+                .graphicsLayer {
+                    val scale = 0.94f + 0.06f * entryProgress
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = entryProgress.coerceIn(0f, 1f)
+                    translationY = (1f - entryProgress) * 28f
+                }
                 .clip(cardShape)
                 .background(colors.surface)
                 .border(width = 1.dp, color = colors.hairlineBorder, shape = cardShape)

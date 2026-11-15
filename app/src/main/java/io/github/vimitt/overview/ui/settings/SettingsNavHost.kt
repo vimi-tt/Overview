@@ -5,6 +5,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -33,7 +35,6 @@ import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsViewModel
 import io.github.vimitt.overview.ui.settings.search.SearchSettingsScreen
 import io.github.vimitt.overview.ui.settings.search.SearchSettingsViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import io.github.vimitt.overview.ui.theme.overviewTween
 
 private object SettingsRoute {
     const val HUB = "settings_hub"
@@ -61,32 +62,43 @@ fun SettingsNavHost(
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
+    val motion = OverviewTheme.motion
     val reducedMotion = OverviewTheme.reducedMotion
 
     val enterAnim = if (reducedMotion) {
-        fadeIn(overviewTween(reducedMotion = true))
+        fadeIn(motion.effectSpec())
     } else {
-        fadeIn(overviewTween(reducedMotion = false, durationMillis = 180)) +
-            slideInHorizontally(overviewTween(reducedMotion = false, durationMillis = 200)) { it / 8 }
+        fadeIn(motion.effectSpec(durationMillis = 180)) +
+            slideInHorizontally(
+                motion.spatialSpec(
+                    durationMillis = 200,
+                    visibilityThreshold = IntOffset.VisibilityThreshold,
+                ),
+            ) { it / 8 }
     }
 
     val exitAnim = if (reducedMotion) {
-        fadeOut(overviewTween(reducedMotion = true))
+        fadeOut(motion.effectSpec())
     } else {
-        fadeOut(overviewTween(reducedMotion = false, durationMillis = 140))
+        fadeOut(motion.effectSpec(durationMillis = 140))
     }
 
     val popEnterAnim = if (reducedMotion) {
-        fadeIn(overviewTween(reducedMotion = true))
+        fadeIn(motion.effectSpec())
     } else {
-        fadeIn(overviewTween(reducedMotion = false, durationMillis = 160))
+        fadeIn(motion.effectSpec(durationMillis = 160))
     }
 
     val popExitAnim = if (reducedMotion) {
-        fadeOut(overviewTween(reducedMotion = true))
+        fadeOut(motion.effectSpec())
     } else {
-        fadeOut(overviewTween(reducedMotion = false, durationMillis = 140)) +
-            slideOutHorizontally(overviewTween(reducedMotion = false, durationMillis = 160)) { it / 8 }
+        fadeOut(motion.effectSpec(durationMillis = 140)) +
+            slideOutHorizontally(
+                motion.spatialSpec(
+                    durationMillis = 160,
+                    visibilityThreshold = IntOffset.VisibilityThreshold,
+                ),
+            ) { it / 8 }
     }
 
     NavHost(
