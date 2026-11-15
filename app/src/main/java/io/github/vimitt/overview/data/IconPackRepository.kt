@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.drawable.AdaptiveIconDrawable
@@ -17,6 +18,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.res.ResourcesCompat
 import io.github.vimitt.overview.domain.model.IconShape
+import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.ui.components.OverviewPolygonFactory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -120,6 +123,7 @@ class IconPackRepository(
         shape: IconShape,
         sizePx: Int,
         fromIconPack: Boolean,
+        roundness: Float = SettingsDefaults.DEFAULT_ICON_ROUNDNESS,
     ): ImageBitmap {
         val safeSize = sizePx.coerceAtLeast(48)
         val bitmap = Bitmap.createBitmap(safeSize, safeSize, Bitmap.Config.ARGB_8888)
@@ -127,7 +131,7 @@ class IconPackRepository(
         val fSize = safeSize.toFloat()
 
         if (drawable is AdaptiveIconDrawable) {
-            val clipPath = buildShapePath(shape, fSize)
+            val clipPath = buildShapePath(shape, fSize, roundness)
             val saveCount = canvas.save()
             canvas.clipPath(clipPath)
 
@@ -150,7 +154,7 @@ class IconPackRepository(
         } else {
             val saveCount = canvas.save()
             if (!fromIconPack) {
-                canvas.clipPath(buildShapePath(shape, fSize))
+                canvas.clipPath(buildShapePath(shape, fSize, roundness))
             }
             drawable.setBounds(0, 0, safeSize, safeSize)
             drawable.draw(canvas)
@@ -160,19 +164,36 @@ class IconPackRepository(
         return bitmap.asImageBitmap()
     }
 
-    private fun buildShapePath(shape: IconShape, sizePx: Float): Path {
+    private fun buildShapePath(
+        shape: IconShape,
+        sizePx: Float,
+        roundness: Float,
+    ): Path {
         val rect = RectF(0f, 0f, sizePx, sizePx)
+        val t = roundness.coerceIn(0f, 1f)
         return Path().apply {
             when (shape) {
                 IconShape.CIRCLE -> addOval(rect, Path.Direction.CW)
                 IconShape.ROUNDED_SQUARE -> {
-                    val radius = sizePx * 0.24f
+                    val radius = sizePx * (0.12f + 0.24f * t)
                     addRoundRect(rect, radius, radius, Path.Direction.CW)
                 }
 
                 IconShape.SQUARE -> {
-                    val radius = sizePx * 0.06f
+                    val radius = sizePx * (0.02f + 0.08f * t)
                     addRoundRect(rect, radius, radius, Path.Direction.CW)
+                }
+
+                IconShape.SQUIRCLE,
+                IconShape.CLOVER,
+                IconShape.FLOWER -> {
+                    val polygon = OverviewPolygonFactory.iconPolygon(shape, t)
+                    OverviewPolygonFactory.fillScaledAndroidPath(
+                        polygon = polygon,
+                        sizePx = sizePx,
+                        outPath = this,
+                        workMatrix = Matrix(),
+                    )
                 }
             }
         }

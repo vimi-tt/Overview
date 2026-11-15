@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.vimitt.overview.data.SystemPanelHelper
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
 import io.github.vimitt.overview.ui.LauncherRoot
@@ -140,9 +141,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val appearance = preferences.appearance
+            val resolvedAccent = if (appearance.colorSourceMode == ColorSourceMode.CUSTOM) {
+                Color(appearance.customAccentColorArgb)
+            } else {
+                Color(appearance.accentColorArgb)
+            }
             OverviewTheme(
-                themeMode = preferences.themeMode,
-                accentColor = Color(preferences.accentColorArgb),
+                visualStyle = appearance.visualStyle,
+                themeMode = appearance.themeMode,
+                colorSourceMode = appearance.colorSourceMode,
+                accentColor = resolvedAccent,
+                motionIntensity = appearance.motionIntensity,
+                shapeFamily = appearance.shapeFamily,
+                iconShape = appearance.iconShape,
+                iconRoundness = appearance.iconRoundness,
+                typographyWeightMode = appearance.typographyWeightMode,
             ) {
                 val isDark = OverviewTheme.colors.isDark
                 val anyModalOpen = isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen || isOverviewOpen

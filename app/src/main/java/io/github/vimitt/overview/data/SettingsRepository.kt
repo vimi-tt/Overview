@@ -16,6 +16,7 @@ import io.github.vimitt.overview.domain.model.AppFolder
 import io.github.vimitt.overview.domain.model.AppGridSettings
 import io.github.vimitt.overview.domain.model.AppSortOrder
 import io.github.vimitt.overview.domain.model.AppearanceSettings
+import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.DockSettings
 import io.github.vimitt.overview.domain.model.FolderPreviewStyle
 import io.github.vimitt.overview.domain.model.FolderSettings
@@ -26,12 +27,16 @@ import io.github.vimitt.overview.domain.model.HomeSettings
 import io.github.vimitt.overview.domain.model.IconShape
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
+import io.github.vimitt.overview.domain.model.MotionIntensity
 import io.github.vimitt.overview.domain.model.OverviewAnimationSpeed
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.domain.model.SearchSettings
 import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.domain.model.ShapeFamily
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.domain.model.TypographyWeightMode
+import io.github.vimitt.overview.domain.model.VisualStyle
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -111,15 +116,61 @@ class SettingsRepository(
 
     // region Aparência
 
+    suspend fun setVisualStyle(style: VisualStyle) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_VISUAL_STYLE] = style.name
+        }
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_THEME_MODE] = mode.name
         }
     }
 
+    suspend fun setColorSourceMode(mode: ColorSourceMode) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_COLOR_SOURCE_MODE] = mode.name
+        }
+    }
+
     suspend fun setAccentColor(argb: Long) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_ACCENT_COLOR] = argb
+        }
+    }
+
+    suspend fun setCustomAccentColor(argb: Long) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_ACCENT_COLOR] = argb
+        }
+    }
+
+    suspend fun setMotionIntensity(intensity: MotionIntensity) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_MOTION_INTENSITY] = intensity.name
+        }
+    }
+
+    suspend fun setShapeFamily(family: ShapeFamily) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SHAPE_FAMILY] = family.name
+        }
+    }
+
+    suspend fun setIconRoundness(roundness: Float) {
+        val clamped = roundness.coerceIn(
+            SettingsDefaults.MIN_ICON_ROUNDNESS,
+            SettingsDefaults.MAX_ICON_ROUNDNESS,
+        )
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_ICON_ROUNDNESS] = clamped
+        }
+    }
+
+    suspend fun setTypographyWeightMode(mode: TypographyWeightMode) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_TYPOGRAPHY_WEIGHT_MODE] = mode.name
         }
     }
 
@@ -149,6 +200,22 @@ class SettingsRepository(
 
     // region Overview
 
+    suspend fun setOverviewBlurEnabled(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            if (enabled) {
+                val restored = (prefs[KEY_BLUR_LAST_NONZERO] ?: SettingsDefaults.DEFAULT_BLUR_RADIUS_DP)
+                    .coerceIn(4f, SettingsDefaults.MAX_BLUR_RADIUS_DP)
+                prefs[KEY_BLUR_RADIUS] = restored
+            } else {
+                val current = prefs[KEY_BLUR_RADIUS] ?: SettingsDefaults.DEFAULT_BLUR_RADIUS_DP
+                if (current >= 1f) {
+                    prefs[KEY_BLUR_LAST_NONZERO] = current
+                }
+                prefs[KEY_BLUR_RADIUS] = 0f
+            }
+        }
+    }
+
     suspend fun setOverviewBlurRadius(radiusDp: Float) {
         val clamped = radiusDp.coerceIn(
             SettingsDefaults.MIN_BLUR_RADIUS_DP,
@@ -156,6 +223,9 @@ class SettingsRepository(
         )
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_BLUR_RADIUS] = clamped
+            if (clamped >= 1f) {
+                prefs[KEY_BLUR_LAST_NONZERO] = clamped
+            }
         }
     }
 
@@ -529,12 +599,38 @@ class SettingsRepository(
     // endregion
 
     private fun mapAppearance(prefs: Preferences): AppearanceSettings {
+        val visualStyle = prefs[KEY_VISUAL_STYLE]
+            ?.let { raw -> runCatching { VisualStyle.valueOf(raw) }.getOrNull() }
+            ?: VisualStyle.GNOME
+
         val themeMode = prefs[KEY_THEME_MODE]
             ?.let { raw -> runCatching { ThemeMode.valueOf(raw) }.getOrNull() }
             ?: ThemeMode.SYSTEM
 
+        val colorSourceMode = prefs[KEY_COLOR_SOURCE_MODE]
+            ?.let { raw -> runCatching { ColorSourceMode.valueOf(raw) }.getOrNull() }
+            ?: ColorSourceMode.GNOME
+
         val accentColorArgb = prefs[KEY_ACCENT_COLOR]
             ?: SettingsDefaults.DEFAULT_ACCENT_COLOR_ARGB
+
+        val customAccentColorArgb = prefs[KEY_CUSTOM_ACCENT_COLOR]
+            ?: SettingsDefaults.DEFAULT_CUSTOM_ACCENT_COLOR_ARGB
+
+        val motionIntensity = prefs[KEY_MOTION_INTENSITY]
+            ?.let { raw -> runCatching { MotionIntensity.valueOf(raw) }.getOrNull() }
+            ?: MotionIntensity.MEDIUM
+
+        val shapeFamily = prefs[KEY_SHAPE_FAMILY]
+            ?.let { raw -> runCatching { ShapeFamily.valueOf(raw) }.getOrNull() }
+            ?: ShapeFamily.ROUNDED
+
+        val iconRoundness = (prefs[KEY_ICON_ROUNDNESS] ?: SettingsDefaults.DEFAULT_ICON_ROUNDNESS)
+            .coerceIn(SettingsDefaults.MIN_ICON_ROUNDNESS, SettingsDefaults.MAX_ICON_ROUNDNESS)
+
+        val typographyWeightMode = prefs[KEY_TYPOGRAPHY_WEIGHT_MODE]
+            ?.let { raw -> runCatching { TypographyWeightMode.valueOf(raw) }.getOrNull() }
+            ?: TypographyWeightMode.NORMAL
 
         val iconPack = prefs[KEY_ICON_PACK]?.takeIf { it.isNotBlank() }
 
@@ -545,8 +641,15 @@ class SettingsRepository(
         val notificationDots = prefs[KEY_NOTIFICATION_DOTS] ?: false
 
         return AppearanceSettings(
+            visualStyle = visualStyle,
             themeMode = themeMode,
+            colorSourceMode = colorSourceMode,
             accentColorArgb = accentColorArgb,
+            customAccentColorArgb = customAccentColorArgb,
+            motionIntensity = motionIntensity,
+            shapeFamily = shapeFamily,
+            iconRoundness = iconRoundness,
+            typographyWeightMode = typographyWeightMode,
             iconPackPackage = iconPack,
             iconShape = iconShape,
             notificationDotsEnabled = notificationDots,
@@ -776,9 +879,17 @@ class SettingsRepository(
         const val DASH_SEPARATOR = "|"
 
         // Chaves de Aparência
+        val KEY_VISUAL_STYLE = stringPreferencesKey("visual_style")
+        val KEY_COLOR_SOURCE_MODE = stringPreferencesKey("color_source_mode")
+        val KEY_CUSTOM_ACCENT_COLOR = longPreferencesKey("custom_accent_color_argb")
+        val KEY_MOTION_INTENSITY = stringPreferencesKey("motion_intensity")
+        val KEY_SHAPE_FAMILY = stringPreferencesKey("shape_family")
+        val KEY_ICON_ROUNDNESS = floatPreferencesKey("icon_roundness")
+        val KEY_TYPOGRAPHY_WEIGHT_MODE = stringPreferencesKey("typography_weight_mode")
         val KEY_ICON_PACK = stringPreferencesKey("icon_pack_package")
         val KEY_ICON_SHAPE = stringPreferencesKey("icon_shape")
         val KEY_NOTIFICATION_DOTS = booleanPreferencesKey("notification_dots_enabled")
+        val KEY_BLUR_LAST_NONZERO = floatPreferencesKey("overview_blur_last_nonzero_dp")
 
         // Chaves de Tela inicial
         val KEY_HOME_GRID_COLUMNS = intPreferencesKey("home_grid_columns")

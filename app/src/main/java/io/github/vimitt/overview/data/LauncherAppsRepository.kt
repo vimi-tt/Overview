@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.AppearanceSettings
 import io.github.vimitt.overview.domain.model.IconShape
+import io.github.vimitt.overview.domain.model.SettingsDefaults
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,9 @@ class LauncherAppsRepository(
 
     @Volatile
     private var currentIconShape: IconShape = IconShape.ROUNDED_SQUARE
+
+    @Volatile
+    private var currentIconRoundness: Float = SettingsDefaults.DEFAULT_ICON_ROUNDNESS
 
     // Canal conflated evita múltiplas cargas simultâneas quando vários pacotes mudam em sequência.
     private val reloadTriggers = Channel<Unit>(Channel.CONFLATED)
@@ -114,12 +118,15 @@ class LauncherAppsRepository(
         launcherApps?.registerCallback(packageCallback, Handler(Looper.getMainLooper()))
         appScope.launch {
             appearanceFlow
-                .map { it.iconPackPackage to it.iconShape }
+                .map { Triple(it.iconPackPackage, it.iconShape, it.iconRoundness) }
                 .distinctUntilChanged()
-                .collectLatest { (packPkg, shape) ->
-                    val changed = currentIconPackPackage != packPkg || currentIconShape != shape
+                .collectLatest { (packPkg, shape, roundness) ->
+                    val changed = currentIconPackPackage != packPkg ||
+                        currentIconShape != shape ||
+                        currentIconRoundness != roundness
                     currentIconPackPackage = packPkg
                     currentIconShape = shape
+                    currentIconRoundness = roundness
                     if (changed) {
                         iconCache.clear()
                         refresh()
@@ -189,8 +196,10 @@ class LauncherAppsRepository(
         val profiles = userManager?.userProfiles ?: listOf(android.os.Process.myUserHandle())
         val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
         val shape = currentIconShape
+        val roundness = currentIconRoundness
         val iconPack = iconPackRepository.loadIconPack(currentIconPackPackage)
         val packTag = iconPack?.packageName.orEmpty()
+        val roundTag = (roundness * 100).roundToInt()
 
         val loaded = mutableListOf<AppInfo>()
         for (profile in profiles) {
@@ -205,9 +214,9 @@ class LauncherAppsRepository(
                 val component = activityInfo.componentName
 
                 val cacheKey =
-                    "${component.packageName}/${component.className}/${profile.hashCode()}/${packTag}_${shape.name}"
+                    "${component.packageName}/${component.className}/${profile.hashCode()}/${packTag}_${shape.name}_$roundTag"
                 val icon = iconCache.get(cacheKey)
-                    ?: decodeIcon(activityInfo, iconPack, shape)?.also { decoded ->
+                    ?: decodeIcon(activityInfo, iconPack, shape, roundness)?.also { decoded ->
                         iconCache.put(cacheKey, decoded)
                     }
 
@@ -233,6 +242,7 @@ class LauncherAppsRepository(
         activityInfo: LauncherActivityInfo,
         iconPack: LoadedIconPack?,
         shape: IconShape,
+        roundness: Float,
     ): ImageBitmap? {
         return try {
             val component = activityInfo.componentName
@@ -243,6 +253,7 @@ class LauncherAppsRepository(
                 shape = shape,
                 sizePx = iconSizePx,
                 fromIconPack = packDrawable != null,
+                roundness = roundness,
             )
         } catch (exception: Exception) {
             Log.w(TAG, "Falha ao renderizar ícone de ${activityInfo.componentName}", exception)

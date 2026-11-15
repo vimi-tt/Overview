@@ -59,6 +59,8 @@ import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
+import io.github.vimitt.overview.ui.components.OverviewPolygonFactory
+import io.github.vimitt.overview.ui.components.RoundedPolygonShape
 import io.github.vimitt.overview.ui.theme.AdwaitaPalette
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
@@ -319,10 +321,16 @@ private fun IconShapePickerRow(
     }
 }
 
-private fun shapeForPreview(shape: IconShape): Shape = when (shape) {
+private fun shapeForPreview(
+    shape: IconShape,
+    roundness: Float = 0.5f,
+): Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
     IconShape.ROUNDED_SQUARE -> RoundedCornerShape(8.dp)
     IconShape.SQUARE -> RoundedCornerShape(2.dp)
+    IconShape.SQUIRCLE,
+    IconShape.CLOVER,
+    IconShape.FLOWER -> RoundedPolygonShape(OverviewPolygonFactory.iconPolygon(shape, roundness))
 }
 
 @Composable

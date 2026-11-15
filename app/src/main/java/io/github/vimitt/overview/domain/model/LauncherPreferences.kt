@@ -5,6 +5,69 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 /**
+ * Estilo visual global do launcher (GNOME clássico ou mistura GNOME × Material 3 Expressive).
+ */
+enum class VisualStyle {
+    GNOME,
+    EXPRESSIVE,
+}
+
+/**
+ * Intensidade da física de mola aplicada às animações no estilo Expressive.
+ */
+enum class MotionIntensity(
+    val spatialDampingRatio: Float,
+    val emphasizedDampingRatio: Float,
+    val spatialStiffness: Float,
+    val fastStiffness: Float,
+) {
+    LOW(
+        spatialDampingRatio = 0.88f,
+        emphasizedDampingRatio = 0.82f,
+        spatialStiffness = 460f,
+        fastStiffness = 780f,
+    ),
+    MEDIUM(
+        spatialDampingRatio = 0.72f,
+        emphasizedDampingRatio = 0.65f,
+        spatialStiffness = 380f,
+        fastStiffness = 680f,
+    ),
+    HIGH(
+        spatialDampingRatio = 0.56f,
+        emphasizedDampingRatio = 0.50f,
+        spatialStiffness = 310f,
+        fastStiffness = 580f,
+    ),
+}
+
+/**
+ * Família de formas usada nos contêineres, cartões, botões e pílulas do tema.
+ */
+enum class ShapeFamily {
+    SOFT,
+    ROUNDED,
+    EXPRESSIVE,
+}
+
+/**
+ * Origem da paleta de cores do launcher.
+ */
+enum class ColorSourceMode {
+    GNOME,
+    DYNAMIC,
+    CUSTOM,
+}
+
+/**
+ * Peso tipográfico para títulos, cabeçalhos e rótulos de seção.
+ */
+enum class TypographyWeightMode {
+    NORMAL,
+    EMPHATIC,
+}
+
+/**
  * Modo de tema visual do launcher.
  */
 enum class ThemeMode {
@@ -19,7 +82,10 @@ enum class ThemeMode {
 enum class IconShape {
     CIRCLE,
     ROUNDED_SQUARE,
+    SQUIRCLE,
     SQUARE,
+    CLOVER,
+    FLOWER,
 }
 
 /**
@@ -144,15 +210,27 @@ object SettingsDefaults {
     const val MIN_FOLDER_COLUMNS: Int = 3
     const val MAX_FOLDER_COLUMNS: Int = 4
     const val DEFAULT_FOLDER_COLUMNS: Int = 3
+
+    const val MIN_ICON_ROUNDNESS: Float = 0f
+    const val MAX_ICON_ROUNDNESS: Float = 1f
+    const val DEFAULT_ICON_ROUNDNESS: Float = 0.5f
+    const val DEFAULT_CUSTOM_ACCENT_COLOR_ARGB: Long = 0xFF6750A4L
 }
 
 /**
- * Preferências da categoria Aparência (tema, destaque e ícones).
+ * Preferências da categoria Aparência (estilo visual, tema, destaque e ícones).
  */
 @Immutable
 data class AppearanceSettings(
+    val visualStyle: VisualStyle = VisualStyle.GNOME,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val colorSourceMode: ColorSourceMode = ColorSourceMode.GNOME,
     val accentColorArgb: Long = SettingsDefaults.DEFAULT_ACCENT_COLOR_ARGB,
+    val customAccentColorArgb: Long = SettingsDefaults.DEFAULT_CUSTOM_ACCENT_COLOR_ARGB,
+    val motionIntensity: MotionIntensity = MotionIntensity.MEDIUM,
+    val shapeFamily: ShapeFamily = ShapeFamily.ROUNDED,
+    val iconRoundness: Float = SettingsDefaults.DEFAULT_ICON_ROUNDNESS,
+    val typographyWeightMode: TypographyWeightMode = TypographyWeightMode.NORMAL,
     val iconPackPackage: String? = null,
     val iconShape: IconShape = IconShape.ROUNDED_SQUARE,
     val notificationDotsEnabled: Boolean = false,
@@ -282,7 +360,9 @@ data class LauncherPreferences(
     val folders: FolderSettings = FolderSettings(),
     val gestures: GestureSettings = GestureSettings(),
 ) {
+    val visualStyle: VisualStyle get() = appearance.visualStyle
     val themeMode: ThemeMode get() = appearance.themeMode
+    val colorSourceMode: ColorSourceMode get() = appearance.colorSourceMode
     val accentColorArgb: Long get() = appearance.accentColorArgb
     val overviewBlurRadiusDp: Float get() = overview.blurRadiusDp
     val showClock: Boolean get() = home.showClock
