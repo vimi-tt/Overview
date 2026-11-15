@@ -1,0 +1,218 @@
+package io.github.vimitt.overview.ui.settings
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import io.github.vimitt.overview.di.AppContainer
+import io.github.vimitt.overview.ui.settings.about.AboutScreen
+import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsScreen
+import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsViewModel
+import io.github.vimitt.overview.ui.settings.appgrid.HiddenAppsScreen
+import io.github.vimitt.overview.ui.settings.appearance.AppearanceSettingsScreen
+import io.github.vimitt.overview.ui.settings.appearance.AppearanceViewModel
+import io.github.vimitt.overview.ui.settings.dock.DockSettingsScreen
+import io.github.vimitt.overview.ui.settings.dock.DockSettingsViewModel
+import io.github.vimitt.overview.ui.settings.home.HomeSettingsScreen
+import io.github.vimitt.overview.ui.settings.home.HomeSettingsViewModel
+import io.github.vimitt.overview.ui.theme.OverviewTheme
+import io.github.vimitt.overview.ui.theme.overviewTween
+
+private object SettingsRoute {
+    const val HUB = "settings_hub"
+    const val APPEARANCE = "settings_appearance"
+    const val HOME = "settings_home"
+    const val DOCK = "settings_dock"
+    const val APP_GRID = "settings_app_grid"
+    const val HIDDEN_APPS = "settings_hidden_apps"
+    const val ABOUT = "settings_about"
+}
+
+/**
+ * Grafo de navegação das configurações do Overview com transições adaptadas
+ * ao ajuste de animações reduzidas do sistema.
+ */
+@Composable
+fun SettingsNavHost(
+    appContainer: AppContainer,
+    onOpenWallpaperPicker: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val navController = rememberNavController()
+    val reducedMotion = OverviewTheme.reducedMotion
+
+    val enterAnim = if (reducedMotion) {
+        fadeIn(overviewTween(reducedMotion = true))
+    } else {
+        fadeIn(overviewTween(reducedMotion = false, durationMillis = 180)) +
+            slideInHorizontally(overviewTween(reducedMotion = false, durationMillis = 200)) { it / 8 }
+    }
+
+    val exitAnim = if (reducedMotion) {
+        fadeOut(overviewTween(reducedMotion = true))
+    } else {
+        fadeOut(overviewTween(reducedMotion = false, durationMillis = 140))
+    }
+
+    val popEnterAnim = if (reducedMotion) {
+        fadeIn(overviewTween(reducedMotion = true))
+    } else {
+        fadeIn(overviewTween(reducedMotion = false, durationMillis = 160))
+    }
+
+    val popExitAnim = if (reducedMotion) {
+        fadeOut(overviewTween(reducedMotion = true))
+    } else {
+        fadeOut(overviewTween(reducedMotion = false, durationMillis = 140)) +
+            slideOutHorizontally(overviewTween(reducedMotion = false, durationMillis = 160)) { it / 8 }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = SettingsRoute.HUB,
+        enterTransition = { enterAnim },
+        exitTransition = { exitAnim },
+        popEnterTransition = { popEnterAnim },
+        popExitTransition = { popExitAnim },
+        modifier = modifier,
+    ) {
+        composable(SettingsRoute.HUB) {
+            BackHandler(onBack = onClose)
+
+            val hubViewModel: SettingsHubViewModel = viewModel(
+                factory = SettingsHubViewModel.Factory(appContainer.settingsRepository),
+            )
+            val uiState by hubViewModel.uiState.collectAsStateWithLifecycle()
+
+            SettingsHubScreen(
+                uiState = uiState,
+                onOpenAppearance = { navController.navigate(SettingsRoute.APPEARANCE) },
+                onOpenHome = { navController.navigate(SettingsRoute.HOME) },
+                onOpenDock = { navController.navigate(SettingsRoute.DOCK) },
+                onOpenAppGrid = { navController.navigate(SettingsRoute.APP_GRID) },
+                onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
+                onClose = onClose,
+            )
+        }
+
+        composable(SettingsRoute.APPEARANCE) {
+            val viewModel: AppearanceViewModel = viewModel(
+                factory = AppearanceViewModel.Factory(
+                    settingsRepository = appContainer.settingsRepository,
+                    iconPackRepository = appContainer.iconPackRepository,
+                    notificationBadgeRepository = appContainer.notificationBadgeRepository,
+                ),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            AppearanceSettingsScreen(
+                uiState = uiState,
+                notificationBadgeRepository = appContainer.notificationBadgeRepository,
+                onThemeModeChange = viewModel::onThemeModeChange,
+                onAccentColorChange = viewModel::onAccentColorChange,
+                onIconPackSelect = viewModel::onIconPackSelect,
+                onIconShapeChange = viewModel::onIconShapeChange,
+                onNotificationDotsToggle = viewModel::onNotificationDotsToggle,
+                onRefreshNotificationAccess = viewModel::refreshNotificationAccess,
+                onBlurRadiusChange = viewModel::onBlurRadiusChange,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.HOME) {
+            val viewModel: HomeSettingsViewModel = viewModel(
+                factory = HomeSettingsViewModel.Factory(appContainer.settingsRepository),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            HomeSettingsScreen(
+                uiState = uiState,
+                onGridColumnsChange = viewModel::onGridColumnsChange,
+                onGridRowsChange = viewModel::onGridRowsChange,
+                onIconScaleChange = viewModel::onIconScaleChange,
+                onShowLabelsChange = viewModel::onShowLabelsChange,
+                onLabelScaleChange = viewModel::onLabelScaleChange,
+                onLockLayoutChange = viewModel::onLockLayoutChange,
+                onShowClockChange = viewModel::onShowClockChange,
+                onOpenWallpaperPicker = onOpenWallpaperPicker,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.DOCK) {
+            val viewModel: DockSettingsViewModel = viewModel(
+                factory = DockSettingsViewModel.Factory(
+                    appsRepository = appContainer.appsRepository,
+                    settingsRepository = appContainer.settingsRepository,
+                ),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            DockSettingsScreen(
+                uiState = uiState,
+                onIconCountChange = viewModel::onIconCountChange,
+                onBackgroundAlphaChange = viewModel::onBackgroundAlphaChange,
+                onShowSearchBarChange = viewModel::onShowSearchBarChange,
+                onTogglePinnedApp = viewModel::onTogglePinnedApp,
+                onResetToAuto = viewModel::onResetToAuto,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.APP_GRID) {
+            val viewModel: AppGridSettingsViewModel = viewModel(
+                factory = AppGridSettingsViewModel.Factory(
+                    appsRepository = appContainer.appsRepository,
+                    filterAppsUseCase = appContainer.filterAppsUseCase,
+                    settingsRepository = appContainer.settingsRepository,
+                ),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            AppGridSettingsScreen(
+                uiState = uiState,
+                onColumnsChange = viewModel::onColumnsChange,
+                onIconScaleChange = viewModel::onIconScaleChange,
+                onSortOrderChange = viewModel::onSortOrderChange,
+                onOpenHiddenApps = { navController.navigate(SettingsRoute.HIDDEN_APPS) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.HIDDEN_APPS) {
+            val viewModel: AppGridSettingsViewModel = viewModel(
+                factory = AppGridSettingsViewModel.Factory(
+                    appsRepository = appContainer.appsRepository,
+                    filterAppsUseCase = appContainer.filterAppsUseCase,
+                    settingsRepository = appContainer.settingsRepository,
+                ),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            HiddenAppsScreen(
+                uiState = uiState,
+                onShowHiddenInSearchChange = viewModel::onShowHiddenInSearchChange,
+                onToggleAppHidden = viewModel::onToggleAppHidden,
+                onSearchQueryChange = viewModel::onHiddenSearchQueryChange,
+                onClearSearchQuery = viewModel::onClearHiddenSearchQuery,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.ABOUT) {
+            AboutScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+    }
+}
