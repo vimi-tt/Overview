@@ -1,6 +1,8 @@
 package io.github.vimitt.overview.domain.model
 
 import androidx.compose.runtime.Immutable
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 /**
  * Modo de tema visual do launcher.
@@ -48,6 +50,56 @@ enum class OverviewAnimationSpeed(val durationScale: Float) {
 }
 
 /**
+ * Provedor usado pelo atalho de pesquisa na web no Overview.
+ */
+enum class WebSearchEngine(private val urlPrefix: String) {
+    DUCKDUCKGO("https://duckduckgo.com/?q="),
+    GOOGLE("https://www.google.com/search?q="),
+    STARTPAGE("https://www.startpage.com/do/search?query="),
+    ECOSIA("https://www.ecosia.org/search?q=");
+
+    fun buildSearchUrl(query: String): String {
+        val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name()).replace("+", "%20")
+        return "$urlPrefix$encoded"
+    }
+}
+
+/**
+ * Estilo visual da miniatura de uma pasta na grade do Overview.
+ */
+enum class FolderPreviewStyle {
+    GRID_2X2,
+    STACKED,
+}
+
+/**
+ * Ação executável por gestos configuráveis na tela inicial.
+ */
+enum class LauncherGestureAction {
+    NONE,
+    OPEN_OVERVIEW,
+    OPEN_OVERVIEW_SEARCH,
+    EXPAND_NOTIFICATIONS,
+    EXPAND_QUICK_SETTINGS,
+    OPEN_SETTINGS,
+    OPEN_WALLPAPER,
+    OPEN_ASSISTANT,
+    OPEN_CAMERA,
+}
+
+/**
+ * Sensibilidade ao arraste vertical na tela inicial e no Overview.
+ */
+enum class GestureSensitivity(
+    val triggerDp: Float,
+    val velocityThresholdPx: Float,
+) {
+    LOW(triggerDp = 64f, velocityThresholdPx = 820f),
+    MEDIUM(triggerDp = 42f, velocityThresholdPx = 550f),
+    HIGH(triggerDp = 26f, velocityThresholdPx = 380f),
+}
+
+/**
  * Valores padrão e limites validados centralizados para todas as configurações do Overview.
  */
 object SettingsDefaults {
@@ -84,6 +136,10 @@ object SettingsDefaults {
     const val MIN_OVERVIEW_SCRIM_ALPHA: Float = 0.25f
     const val MAX_OVERVIEW_SCRIM_ALPHA: Float = 0.95f
     const val DEFAULT_OVERVIEW_SCRIM_ALPHA: Float = 0.70f
+
+    const val MIN_FOLDER_COLUMNS: Int = 3
+    const val MAX_FOLDER_COLUMNS: Int = 4
+    const val DEFAULT_FOLDER_COLUMNS: Int = 3
 }
 
 /**
@@ -149,6 +205,52 @@ data class AppGridSettings(
 )
 
 /**
+ * Pasta personalizada na grade do Overview.
+ */
+@Immutable
+data class AppFolder(
+    val id: String,
+    val name: String,
+    val appKeys: List<String>,
+)
+
+/**
+ * Preferências da categoria Busca.
+ */
+@Immutable
+data class SearchSettings(
+    val autoFocusOnOpen: Boolean = false,
+    val matchPackageName: Boolean = true,
+    val clearOnClose: Boolean = true,
+    val showWebSearchSuggestion: Boolean = true,
+    val webSearchEngine: WebSearchEngine = WebSearchEngine.DUCKDUCKGO,
+)
+
+/**
+ * Preferências e coleções da categoria Pastas.
+ */
+@Immutable
+data class FolderSettings(
+    val previewStyle: FolderPreviewStyle = FolderPreviewStyle.GRID_2X2,
+    val folderColumns: Int = SettingsDefaults.DEFAULT_FOLDER_COLUMNS,
+    val sortAppsInside: Boolean = true,
+    val closeOnAppLaunch: Boolean = true,
+    val folders: List<AppFolder> = emptyList(),
+)
+
+/**
+ * Preferências da categoria Gestos.
+ */
+@Immutable
+data class GestureSettings(
+    val swipeUpAction: LauncherGestureAction = LauncherGestureAction.OPEN_OVERVIEW,
+    val swipeDownAction: LauncherGestureAction = LauncherGestureAction.EXPAND_NOTIFICATIONS,
+    val doubleTapAction: LauncherGestureAction = LauncherGestureAction.NONE,
+    val homeButtonAction: LauncherGestureAction = LauncherGestureAction.NONE,
+    val sensitivity: GestureSensitivity = GestureSensitivity.MEDIUM,
+)
+
+/**
  * Agregado completo das preferências persistidas do Overview.
  */
 @Immutable
@@ -158,6 +260,9 @@ data class LauncherPreferences(
     val dock: DockSettings = DockSettings(),
     val appGrid: AppGridSettings = AppGridSettings(),
     val overview: OverviewSettings = OverviewSettings(),
+    val search: SearchSettings = SearchSettings(),
+    val folders: FolderSettings = FolderSettings(),
+    val gestures: GestureSettings = GestureSettings(),
 ) {
     val themeMode: ThemeMode get() = appearance.themeMode
     val accentColorArgb: Long get() = appearance.accentColorArgb

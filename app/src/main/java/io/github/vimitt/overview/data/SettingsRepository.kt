@@ -12,23 +12,34 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.vimitt.overview.domain.model.AppFolder
 import io.github.vimitt.overview.domain.model.AppGridSettings
 import io.github.vimitt.overview.domain.model.AppSortOrder
 import io.github.vimitt.overview.domain.model.AppearanceSettings
 import io.github.vimitt.overview.domain.model.DockSettings
+import io.github.vimitt.overview.domain.model.FolderPreviewStyle
+import io.github.vimitt.overview.domain.model.FolderSettings
+import io.github.vimitt.overview.domain.model.GestureSensitivity
+import io.github.vimitt.overview.domain.model.GestureSettings
 import io.github.vimitt.overview.domain.model.HomeSettings
 import io.github.vimitt.overview.domain.model.IconShape
+import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
 import io.github.vimitt.overview.domain.model.OverviewAnimationSpeed
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
+import io.github.vimitt.overview.domain.model.SearchSettings
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.domain.model.WebSearchEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
+import java.util.UUID
 
 private val Context.overviewSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "overview_preferences",
@@ -70,6 +81,18 @@ class SettingsRepository(
         .map { prefs -> mapOverview(prefs) }
         .distinctUntilChanged()
 
+    val searchSettings: Flow<SearchSettings> = rawData
+        .map { prefs -> mapSearch(prefs) }
+        .distinctUntilChanged()
+
+    val folderSettings: Flow<FolderSettings> = rawData
+        .map { prefs -> mapFolders(prefs) }
+        .distinctUntilChanged()
+
+    val gestureSettings: Flow<GestureSettings> = rawData
+        .map { prefs -> mapGestures(prefs) }
+        .distinctUntilChanged()
+
     val preferences: Flow<LauncherPreferences> = rawData
         .map { prefs ->
             LauncherPreferences(
@@ -78,6 +101,9 @@ class SettingsRepository(
                 dock = mapDock(prefs),
                 appGrid = mapAppGrid(prefs),
                 overview = mapOverview(prefs),
+                search = mapSearch(prefs),
+                folders = mapFolders(prefs),
+                gestures = mapGestures(prefs),
             )
         }
         .distinctUntilChanged()
@@ -163,6 +189,174 @@ class SettingsRepository(
     suspend fun setOverviewAppLaunchAnimation(enabled: Boolean) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_OVERVIEW_APP_LAUNCH_ANIM] = enabled
+        }
+    }
+
+    // endregion
+
+    // region Busca
+
+    suspend fun setSearchAutoFocusOnOpen(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_AUTO_FOCUS] = enabled
+        }
+    }
+
+    suspend fun setSearchMatchPackageName(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_MATCH_PACKAGE] = enabled
+        }
+    }
+
+    suspend fun setSearchClearOnClose(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_CLEAR_ON_CLOSE] = enabled
+        }
+    }
+
+    suspend fun setSearchShowWebSuggestion(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_SHOW_WEB_SUGGESTION] = enabled
+        }
+    }
+
+    suspend fun setSearchWebEngine(engine: WebSearchEngine) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_WEB_ENGINE] = engine.name
+        }
+    }
+
+    // endregion
+
+    // region Pastas
+
+    suspend fun setFolderPreviewStyle(style: FolderPreviewStyle) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_FOLDER_PREVIEW_STYLE] = style.name
+        }
+    }
+
+    suspend fun setFolderColumns(columns: Int) {
+        val clamped = columns.coerceIn(
+            SettingsDefaults.MIN_FOLDER_COLUMNS,
+            SettingsDefaults.MAX_FOLDER_COLUMNS,
+        )
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_FOLDER_COLUMNS] = clamped
+        }
+    }
+
+    suspend fun setFolderSortAppsInside(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_FOLDER_SORT_INSIDE] = enabled
+        }
+    }
+
+    suspend fun setFolderCloseOnAppLaunch(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_FOLDER_CLOSE_ON_LAUNCH] = enabled
+        }
+    }
+
+    suspend fun saveFolder(
+        folderId: String?,
+        name: String,
+        appKeys: List<String>,
+    ) {
+        val cleanName = name.trim().ifBlank { return }
+        val distinctKeys = appKeys.filter { it.isNotBlank() }.distinct()
+        context.overviewSettingsDataStore.edit { prefs ->
+            val current = decodeFolders(prefs[KEY_FOLDERS_JSON].orEmpty()).toMutableList()
+            val targetId = folderId ?: UUID.randomUUID().toString()
+            val keySet = distinctKeys.toSet()
+
+            // Remove dos demais grupos para evitar duplicidade na grade.
+            for (i in current.indices) {
+                if (current[i].id != targetId) {
+                    current[i] = current[i].copy(
+                        appKeys = current[i].appKeys.filterNot { it in keySet },
+                    )
+                }
+            }
+
+            val existingIndex = current.indexOfFirst { it.id == targetId }
+            val updated = AppFolder(id = targetId, name = cleanName, appKeys = distinctKeys)
+            if (existingIndex >= 0) {
+                current[existingIndex] = updated
+            } else {
+                current += updated
+            }
+            prefs[KEY_FOLDERS_JSON] = encodeFolders(current)
+        }
+    }
+
+    suspend fun deleteFolder(folderId: String) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            val current = decodeFolders(prefs[KEY_FOLDERS_JSON].orEmpty())
+                .filterNot { it.id == folderId }
+            prefs[KEY_FOLDERS_JSON] = encodeFolders(current)
+        }
+    }
+
+    suspend fun moveAppToFolder(appKey: String, targetFolderId: String) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            val current = decodeFolders(prefs[KEY_FOLDERS_JSON].orEmpty()).map { folder ->
+                val cleaned = folder.appKeys.filterNot { it == appKey }
+                if (folder.id == targetFolderId) {
+                    folder.copy(appKeys = cleaned + appKey)
+                } else {
+                    folder.copy(appKeys = cleaned)
+                }
+            }
+            prefs[KEY_FOLDERS_JSON] = encodeFolders(current)
+        }
+    }
+
+    suspend fun removeAppFromFolder(appKey: String, folderId: String) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            val current = decodeFolders(prefs[KEY_FOLDERS_JSON].orEmpty()).mapNotNull { folder ->
+                if (folder.id == folderId) {
+                    val remaining = folder.appKeys.filterNot { it == appKey }
+                    if (remaining.isEmpty()) null else folder.copy(appKeys = remaining)
+                } else {
+                    folder
+                }
+            }
+            prefs[KEY_FOLDERS_JSON] = encodeFolders(current)
+        }
+    }
+
+    // endregion
+
+    // region Gestos
+
+    suspend fun setSwipeUpGesture(action: LauncherGestureAction) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_GESTURE_SWIPE_UP] = action.name
+        }
+    }
+
+    suspend fun setSwipeDownGesture(action: LauncherGestureAction) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_GESTURE_SWIPE_DOWN] = action.name
+        }
+    }
+
+    suspend fun setDoubleTapGesture(action: LauncherGestureAction) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_GESTURE_DOUBLE_TAP] = action.name
+        }
+    }
+
+    suspend fun setHomeButtonGesture(action: LauncherGestureAction) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_GESTURE_HOME_BUTTON] = action.name
+        }
+    }
+
+    suspend fun setGestureSensitivity(sensitivity: GestureSensitivity) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_GESTURE_SENSITIVITY] = sensitivity.name
         }
     }
 
@@ -444,6 +638,110 @@ class SettingsRepository(
         )
     }
 
+    private fun mapSearch(prefs: Preferences): SearchSettings {
+        val autoFocus = prefs[KEY_SEARCH_AUTO_FOCUS] ?: false
+        val matchPkg = prefs[KEY_SEARCH_MATCH_PACKAGE] ?: true
+        val clearOnClose = prefs[KEY_SEARCH_CLEAR_ON_CLOSE] ?: true
+        val showWeb = prefs[KEY_SEARCH_SHOW_WEB_SUGGESTION] ?: true
+        val webEngine = prefs[KEY_SEARCH_WEB_ENGINE]
+            ?.let { raw -> runCatching { WebSearchEngine.valueOf(raw) }.getOrNull() }
+            ?: WebSearchEngine.DUCKDUCKGO
+
+        return SearchSettings(
+            autoFocusOnOpen = autoFocus,
+            matchPackageName = matchPkg,
+            clearOnClose = clearOnClose,
+            showWebSearchSuggestion = showWeb,
+            webSearchEngine = webEngine,
+        )
+    }
+
+    private fun mapFolders(prefs: Preferences): FolderSettings {
+        val style = prefs[KEY_FOLDER_PREVIEW_STYLE]
+            ?.let { raw -> runCatching { FolderPreviewStyle.valueOf(raw) }.getOrNull() }
+            ?: FolderPreviewStyle.GRID_2X2
+        val columns = (prefs[KEY_FOLDER_COLUMNS] ?: SettingsDefaults.DEFAULT_FOLDER_COLUMNS)
+            .coerceIn(SettingsDefaults.MIN_FOLDER_COLUMNS, SettingsDefaults.MAX_FOLDER_COLUMNS)
+        val sortInside = prefs[KEY_FOLDER_SORT_INSIDE] ?: true
+        val closeOnLaunch = prefs[KEY_FOLDER_CLOSE_ON_LAUNCH] ?: true
+        val folders = decodeFolders(prefs[KEY_FOLDERS_JSON].orEmpty())
+
+        return FolderSettings(
+            previewStyle = style,
+            folderColumns = columns,
+            sortAppsInside = sortInside,
+            closeOnAppLaunch = closeOnLaunch,
+            folders = folders,
+        )
+    }
+
+    private fun mapGestures(prefs: Preferences): GestureSettings {
+        val swipeUp = prefs[KEY_GESTURE_SWIPE_UP]
+            ?.let { raw -> runCatching { LauncherGestureAction.valueOf(raw) }.getOrNull() }
+            ?: LauncherGestureAction.OPEN_OVERVIEW
+        val swipeDown = prefs[KEY_GESTURE_SWIPE_DOWN]
+            ?.let { raw -> runCatching { LauncherGestureAction.valueOf(raw) }.getOrNull() }
+            ?: LauncherGestureAction.EXPAND_NOTIFICATIONS
+        val doubleTap = prefs[KEY_GESTURE_DOUBLE_TAP]
+            ?.let { raw -> runCatching { LauncherGestureAction.valueOf(raw) }.getOrNull() }
+            ?: LauncherGestureAction.NONE
+        val homeButton = prefs[KEY_GESTURE_HOME_BUTTON]
+            ?.let { raw -> runCatching { LauncherGestureAction.valueOf(raw) }.getOrNull() }
+            ?: LauncherGestureAction.NONE
+        val sensitivity = prefs[KEY_GESTURE_SENSITIVITY]
+            ?.let { raw -> runCatching { GestureSensitivity.valueOf(raw) }.getOrNull() }
+            ?: GestureSensitivity.MEDIUM
+
+        return GestureSettings(
+            swipeUpAction = swipeUp,
+            swipeDownAction = swipeDown,
+            doubleTapAction = doubleTap,
+            homeButtonAction = homeButton,
+            sensitivity = sensitivity,
+        )
+    }
+
+    private fun encodeFolders(folders: List<AppFolder>): String {
+        val array = JSONArray()
+        for (folder in folders) {
+            val keysArray = JSONArray()
+            for (key in folder.appKeys) {
+                keysArray.put(key)
+            }
+            val obj = JSONObject().apply {
+                put("id", folder.id)
+                put("name", folder.name)
+                put("appKeys", keysArray)
+            }
+            array.put(obj)
+        }
+        return array.toString()
+    }
+
+    private fun decodeFolders(raw: String): List<AppFolder> {
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            buildList(array.length()) {
+                for (i in 0 until array.length()) {
+                    val obj = array.optJSONObject(i) ?: continue
+                    val id = obj.optString("id").takeIf { it.isNotBlank() } ?: continue
+                    val name = obj.optString("name").takeIf { it.isNotBlank() } ?: continue
+                    val keysArray = obj.optJSONArray("appKeys")
+                    val appKeys = buildList {
+                        if (keysArray != null) {
+                            for (j in 0 until keysArray.length()) {
+                                val key = keysArray.optString(j)
+                                if (key.isNotBlank()) add(key)
+                            }
+                        }
+                    }
+                    add(AppFolder(id = id, name = name, appKeys = appKeys))
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
     private companion object {
         // Chaves já existentes (compatibilidade garantida com overview_preferences)
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
@@ -484,5 +782,26 @@ class SettingsRepository(
         val KEY_OVERVIEW_ANIMATION_SPEED = stringPreferencesKey("overview_animation_speed")
         val KEY_OVERVIEW_HOME_DEPTH = booleanPreferencesKey("overview_home_depth_effect")
         val KEY_OVERVIEW_APP_LAUNCH_ANIM = booleanPreferencesKey("overview_app_launch_anim")
+
+        // Chaves de Busca
+        val KEY_SEARCH_AUTO_FOCUS = booleanPreferencesKey("search_auto_focus")
+        val KEY_SEARCH_MATCH_PACKAGE = booleanPreferencesKey("search_match_package")
+        val KEY_SEARCH_CLEAR_ON_CLOSE = booleanPreferencesKey("search_clear_on_close")
+        val KEY_SEARCH_SHOW_WEB_SUGGESTION = booleanPreferencesKey("search_show_web_suggestion")
+        val KEY_SEARCH_WEB_ENGINE = stringPreferencesKey("search_web_engine")
+
+        // Chaves de Pastas
+        val KEY_FOLDER_PREVIEW_STYLE = stringPreferencesKey("folder_preview_style")
+        val KEY_FOLDER_COLUMNS = intPreferencesKey("folder_columns")
+        val KEY_FOLDER_SORT_INSIDE = booleanPreferencesKey("folder_sort_inside")
+        val KEY_FOLDER_CLOSE_ON_LAUNCH = booleanPreferencesKey("folder_close_on_launch")
+        val KEY_FOLDERS_JSON = stringPreferencesKey("app_folders_json")
+
+        // Chaves de Gestos
+        val KEY_GESTURE_SWIPE_UP = stringPreferencesKey("gesture_swipe_up")
+        val KEY_GESTURE_SWIPE_DOWN = stringPreferencesKey("gesture_swipe_down")
+        val KEY_GESTURE_DOUBLE_TAP = stringPreferencesKey("gesture_double_tap")
+        val KEY_GESTURE_HOME_BUTTON = stringPreferencesKey("gesture_home_button")
+        val KEY_GESTURE_SENSITIVITY = stringPreferencesKey("gesture_sensitivity")
     }
 }

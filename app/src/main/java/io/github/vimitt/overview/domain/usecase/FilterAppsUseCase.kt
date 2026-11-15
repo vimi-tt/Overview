@@ -17,6 +17,7 @@ class FilterAppsUseCase {
         sortOrder: AppSortOrder = AppSortOrder.ALPHABETICAL_ASC,
         hiddenAppKeys: Set<String> = emptySet(),
         showHiddenInSearch: Boolean = false,
+        matchPackageName: Boolean = true,
     ): List<AppInfo> {
         val normalizedQuery = query.trim().normalizeForSearch()
         val isSearching = normalizedQuery.isNotEmpty()
@@ -26,9 +27,9 @@ class FilterAppsUseCase {
             if (!isSearching) {
                 !isHidden
             } else {
-                val matchesQuery = app.label.normalizeForSearch().contains(normalizedQuery) ||
-                    app.packageName.lowercase().contains(normalizedQuery)
-                matchesQuery && (!isHidden || showHiddenInSearch)
+                val matchesLabel = app.label.normalizeForSearch().contains(normalizedQuery)
+                val matchesPkg = matchPackageName && app.packageName.lowercase().contains(normalizedQuery)
+                (matchesLabel || matchesPkg) && (!isHidden || showHiddenInSearch)
             }
         }
 
