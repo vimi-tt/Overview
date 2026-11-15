@@ -60,7 +60,7 @@ class OverviewViewModel(
         )
 
         val entries = if (query.isBlank()) {
-            buildGridEntries(
+            buildOverviewGridEntries(
                 visibleApps = filteredApps,
                 folderSettings = folderSettings,
                 sortOrder = gridSettings.sortOrder,
@@ -89,62 +89,6 @@ class OverviewViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = OverviewUiState(),
         )
-
-    private fun buildGridEntries(
-        visibleApps: List<AppInfo>,
-        folderSettings: FolderSettings,
-        sortOrder: AppSortOrder,
-        showDots: Boolean,
-        badgePackages: Set<String>,
-    ): List<OverviewGridEntry> {
-        if (folderSettings.folders.isEmpty()) {
-            return visibleApps.map { OverviewGridEntry.App(it) }
-        }
-
-        val appsByKey = visibleApps.associateBy { it.key }
-        val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
-        val groupedKeys = mutableSetOf<String>()
-
-        val folderEntries = folderSettings.folders.mapNotNull { folder ->
-            val resolved = folder.appKeys.mapNotNull { key -> appsByKey[key] }
-            if (resolved.isEmpty()) return@mapNotNull null
-
-            for (app in resolved) {
-                groupedKeys += app.key
-            }
-
-            val orderedInside = if (folderSettings.sortAppsInside) {
-                resolved.sortedWith { a, b -> collator.compare(a.label, b.label) }
-            } else {
-                resolved
-            }
-            val hasBadge = showDots && orderedInside.any { it.packageName in badgePackages }
-            OverviewGridEntry.Folder(
-                folder = folder,
-                apps = orderedInside,
-                hasBadge = hasBadge,
-            )
-        }
-
-        val looseApps = visibleApps
-            .filterNot { it.key in groupedKeys }
-            .map { OverviewGridEntry.App(it) }
-
-        val combined = folderEntries + looseApps
-        return when (sortOrder) {
-            AppSortOrder.ALPHABETICAL_ASC -> combined.sortedWith { a, b ->
-                collator.compare(a.label, b.label)
-            }
-
-            AppSortOrder.ALPHABETICAL_DESC -> combined.sortedWith { a, b ->
-                collator.compare(b.label, a.label)
-            }
-
-            AppSortOrder.RECENTLY_INSTALLED -> {
-                folderEntries.sortedWith { a, b -> collator.compare(a.label, b.label) } + looseApps
-            }
-        }
-    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
@@ -206,4 +150,63 @@ class OverviewViewModel(
             ) as T
         }
     }
+}
+
+/**
+ * Monta a lista da grade paginada garantindo que todas as pastas apareçam sempre no começo,
+ * seguidas pelos aplicativos soltos na ordenação configurada.
+ */
+internal fun buildOverviewGridEntries(
+    visibleApps: List<AppInfo>,
+    folderSettings: FolderSettings,
+    sortOrder: AppSortOrder,
+    showDots: Boolean,
+    badgePackages: Set<String>,
+): List<OverviewGridEntry> {
+    if (folderSettings.folders.isEmpty()) {
+        return visibleApps.map { OverviewGridEntry.App(it) }
+    }
+
+    val appsByKey = visibleApps.associateBy { it.key }
+    val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
+    val groupedKeys = mutableSetOf<String>()
+
+    val folderEntries = folderSettings.folders.mapNotNull { folder ->
+        val resolved = folder.appKeys.mapNotNull { key -> appsByKey[key] }
+        if (resolved.isEmpty()) return@mapNotNull null
+
+        for (app in resolved) {
+            groupedKeys += app.key
+        }
+
+        val orderedInside = if (folderSettings.sortAppsInside) {
+            resolved.sortedWith { a, b -> collator.compare(a.label, b.label) }
+        } else {
+            resolved
+        }
+        val hasBadge = showDots && orderedInside.any { it.packageName in badgePackages }
+        OverviewGridEntry.Folder(
+            folder = folder,
+            apps = orderedInside,
+            hasBadge = hasBadge,
+        )
+    }
+
+    val orderedFolders = when (sortOrder) {
+        AppSortOrder.ALPHABETICAL_DESC -> folderEntries.sortedWith { a, b ->
+            collator.compare(b.label, a.label)
+        }
+
+        AppSortOrder.ALPHABETICAL_ASC,
+        AppSortOrder.RECENTLY_INSTALLED,
+        -> folderEntries.sortedWith { a, b ->
+            collator.compare(a.label, b.label)
+        }
+    }
+
+    val looseApps = visibleApps
+        .filterNot { it.key in groupedKeys }
+        .map { OverviewGridEntry.App(it) }
+
+    return orderedFolders + looseApps
 }
