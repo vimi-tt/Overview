@@ -115,7 +115,8 @@ adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.ove
 - [x] Tema Adwaita claro/escuro/automático + modo de animações reduzidas
 - [x] Home transparente com papel de parede, relógio opcional e Dash inicial
 - [x] Overview com busca em tempo real, `RenderEffect` blur e grade paginada reativa
+- [x] **Tela de personalização** (tema, cor de destaque, blur, relógio e favoritos do Dash)
+- [x] **Atalhos de apps e widgets na tela inicial** (`AppWidgetHost`, redimensionamento e reposicionamento na grade 4×5)
 - [ ] **Painel superior / Configurações rápidas** (barra de status integrada, toggles rápidos no estilo GNOME)
 - [ ] **Pastas / Grupos de aplicativos** no Overview com edição por toque longo
-- [ ] **Tela de personalização** (escolha de cor de destaque, intensidade do blur, alternar relógio, fixar/reordenar favoritos do Dash)
 - [ ] **Gestos adicionais e refinamentos de blur** (progresso contínuo no gesto de arrastar para abrir/fechar, suporte à fonte Adwaita Sans embarcada)
