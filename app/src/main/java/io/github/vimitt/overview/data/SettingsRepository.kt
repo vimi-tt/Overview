@@ -429,6 +429,16 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setHomeClockBackgroundAlpha(alpha: Float) {
+        val clamped = alpha.coerceIn(
+            SettingsDefaults.MIN_CLOCK_ALPHA,
+            SettingsDefaults.MAX_CLOCK_ALPHA,
+        )
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_CLOCK_BG_ALPHA] = clamped
+        }
+    }
+
     // endregion
 
     // region Dock
@@ -591,6 +601,8 @@ class SettingsRepository(
         val clockStyle = prefs[KEY_HOME_CLOCK_STYLE]?.let { saved ->
             runCatching { HomeClockStyle.valueOf(saved) }.getOrNull()
         } ?: HomeClockStyle.GNOME
+        val clockBackgroundAlpha = (prefs[KEY_HOME_CLOCK_BG_ALPHA] ?: SettingsDefaults.DEFAULT_CLOCK_ALPHA)
+            .coerceIn(SettingsDefaults.MIN_CLOCK_ALPHA, SettingsDefaults.MAX_CLOCK_ALPHA)
 
         return HomeSettings(
             gridColumns = columns,
@@ -601,6 +613,7 @@ class SettingsRepository(
             lockLayout = lockLayout,
             showClock = showClock,
             clockStyle = clockStyle,
+            clockBackgroundAlpha = clockBackgroundAlpha,
         )
     }
 
@@ -775,6 +788,7 @@ class SettingsRepository(
         val KEY_HOME_LABEL_SCALE = floatPreferencesKey("home_label_scale")
         val KEY_HOME_LOCK_LAYOUT = booleanPreferencesKey("home_lock_layout")
         val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
+        val KEY_HOME_CLOCK_BG_ALPHA = floatPreferencesKey("home_clock_bg_alpha")
 
         // Chaves de Dock
         val KEY_DOCK_ICON_COUNT = intPreferencesKey("dock_icon_count")

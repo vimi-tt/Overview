@@ -51,6 +51,7 @@ data class HomeUiState(
     val labelScale: Float get() = homeSettings.labelScale
     val lockLayout: Boolean get() = homeSettings.lockLayout
     val clockStyle: HomeClockStyle get() = homeSettings.clockStyle
+    val clockBackgroundAlpha: Float get() = homeSettings.clockBackgroundAlpha
     val dockBackgroundAlpha: Float get() = dockSettings.backgroundAlpha
     val showDockSearchBar: Boolean get() = dockSettings.showSearchBar
 }

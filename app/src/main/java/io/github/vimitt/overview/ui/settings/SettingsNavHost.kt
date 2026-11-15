@@ -160,6 +160,7 @@ fun SettingsNavHost(
                 onLockLayoutChange = viewModel::onLockLayoutChange,
                 onShowClockChange = viewModel::onShowClockChange,
                 onClockStyleChange = viewModel::onClockStyleChange,
+                onClockBackgroundAlphaChange = viewModel::onClockBackgroundAlphaChange,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
                 onBack = { navController.popBackStack() },
             )

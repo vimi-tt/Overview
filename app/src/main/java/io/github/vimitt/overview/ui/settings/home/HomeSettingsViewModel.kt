@@ -81,6 +81,12 @@ class HomeSettingsViewModel(
         }
     }
 
+    fun onClockBackgroundAlphaChange(alpha: Float) {
+        viewModelScope.launch {
+            settingsRepository.setHomeClockBackgroundAlpha(alpha)
+        }
+    }
+
     class Factory(
         private val settingsRepository: SettingsRepository,
     ) : ViewModelProvider.Factory {

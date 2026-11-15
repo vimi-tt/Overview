@@ -114,6 +114,8 @@
     <string name="settings_show_clock">Mostrar relógio</string>
     <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
     <string name="settings_home_clock_style">Estilo do relógio</string>
+    <string name="settings_home_clock_alpha">Opacidade do fundo</string>
+    <string name="settings_home_clock_alpha_subtitle">Ajusta a transparência dos estilos com fundo</string>
     <string name="settings_home_clock_style_gnome">GNOME Clássico</string>
     <string name="settings_home_clock_style_stacked">Empilhado</string>
     <string name="settings_home_clock_style_analog">Analógico Adwaita</string>

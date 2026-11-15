@@ -131,6 +131,10 @@ object SettingsDefaults {
     const val MAX_DOCK_ALPHA: Float = 1f
     const val DEFAULT_DOCK_ALPHA: Float = 0.85f
 
+    const val MIN_CLOCK_ALPHA: Float = 0f
+    const val MAX_CLOCK_ALPHA: Float = 1f
+    const val DEFAULT_CLOCK_ALPHA: Float = 0.56f
+
     const val DEFAULT_APP_GRID_COLUMNS: Int = 4
 
     const val MIN_OVERVIEW_SCRIM_ALPHA: Float = 0.25f
@@ -170,13 +174,13 @@ data class OverviewSettings(
 /**
  * Estilo visual do relógio na tela inicial.
  */
-enum class HomeClockStyle {
-    GNOME,
-    STACKED,
-    ANALOG,
-    SIDE_BY_SIDE,
-    PILL,
-    FULL_PILL,
+enum class HomeClockStyle(val hasBackground: Boolean) {
+    GNOME(hasBackground = false),
+    STACKED(hasBackground = false),
+    ANALOG(hasBackground = true),
+    SIDE_BY_SIDE(hasBackground = false),
+    PILL(hasBackground = true),
+    FULL_PILL(hasBackground = true),
 }
 
 /**
@@ -192,6 +196,7 @@ data class HomeSettings(
     val lockLayout: Boolean = false,
     val showClock: Boolean = true,
     val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
+    val clockBackgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
 )
 
 /**

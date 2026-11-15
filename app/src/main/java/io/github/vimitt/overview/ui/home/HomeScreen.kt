@@ -225,6 +225,7 @@ fun HomeScreen(
                 HomeClock(
                     style = uiState.clockStyle,
                     compact = hasWorkspaceItems,
+                    backgroundAlpha = uiState.clockBackgroundAlpha,
                     modifier = Modifier
                         .graphicsLayer {
                             alpha = if (isDraggingFromHome) 0f else 1f

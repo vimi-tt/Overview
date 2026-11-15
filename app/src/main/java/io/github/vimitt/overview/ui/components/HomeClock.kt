@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
+import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import java.text.SimpleDateFormat
@@ -64,6 +65,7 @@ fun HomeClock(
     compact: Boolean,
     modifier: Modifier = Modifier,
     useWallpaperColors: Boolean = true,
+    backgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
@@ -133,6 +135,21 @@ fun HomeClock(
         null
     }
 
+    val clampedAlpha = backgroundAlpha.coerceIn(
+        SettingsDefaults.MIN_CLOCK_ALPHA,
+        SettingsDefaults.MAX_CLOCK_ALPHA,
+    )
+    // Garante contraste quando o fundo translúcido passa a dominar sobre o papel de parede.
+    val useSurfaceContrast = !useWallpaperColors || clampedAlpha >= 0.35f
+    val cardPrimaryForeground = if (useSurfaceContrast) colors.onSurface else primaryForeground
+    val cardSecondaryForeground = if (useSurfaceContrast) colors.onSurfaceMuted else secondaryForeground
+    val cardFill = if (useWallpaperColors) {
+        colors.surface.copy(alpha = clampedAlpha)
+    } else {
+        colors.surfaceElevated.copy(alpha = clampedAlpha)
+    }
+    val cardBorder = colors.hairlineBorder.copy(alpha = (clampedAlpha * 1.15f).coerceIn(0f, 1f))
+
     when (style) {
         HomeClockStyle.GNOME -> GnomeClassicClock(
             timeText = timeText,
@@ -160,18 +177,14 @@ fun HomeClock(
             calendar = calendar,
             dateText = shortDateText,
             compact = compact,
-            primaryColor = primaryForeground,
-            secondaryColor = secondaryForeground,
+            handColor = cardPrimaryForeground,
+            dateColor = secondaryForeground,
             accentColor = colors.accent,
-            dialFill = if (useWallpaperColors) {
-                colors.surface.copy(alpha = 0.28f)
+            dialFill = cardFill,
+            dialBorder = if (useSurfaceContrast) {
+                cardBorder
             } else {
-                colors.surfaceElevated
-            },
-            dialBorder = if (useWallpaperColors) {
-                colors.wallpaperForeground.copy(alpha = 0.24f)
-            } else {
-                colors.hairlineBorder
+                colors.wallpaperForeground.copy(alpha = (0.18f + clampedAlpha * 0.4f).coerceIn(0f, 1f))
             },
             shadow = textShadow,
             modifier = modifier,
@@ -193,15 +206,11 @@ fun HomeClock(
             timeText = timeText,
             shortDateText = shortDateText,
             compact = compact,
-            primaryColor = primaryForeground,
-            secondaryColor = secondaryForeground,
+            primaryColor = cardPrimaryForeground,
+            secondaryColor = cardSecondaryForeground,
             accentColor = colors.accent,
-            containerColor = if (useWallpaperColors) {
-                colors.surface.copy(alpha = 0.56f)
-            } else {
-                colors.surfaceElevated
-            },
-            borderColor = colors.hairlineBorder,
+            containerColor = cardFill,
+            borderColor = cardBorder,
             modifier = modifier,
         )
 
@@ -222,15 +231,11 @@ fun HomeClock(
                 dateText = if (compact) shortDateText else formattedDate,
                 greeting = greeting,
                 compact = compact,
-                primaryColor = primaryForeground,
-                secondaryColor = secondaryForeground,
+                primaryColor = cardPrimaryForeground,
+                secondaryColor = cardSecondaryForeground,
                 accentColor = colors.accent,
-                containerColor = if (useWallpaperColors) {
-                    colors.surface.copy(alpha = 0.56f)
-                } else {
-                    colors.surfaceElevated
-                },
-                borderColor = colors.hairlineBorder,
+                containerColor = cardFill,
+                borderColor = cardBorder,
                 modifier = modifier,
             )
         }
@@ -388,8 +393,8 @@ private fun AnalogClock(
     calendar: Calendar,
     dateText: String,
     compact: Boolean,
-    primaryColor: Color,
-    secondaryColor: Color,
+    handColor: Color,
+    dateColor: Color,
     accentColor: Color,
     dialFill: Color,
     dialBorder: Color,
@@ -412,7 +417,7 @@ private fun AnalogClock(
                 dialSize = dialSize,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
-                primaryColor = primaryColor,
+                primaryColor = handColor,
                 accentColor = accentColor,
                 dialFill = dialFill,
                 dialBorder = dialBorder,
@@ -420,7 +425,7 @@ private fun AnalogClock(
             Text(
                 text = dateText,
                 style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
-                color = secondaryColor,
+                color = dateColor,
             )
         }
     } else {
@@ -432,7 +437,7 @@ private fun AnalogClock(
                 dialSize = dialSize,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
-                primaryColor = primaryColor,
+                primaryColor = handColor,
                 accentColor = accentColor,
                 dialFill = dialFill,
                 dialBorder = dialBorder,
@@ -441,7 +446,7 @@ private fun AnalogClock(
             Text(
                 text = dateText,
                 style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                color = secondaryColor,
+                color = dateColor,
             )
         }
     }

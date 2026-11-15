@@ -51,6 +51,7 @@ fun HomeSettingsScreen(
     onLockLayoutChange: (Boolean) -> Unit,
     onShowClockChange: (Boolean) -> Unit,
     onClockStyleChange: (HomeClockStyle) -> Unit,
+    onClockBackgroundAlphaChange: (Float) -> Unit,
     onOpenWallpaperPicker: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -136,6 +137,7 @@ fun HomeSettingsScreen(
                 HomeClockPreview(
                     showClock = settings.showClock,
                     style = settings.clockStyle,
+                    backgroundAlpha = settings.clockBackgroundAlpha,
                     onCycleStyle = {
                         val values = HomeClockStyle.entries
                         val next = values[(values.indexOf(settings.clockStyle) + 1) % values.size]
@@ -156,6 +158,16 @@ fun HomeSettingsScreen(
                     selected = settings.clockStyle,
                     enabled = settings.showClock,
                     onSelect = onClockStyleChange,
+                )
+                SettingsDivider()
+                SliderRow(
+                    title = stringResource(R.string.settings_home_clock_alpha),
+                    subtitle = stringResource(R.string.settings_home_clock_alpha_subtitle),
+                    value = settings.clockBackgroundAlpha,
+                    valueRange = SettingsDefaults.MIN_CLOCK_ALPHA..SettingsDefaults.MAX_CLOCK_ALPHA,
+                    valueLabel = "${(settings.clockBackgroundAlpha * 100f).roundToInt()}%",
+                    enabled = settings.showClock && settings.clockStyle.hasBackground,
+                    onValueChange = onClockBackgroundAlphaChange,
                 )
             }
         }
@@ -194,6 +206,7 @@ fun HomeSettingsScreen(
 private fun HomeClockPreview(
     showClock: Boolean,
     style: HomeClockStyle,
+    backgroundAlpha: Float,
     onCycleStyle: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
@@ -221,6 +234,7 @@ private fun HomeClockPreview(
                 style = style,
                 compact = false,
                 useWallpaperColors = false,
+                backgroundAlpha = backgroundAlpha,
                 modifier = Modifier.alpha(if (showClock) 1f else 0.32f),
             )
         }
