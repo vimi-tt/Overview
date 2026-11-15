@@ -664,7 +664,7 @@ class SettingsRepository(
 
     private fun mapSearch(prefs: Preferences): SearchSettings {
         val autoFocus = prefs[KEY_SEARCH_AUTO_FOCUS] ?: false
-        val matchPkg = prefs[KEY_SEARCH_MATCH_PACKAGE] ?: true
+        val matchPkg = prefs[KEY_SEARCH_MATCH_PACKAGE] ?: false
         val clearOnClose = prefs[KEY_SEARCH_CLEAR_ON_CLOSE] ?: true
         val showWeb = prefs[KEY_SEARCH_SHOW_WEB_SUGGESTION] ?: true
         val webEngine = prefs[KEY_SEARCH_WEB_ENGINE]

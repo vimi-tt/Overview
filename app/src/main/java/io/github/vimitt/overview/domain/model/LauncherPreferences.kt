@@ -238,7 +238,7 @@ data class AppFolder(
 @Immutable
 data class SearchSettings(
     val autoFocusOnOpen: Boolean = false,
-    val matchPackageName: Boolean = true,
+    val matchPackageName: Boolean = false,
     val clearOnClose: Boolean = true,
     val showWebSearchSuggestion: Boolean = true,
     val webSearchEngine: WebSearchEngine = WebSearchEngine.DUCKDUCKGO,

@@ -33,9 +33,41 @@ class FilterAppsUseCaseTest {
     }
 
     @Test
-    fun `search also matches package name`() {
-        val result = useCase(sampleApps, "mozilla")
-        assertEquals(listOf("Firefox"), result.map { it.label })
+    fun `search respects prefix matching and does not match substrings inside words`() {
+        val extraApps = sampleApps + listOf(
+            AppInfo("com.google.android.calendar", "CalendarActivity", "Agenda", null),
+            AppInfo("com.google.android.youtube", "YouTubeActivity", "YouTube", null),
+            AppInfo("com.example.minhaoi", "MainActivity", "Minha Oi", null),
+            AppInfo("com.example.oifibra", "MainActivity", "Oi Fibra", null),
+        )
+
+        val oiDisabledPkg = useCase(extraApps, "oi", matchPackageName = false)
+        assertEquals(listOf("Oi Fibra", "Minha Oi"), oiDisabledPkg.map { it.label })
+
+        // Mesmo com matchPackageName ativado, "oi" não casa "android" no meio da palavra.
+        val oiEnabledPkg = useCase(extraApps, "oi", matchPackageName = true)
+        assertEquals(listOf("Oi Fibra", "Minha Oi"), oiEnabledPkg.map { it.label })
+
+        // CamelCase permite buscar "tube" em "YouTube".
+        val tubeResult = useCase(extraApps, "tube")
+        assertEquals(listOf("YouTube"), tubeResult.map { it.label })
+
+        // Prefixo por múltiplas palavras encontra "Oi Fibra" por "oi f".
+        val multiWord = useCase(extraApps, "oi f")
+        assertEquals(listOf("Oi Fibra"), multiWord.map { it.label })
+    }
+
+    @Test
+    fun `search only matches package segments when matchPackageName is enabled`() {
+        val byDefault = useCase(sampleApps, "mozilla")
+        assertEquals(emptyList<String>(), byDefault)
+
+        val byPackageEnabled = useCase(
+            apps = sampleApps,
+            query = "mozilla",
+            matchPackageName = true,
+        )
+        assertEquals(listOf("Firefox"), byPackageEnabled.map { it.label })
     }
 
     @Test
@@ -80,23 +112,6 @@ class FilterAppsUseCaseTest {
             showHiddenInSearch = true,
         )
         assertEquals(listOf("Firefox"), allowedSearchResult.map { it.label })
-    }
-
-    @Test
-    fun `search respects matchPackageName flag`() {
-        val byPackageEnabled = useCase(
-            apps = sampleApps,
-            query = "mozilla",
-            matchPackageName = true,
-        )
-        assertEquals(listOf("Firefox"), byPackageEnabled.map { it.label })
-
-        val byPackageDisabled = useCase(
-            apps = sampleApps,
-            query = "mozilla",
-            matchPackageName = false,
-        )
-        assertEquals(emptyList<String>(), byPackageDisabled)
     }
 
     @Test
