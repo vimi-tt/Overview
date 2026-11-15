@@ -168,8 +168,8 @@
     <string name="settings_about_license">Licença</string>
     <string name="settings_about_license_value">GPL-3.0</string>
     <string name="settings_about_source">Código-fonte no GitHub</string>
-    <string name="settings_about_source_subtitle">github.com/vimitt/Overview</string>
-    <string name="settings_about_github_url">https://github.com/vimitt/Overview</string>
+    <string name="settings_about_source_subtitle">github.com/vimi-tt/Overview</string>
+    <string name="settings_about_github_url">https://github.com/vimi-tt/Overview</string>
     <string name="settings_about_section_credits">Créditos e inspiração</string>
     <string name="settings_about_credit_gnome">GNOME Shell / libadwaita</string>
     <string name="settings_about_credit_gnome_sub">Estética limpa, tipografia legível, espaçamento generoso e foco em gestos</string>

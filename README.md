@@ -1,111 +1,136 @@
+<div align="center">
+
 # Overview
 
-**Overview** é um launcher Android em código aberto inspirado na estética e nos fluxos táteis do **GNOME 51 ("A Coruña") / libadwaita**, adaptado para uso mobile com toques e gestos (referência: Phosh / GNOME Shell touch).
+**Launcher Android moderno e minimalista inspirado no GNOME 51 ("A Coruña") / libadwaita.**
 
-Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em fluidez (60/120 Hz), simplicidade visual e respeito às preferências de tema e acessibilidade do sistema.
+Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos fluidos (60/120 Hz), personalização completa e fidelidade à estética limpa do GNOME para dispositivos móveis.
 
-> **Licença**: [GPL-3.0](LICENSE)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--beta--1-3584e4?style=flat-square)
+![Android](https://img.shields.io/badge/Android-12%2B%20(API%2031--35)-3ddc84?style=flat-square&logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff?style=flat-square&logo=kotlin&logoColor=white)
+![Licença](https://img.shields.io/badge/Licen%C3%A7a-GPL--3.0-orange?style=flat-square)
+
+[Recursos](#recursos) • [Capturas de tela](#capturas-de-tela) • [Compilar e instalar](#compilar-e-instalar) • [Arquitetura](#arquitetura) • [Roadmap](#roadmap)
+
+</div>
+
+---
+
+## Sobre o projeto
+
+O **Overview** traz para o Android a organização espacial e a clareza visual do **GNOME Shell** e da linguagem **libadwaita** — unindo uma tela inicial leve sobre o papel de parede do sistema, um **Dash** fixo para os favoritos e uma visão geral (**Overview**) com busca instantânea, pastas e grade paginada por gestos.
+
+Código-fonte oficial: **[github.com/vimi-tt/Overview](https://github.com/vimi-tt/Overview)**
 
 ---
 
 ## Capturas de tela
 
-_Pendente: capturas de tela da Home, Dash e Overview em dispositivo físico com Android 15 serão adicionadas após a validação visual._
+| Tela inicial | Overview & Pastas | Configurações (libadwaita) |
+| :---: | :---: | :---: |
+| _Em breve_ | _Em breve_ | _Em breve_ |
+
+> _Espaço reservado para capturas em dispositivo físico com Android 15 após a validação visual da `0.1.0-beta-1`._
 
 ---
 
-## Funcionalidades atuais
+## Recursos
 
-- **Tela inicial transparente**: exibe o papel de parede do sistema (`windowShowWallpaper`), relógio personalizável (GNOME Clássico, Empilhado, Analógico Adwaita, Editorial lateral, Cápsula compacta e Cápsula completa estilo Resumo, com opacidade ajustável nos estilos com fundo), atalhos/widgets redimensionáveis na grade e o **Dash** fixo na parte inferior.
-- **Dash de favoritos**: de 3 a 6 aplicativos selecionados automaticamente ou fixados pelo usuário, com opacidade configurável e barra de busca rápida opcional.
-- **Overview por gestos**: deslize para cima na tela inicial (ou toque no indicador/busca do Dash) para abrir o Overview com acompanhamento contínuo do gesto; deslize para baixo, pressione Voltar ou aperte Home para retornar. Arraste apps direto da grade para a tela inicial.
-- **Desfoque e animações do Overview**: `RenderEffect` e blur de janela (Android 12+), escurecimento do fundo configurável, estilo de transição (*GNOME Shell*, *Deslizar* ou *Esmaecer*), velocidade de animação, efeito de profundidade na tela inicial e animação de abertura dos aplicativos.
-- **Busca em tempo real**: filtra aplicativos instantaneamente ao digitar, ignorando acentos e maiúsculas/minúsculas, com foco automático opcional, busca por nome do pacote, preservação/limpeza ao fechar e atalho de pesquisa na web (DuckDuckGo, Google, Startpage ou Ecosia).
-- **Pastas no Overview**: criação, edição e exclusão de pastas de aplicativos com visualização em grade `2 × 2` ou empilhada, popup configurável em 3 ou 4 colunas, ordenação interna e opção de fechar ao abrir um app.
-- **Gestos personalizáveis**: ações configuráveis na tela inicial para deslizar para cima, deslizar para baixo, toque duplo e botão Início (Overview, busca, notificações, configurações rápidas, configurações do Overview, papel de parede, assistente ou câmera), além de ajuste de sensibilidade.
-- **Grade paginada horizontalmente**: colunas, escala de ícones, ordenação (A–Z, Z–A ou mais recentes) e gerenciamento de apps ocultos.
-- **Configurações no estilo GNOME/libadwaita**: central organizada por categorias (**Aparência**, **Tela inicial**, **Dock**, **Grade de apps**, **Overview**, **Busca**, **Pastas**, **Gestos** e **Sobre**) com pacotes de ícones compatíveis com launchers, formato de ícone, cores de destaque do GNOME e pontos de notificação (`NotificationListenerService`).
-- **Atualização reativa**: escuta eventos de instalação, remoção, atualização e suspensão via `LauncherApps.Callback`.
-- **Tema Adwaita & Acessibilidade**: suporte a tema claro (`#fafafa`), escuro (`#242424`), automático (sistema), cor de destaque configurável (padrão azul Adwaita `#3584e4`) e respeito à configuração global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`).
+### Tela inicial e relógios
+- **Grade personalizável (`3×3` a `6×6`)**: adicione atalhos diretamente da grade do Overview ou via seletor, posicione livremente na grade e redimensione widgets do sistema (`AppWidgetHost`).
+- **6 estilos de relógio com pré-visualização ao vivo**:
+  - **GNOME Clássico**: horário e data centralizados com dígitos tabulares.
+  - **Empilhado**: hora e minuto em blocos verticais com cor de destaque.
+  - **Analógico Adwaita**: mostrador vetorial minimalista desenhado em `Canvas`.
+  - **Editorial lateral**: horário à esquerda, barra de destaque e data à direita.
+  - **Cápsula compacta**: pílula discreta inspirada na barra superior do GNOME.
+  - **Cápsula completa (Resumo)**: barra de canto a canto estilo Resumo com saudação dinâmica, data completa e horário.
+- **Opacidade e contraste adaptativo**: ajuste de transparência (`0%` a `100%`) nos estilos com fundo, além de detecção automática de cores do papel de parede (`WallpaperManager.OnColorsChangedListener`).
+- **Bloqueio de layout e rótulos**: oculte ou escale os nomes dos atalhos e impeça alterações acidentais na grade.
+
+### Dash (Dock)
+- De **3 a 6 aplicativos** fixados manualmente ou resolvidos automaticamente pelos padrões do sistema (discador, mensagens, navegador, câmera, configurações).
+- Controle de **opacidade do fundo** e botão opcional de **barra de pesquisa rápida**.
+
+### Overview, pastas e busca
+- **Transições contínuas por gestos**: acompanhe o progresso do gesto vertical em tempo real com blur (`RenderEffect` + window blur no Android 12+), escurecimento do fundo, velocidade ajustável e estilos *GNOME Shell*, *Deslizar* ou *Esmaecer*.
+- **Pastas sempre no início da grade**: crie e gerencie pastas pelas configurações ou direto pelo menu de contexto dos apps, com prévia **Grade 2×2** ou **Empilhada**, popup em **3 ou 4 colunas**, ordenação interna e fechamento automático ao iniciar um aplicativo.
+- **Busca precisa em tempo real**: correspondência exata por prefixo de nome, palavras e segmentos CamelCase (ignorando acentos e maiúsculas/minúsculas), foco automático opcional, preservação/limpeza ao fechar e atalho de **pesquisa na web** (*DuckDuckGo*, *Google*, *Startpage* ou *Ecosia*).
+- **Grade paginada**: colunas (`3` a `6`), escala de ícones, ordenação (A–Z, Z–A ou mais recentes) e gerenciamento de **aplicativos ocultos** (com opção de encontrá-los apenas pela busca).
+- **Overview como aplicativo normal**: registrado com `CATEGORY_LAUNCHER`, aparece na grade como qualquer outro app e abre rapidamente suas configurações quando acionado de dentro do launcher.
+
+### Gestos, aparência e acessibilidade
+- **Gestos configuráveis**: personalize ações para **deslizar para cima**, **deslizar para baixo**, **toque duplo** e **botão Início na Home** (Overview, busca, notificações, configurações rápidas, configurações do Overview, papel de parede, assistente ou câmera), com 3 níveis de sensibilidade.
+- **Aparência Adwaita**: tema Claro (`#fafafa`), Escuro (`#242424`) ou Automático, paleta de cores de destaque do GNOME, **pacotes de ícones** compatíveis com launchers, formato de ícone (*Círculo*, *Quadrado arredondado* ou *Quadrado*) e **pontos de notificação** via `NotificationListenerService`.
+- **Acessibilidade**: respeito nativo à preferência global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`), dígitos tabulares e alvos de toque mínimos de 48 dp.
 
 ---
 
-## Arquitetura
+## Tecnologias e arquitetura
+
+- **Linguagem & UI**: Kotlin + Jetpack Compose + Material 3 (design system próprio com tokens Adwaita)
+- **Persistência**: Jetpack DataStore (`Preferences`) para preferências reativas por categoria + armazenamento JSON para workspace e pastas
+- **Integração Android**: `LauncherApps` (eventos reativos de pacotes e animações de abertura), `AppWidgetHost`, `NotificationListenerService`, `WallpaperManager` e `Navigation Compose`
 
 ```text
 app/src/main/java/io/github/vimitt/overview/
-├── data/          # LauncherAppsRepository, SettingsRepository (DataStore), IconPackRepository, NotificationBadgeRepository, HomeWorkspaceRepository
+├── data/          # Repositórios (Apps, Settings DataStore, IconPacks, Badges, Widgets, HomeWorkspace, SystemPanelHelper)
 ├── di/            # AppContainer (injeção de dependências manual leve)
-├── domain/        # Modelos (AppInfo, LauncherPreferences) e casos de uso
+├── domain/        # Modelos imutáveis (AppInfo, HomeItem, LauncherPreferences) e casos de uso
 └── ui/
-    ├── theme/     # Tokens de cor Adwaita, formas, tipografia e utilitários de movimento reduzido
-    ├── components/# AppIconItem, DashBar, OverviewSearchBar
-    ├── home/      # HomeScreen, HomeViewModel, HomeUiState, seletores de apps/widgets
-    ├── overview/  # OverviewScreen, OverviewViewModel, OverviewUiState
-    ├── settings/  # SettingsNavHost, SettingsHubScreen, componentes libadwaita e subtelas por categoria
+    ├── theme/     # Tokens de cor Adwaita, raios, tipografia e utilitários de movimento reduzido
+    ├── components/# AppIconItem, DashBar, HomeClock, OverviewSearchBar
+    ├── home/      # HomeScreen, HomeViewModel, HomeUiState e seletores de apps/widgets
+    ├── overview/  # OverviewScreen, OverviewViewModel, OverviewUiState (grade paginada, pastas e busca)
+    ├── settings/  # SettingsNavHost, SettingsHubScreen, componentes libadwaita e 9 categorias de configuração
     └── LauncherRoot.kt
 ```
 
-### Alterar o usuário do pacote base
-
-Atualmente o projeto usa o pacote `io.github.vimitt.overview`. Caso queira trocar `vimitt` por outro identificador:
-
+### Personalizar pacote base (opcional)
+Caso deseje publicar um fork com outro identificador além de `io.github.vimitt.overview`:
 1. Atualize `namespace` e `applicationId` em [`app/build.gradle.kts`](app/build.gradle.kts).
-2. Renomeie a pasta `vimitt` em `app/src/main/` e `app/src/test/` e ajuste as declarações `package` / `import` nos arquivos `.kt`.
+2. Renomeie os diretórios de pacote em `app/src/main/` e `app/src/test/` e ajuste as declarações `package` / `import`.
 
 ---
 
-## Como compilar e instalar
+## Compilar e instalar
 
 ### Pré-requisitos
+- **JDK 17+** e **Android SDK Platform 35** (`minSdk 31` / Android 12+, `targetSdk 35` / Android 15).
+- **Android Studio** compatível com AGP 9.x ou linha de comando com `./gradlew`.
+- Dispositivo físico ou emulador com Depuração USB ativada.
 
-- **Android Studio** (versão recente compatível com AGP 9.x) ou **JDK 17+** e **Android SDK Platform 35**.
-- Dispositivo físico com Android 12+ (testado visando **Android 15**, `minSdk 31`, `targetSdk 35`) com Depuração USB ativada.
+### Passo a passo
 
-### Via Android Studio
+```bash
+git clone https://github.com/vimi-tt/Overview.git
+cd Overview
+```
 
-1. Clone o repositório e abra a pasta `Overview` no Android Studio.
-2. Aguarde a sincronização do Gradle.
-3. Conecte o celular via USB, selecione a variante `debug` e clique em **Run** (ou instale via terminal abaixo). O **Overview** também é registrado com `CATEGORY_LAUNCHER` para aparecer como um aplicativo normal na grade e na tela inicial.
-
-### Via linha de comando (`./gradlew` + `adb`)
-
-1. Certifique-se de que `ANDROID_HOME` esteja definido (ou configure `sdk.dir=/caminho/do/android-sdk` em `local.properties`).
-2. Compile e instale no dispositivo conectado:
+1. Caso não use a variável `ANDROID_HOME`, crie `local.properties` na raiz com `sdk.dir=/caminho/do/android-sdk`.
+2. Compile e instale no aparelho conectado:
 
 ```bash
 ./gradlew installDebug
 ```
 
-3. Verifique se o dispositivo está conectado e abra o Overview diretamente via `adb`:
+3. Execute os testes unitários e o lint:
 
 ```bash
-adb devices
-adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
+./gradlew testDebugUnitTest lintDebug
 ```
 
-4. Para executar os testes unitários:
+### Definir o Overview como launcher padrão
 
-```bash
-./gradlew testDebugUnitTest
-```
-
----
-
-## Como definir o Overview como launcher padrão
-
-### Pelo sistema (Android 15)
-
-1. Pressione o botão **Home** (ou faça o gesto de início) e escolha **Overview** -> **Sempre**, **ou**
-2. Acesse **Configurações → Apps → Apps padrão → App de início** e selecione **Overview**.
-
-### Via `adb` (opcional)
+- **Pelo Android**: acesse **Configurações → Apps → Apps padrão → App de início** e selecione **Overview** (ou pressione o botão Início e escolha **Overview → Sempre**).
+- **Via `adb`**:
 
 ```bash
 adb shell cmd role add-role-holder android.app.role.HOME io.github.vimitt.overview
 ```
 
-Para restaurar o launcher anterior do aparelho caso deseje voltar:
+Para restaurar o launcher padrão anterior via `adb`:
 
 ```bash
 adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.overview
@@ -115,14 +140,20 @@ adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.ove
 
 ## Roadmap
 
-- [x] Estrutura base Android 15 (`HOME` + `singleTask` + `onNewIntent`)
-- [x] Tema Adwaita claro/escuro/automático + modo de animações reduzidas
-- [x] Home transparente com papel de parede, relógio opcional e Dash inicial
-- [x] Overview com busca em tempo real, `RenderEffect` blur e grade paginada reativa
-- [x] **Tela inicial e widgets**: atalhos e widgets na tela inicial (`AppWidgetHost`, arrastar e soltar do Overview e reposicionamento livre na grade configurável)
-- [x] **Configurações por categorias**: central com Aparência (pacote/forma de ícones, cores GNOME, pontos de notificação), Tela inicial, Dock, Grade de apps (apps ocultos/ordenação), Overview e Sobre
-- [x] **Overview (desfoque e animações)**: intensidade do blur, opacidade do fundo, estilo de transição, velocidade, efeito de profundidade e progresso contínuo no gesto vertical
-- [x] **Busca**: foco automático ao abrir, correspondência pelo pacote, limpeza ao fechar e atalho de pesquisa na web configurável
-- [x] **Pastas**: criação e edição nas configurações e direto no Overview, pré-visualização em grade 2 × 2 ou empilhada e janela popup com 3 ou 4 colunas
-- [x] **Gestos**: ações personalizáveis para deslizar para cima/baixo, toque duplo e botão Início na Home, com ajuste de sensibilidade
-- [ ] **Refinamentos futuros**: pastas na tela inicial, painel de configurações rápidas próprio estilo GNOME e fonte Adwaita Sans embarcada
+- [x] Estrutura base Android 15 (`HOME` + `LAUNCHER` + `singleTask` + `onNewIntent`)
+- [x] Tema Adwaita claro/escuro/automático + suporte a animações reduzidas
+- [x] Tela inicial com papel de parede, 6 estilos de relógio com opacidade, grade configurável e widgets (`AppWidgetHost`)
+- [x] Dash configurável (3–6 apps, opacidade e barra de busca)
+- [x] Overview com blur `RenderEffect`, transições configuráveis, busca precisa por prefixo e atalho web
+- [x] Pastas de aplicativos fixadas no início da grade e gerenciamento completo
+- [x] Gestos configuráveis na Home e no botão Início com ajuste de sensibilidade
+- [x] Central de Configurações completa no estilo GNOME / libadwaita (`0.1.0-beta-1`)
+- [ ] **Próximos passos**: pastas diretamente na tela inicial, painel próprio de configurações rápidas estilo GNOME e fonte Adwaita Sans embarcada
+
+---
+
+## Créditos e licença
+
+- Inspiração visual e de usabilidade no **[GNOME Shell / libadwaita](https://gitlab.gnome.org/GNOME/libadwaita)** (sem utilização de assets oficiais).
+- Organização por categorias e subtítulos dinâmicos das configurações inspirada no **[Lawnchair](https://github.com/LawnchairLauncher/lawnchair)** (sem cópia de código ou recursos).
+- Distribuído sob a licença **[GPL-3.0](LICENSE)**.
