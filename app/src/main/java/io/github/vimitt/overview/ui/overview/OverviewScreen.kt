@@ -5,7 +5,10 @@ import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -30,16 +34,24 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -47,6 +59,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppInfo
@@ -72,6 +85,8 @@ fun OverviewScreen(
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onAddAppToHome: (AppInfo) -> Unit,
+    onOpenAppInfo: (AppInfo) -> Unit,
     onClose: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +96,8 @@ fun OverviewScreen(
     val rootView = LocalView.current
     val swipeDownThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
     val isSearching = searchQuery.isNotBlank()
+    var actionTargetApp by remember { mutableStateOf<AppInfo?>(null) }
+
     val handleAppClick = remember(onAppClick, keyboardController) {
         { app: AppInfo, view: View, bounds: Rect? ->
             keyboardController?.hide()
@@ -88,99 +105,126 @@ fun OverviewScreen(
         }
     }
 
-    BackHandler(enabled = isActive) {
+    val handleAppLongClick = remember(keyboardController) {
+        { app: AppInfo ->
+            keyboardController?.hide()
+            actionTargetApp = app
+        }
+    }
+
+    BackHandler(enabled = isActive && actionTargetApp == null) {
         keyboardController?.hide()
         onClose()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.overviewScrim)
-            .pointerInput(isActive, swipeDownThresholdPx) {
-                if (!isActive) return@pointerInput
-                var totalDragY = 0f
-                var triggered = false
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onDragEnd = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onDragCancel = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        totalDragY += dragAmount
-                        if (!triggered && totalDragY >= swipeDownThresholdPx) {
-                            triggered = true
-                            keyboardController?.hide()
-                            onClose()
-                        }
-                    },
-                )
-            }
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        OverviewSearchBar(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            onClear = onClearSearch,
-            onOpenSettings = {
-                keyboardController?.hide()
-                onOpenSettings()
-            },
-            onSubmit = {
-                if (uiState.apps.size == 1) {
-                    keyboardController?.hide()
-                    onAppClick(uiState.apps.first(), rootView, null)
-                } else {
-                    keyboardController?.hide()
-                }
-            },
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .widthIn(max = 520.dp)
-                .padding(top = 8.dp),
-        )
+                .fillMaxSize()
+                .background(colors.overviewScrim)
+                .pointerInput(isActive, swipeDownThresholdPx) {
+                    if (!isActive) return@pointerInput
+                    var totalDragY = 0f
+                    var triggered = false
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onDragEnd = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onDragCancel = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onVerticalDrag = { _, dragAmount ->
+                            totalDragY += dragAmount
+                            if (!triggered && totalDragY >= swipeDownThresholdPx) {
+                                triggered = true
+                                keyboardController?.hide()
+                                onClose()
+                            }
+                        },
+                    )
+                }
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            OverviewSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onClear = onClearSearch,
+                onOpenSettings = {
+                    keyboardController?.hide()
+                    onOpenSettings()
+                },
+                onSubmit = {
+                    if (uiState.apps.size == 1) {
+                        keyboardController?.hide()
+                        onAppClick(uiState.apps.first(), rootView, null)
+                    } else {
+                        keyboardController?.hide()
+                    }
+                },
+                modifier = Modifier
+                    .widthIn(max = 520.dp)
+                    .padding(top = 8.dp),
+            )
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        when {
-            uiState.apps.isEmpty() -> {
-                EmptyOverviewState(
-                    isSearching = isSearching,
-                    modifier = Modifier.weight(1f),
-                )
+            when {
+                uiState.apps.isEmpty() -> {
+                    EmptyOverviewState(
+                        isSearching = isSearching,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                isSearching -> {
+                    SearchResultsGrid(
+                        apps = uiState.apps,
+                        scrollEnabled = isActive,
+                        onAppClick = handleAppClick,
+                        onAppLongClick = handleAppLongClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    )
+                }
+
+                else -> {
+                    PaginatedAppGrid(
+                        apps = uiState.apps,
+                        scrollEnabled = isActive,
+                        onAppClick = handleAppClick,
+                        onAppLongClick = handleAppLongClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    )
+                }
             }
+        }
 
-            isSearching -> {
-                SearchResultsGrid(
-                    apps = uiState.apps,
-                    scrollEnabled = isActive,
-                    onAppClick = handleAppClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                )
-            }
-
-            else -> {
-                PaginatedAppGrid(
-                    apps = uiState.apps,
-                    scrollEnabled = isActive,
-                    onAppClick = handleAppClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                )
-            }
+        val selectedApp = actionTargetApp
+        if (selectedApp != null && isActive) {
+            OverviewAppActionOverlay(
+                app = selectedApp,
+                onAddToHome = {
+                    actionTargetApp = null
+                    onAddAppToHome(selectedApp)
+                },
+                onOpenAppInfo = {
+                    actionTargetApp = null
+                    onOpenAppInfo(selectedApp)
+                },
+                onDismiss = { actionTargetApp = null },
+            )
         }
     }
 }
@@ -190,6 +234,7 @@ private fun SearchResultsGrid(
     apps: List<AppInfo>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onAppLongClick: (AppInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
@@ -211,6 +256,7 @@ private fun SearchResultsGrid(
                 AppIconItem(
                     app = app,
                     onClick = onAppClick,
+                    onLongClick = onAppLongClick,
                     iconSize = 54.dp,
                     showLabel = true,
                 )
@@ -224,6 +270,7 @@ private fun PaginatedAppGrid(
     apps: List<AppInfo>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onAppLongClick: (AppInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -271,6 +318,7 @@ private fun PaginatedAppGrid(
                     columns = columns,
                     rows = rows,
                     onAppClick = onAppClick,
+                    onAppLongClick = onAppLongClick,
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer(),
@@ -294,6 +342,7 @@ private fun AppGridPage(
     columns: Int,
     rows: Int,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onAppLongClick: (AppInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -313,6 +362,7 @@ private fun AppGridPage(
                             AppIconItem(
                                 app = app,
                                 onClick = onAppClick,
+                                onLongClick = onAppLongClick,
                                 iconSize = 54.dp,
                                 showLabel = true,
                                 modifier = Modifier.weight(1f),
@@ -322,6 +372,100 @@ private fun AppGridPage(
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverviewAppActionOverlay(
+    app: AppInfo,
+    onAddToHome: () -> Unit,
+    onOpenAppInfo: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = OverviewTheme.colors
+    val cardShape = RoundedCornerShape(OverviewCornerRadius.Large)
+    val backdropInteraction = remember { MutableInteractionSource() }
+    val cardInteraction = remember { MutableInteractionSource() }
+
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.36f))
+            .clickable(
+                interactionSource = backdropInteraction,
+                indication = null,
+                onClick = onDismiss,
+            )
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 420.dp)
+                .fillMaxWidth()
+                .clip(cardShape)
+                .background(colors.surface)
+                .border(1.dp, colors.hairlineBorder, cardShape)
+                .clickable(
+                    interactionSource = cardInteraction,
+                    indication = null,
+                    onClick = {},
+                ),
+        ) {
+            Text(
+                text = app.label,
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            )
+            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onAddToHome)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = colors.accent,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = stringResource(R.string.overview_action_add_home),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurface,
+                )
+            }
+            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenAppInfo)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = colors.onSurfaceMuted,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = stringResource(R.string.overview_action_app_info),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurface,
+                )
             }
         }
     }

@@ -28,8 +28,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,10 +54,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.AppWidgetController
+import io.github.vimitt.overview.data.WidgetAppGroup
+import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
+import io.github.vimitt.overview.ui.home.HomeItemActionOverlay
 import io.github.vimitt.overview.ui.home.HomeScreen
 import io.github.vimitt.overview.ui.home.HomeUiState
+import io.github.vimitt.overview.ui.home.HomeWidgetPickerScreen
+import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.overview.OverviewScreen
 import io.github.vimitt.overview.ui.overview.OverviewUiState
 import io.github.vimitt.overview.ui.settings.SettingsScreen
@@ -66,28 +75,50 @@ import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.roundToInt
 
 /**
- * Raiz visual do launcher que coordena a transição entre Home, Overview,
- * menu contextual de toque longo e tela de personalização.
+ * Raiz visual do launcher que coordena Home, Overview, seletores de apps/widgets,
+ * menu contextual e tela de personalização.
  */
 @Composable
 fun LauncherRoot(
     isOverviewOpen: Boolean,
     isHomeMenuOpen: Boolean,
     isSettingsOpen: Boolean,
+    isAppPickerOpen: Boolean,
+    isWidgetPickerOpen: Boolean,
+    selectedHomeItem: HomeWorkspaceItem?,
     blurRadiusDp: Float,
+    appWidgetController: AppWidgetController,
     homeUiState: HomeUiState,
     searchQuery: String,
     overviewUiState: OverviewUiState,
     settingsUiState: SettingsUiState,
+    allApps: List<AppInfo>,
     onOpenOverview: () -> Unit,
     onCloseOverview: () -> Unit,
     onHomeLongPress: () -> Unit,
     onDismissHomeMenu: () -> Unit,
+    onOpenAppPicker: () -> Unit,
+    onCloseAppPicker: () -> Unit,
+    onOpenWidgetPicker: () -> Unit,
+    onCloseWidgetPicker: () -> Unit,
+    onSelectHomeAppToAdd: (AppInfo) -> Unit,
+    onSelectWidgetToAdd: (WidgetEntry) -> Unit,
+    loadAvailableWidgets: suspend () -> List<WidgetAppGroup>,
+    onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
+    onDismissHomeItemAction: () -> Unit,
+    onStartMovingHomeItem: (String) -> Unit,
+    onResizeWidget: (itemId: String, deltaX: Int, deltaY: Int) -> Unit,
+    onRemoveHomeItem: (String) -> Unit,
+    canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
+    onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    onCancelMovingItem: () -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onOpenWallpaperPicker: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
+    onAddAppFromOverview: (AppInfo) -> Unit,
+    onOpenAppInfo: (AppInfo) -> Unit,
     onLaunchFromHome: (
         app: AppInfo,
         sourceView: android.view.View,
@@ -112,16 +143,17 @@ fun LauncherRoot(
     val density = LocalDensity.current
     val context = LocalContext.current
 
-    val blurActive = isOverviewOpen && !isSettingsOpen
+    val anyModalFullScreen = isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen
+    val overviewActive = isOverviewOpen && !anyModalFullScreen
     val blurProgress by animateFloatAsState(
-        targetValue = if (blurActive) 1f else 0f,
-        animationSpec = overviewTween(reducedMotion, durationMillis = 220),
+        targetValue = if (overviewActive) 1f else 0f,
+        animationSpec = overviewTween(reducedMotion, durationMillis = 200),
         label = "overviewBlurProgress",
     )
 
     val homeBlurPx = with(density) { (blurRadiusDp * blurProgress).dp.toPx() }
     val windowBlurPx = with(density) {
-        if (blurActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
+        if (overviewActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
     }
 
     WindowBackgroundBlurEffect(
@@ -132,11 +164,16 @@ fun LauncherRoot(
     Box(modifier = modifier.fillMaxSize()) {
         HomeScreen(
             uiState = homeUiState,
+            appWidgetController = appWidgetController,
             onAppClick = { app, view, bounds ->
                 onLaunchFromHome(app, view, bounds, reducedMotion)
             },
             onOpenOverview = onOpenOverview,
             onLongPress = onHomeLongPress,
+            onWorkspaceItemLongPress = onWorkspaceItemLongPress,
+            canPlaceMovingItemAt = canPlaceMovingItemAt,
+            onPlaceMovingItemAt = onPlaceMovingItemAt,
+            onCancelMovingItem = onCancelMovingItem,
             modifier = Modifier.graphicsLayer {
                 renderEffect = if (homeBlurPx > 0.5f) {
                     BlurEffect(
@@ -170,7 +207,6 @@ fun LauncherRoot(
                 )
         }
 
-        val overviewActive = isOverviewOpen && !isSettingsOpen
         AnimatedVisibility(
             visible = overviewActive,
             enter = enterTransition,
@@ -185,17 +221,27 @@ fun LauncherRoot(
                 onAppClick = { app, view, bounds ->
                     onLaunchFromOverview(app, view, bounds, reducedMotion)
                 },
+                onAddAppToHome = onAddAppFromOverview,
+                onOpenAppInfo = onOpenAppInfo,
                 onClose = onCloseOverview,
                 onOpenSettings = onOpenSettings,
             )
         }
 
         AnimatedVisibility(
-            visible = isHomeMenuOpen && !isOverviewOpen && !isSettingsOpen,
+            visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen,
             enter = fadeIn(overviewTween(reducedMotion, durationMillis = 160)),
             exit = fadeOut(overviewTween(reducedMotion, durationMillis = 140)),
         ) {
             HomeContextMenuOverlay(
+                onAddApp = {
+                    onDismissHomeMenu()
+                    onOpenAppPicker()
+                },
+                onAddWidget = {
+                    onDismissHomeMenu()
+                    onOpenWidgetPicker()
+                },
                 onCustomize = {
                     onDismissHomeMenu()
                     onOpenSettings()
@@ -205,6 +251,48 @@ fun LauncherRoot(
                     onOpenWallpaperPicker()
                 },
                 onDismiss = onDismissHomeMenu,
+            )
+        }
+
+        if (selectedHomeItem != null && !isOverviewOpen && !anyModalFullScreen) {
+            HomeItemActionOverlay(
+                workspaceItem = selectedHomeItem,
+                onMove = {
+                    onDismissHomeItemAction()
+                    onStartMovingHomeItem(selectedHomeItem.item.id)
+                },
+                onResizeWidget = { deltaX, deltaY ->
+                    onResizeWidget(selectedHomeItem.item.id, deltaX, deltaY)
+                },
+                onRemove = {
+                    onDismissHomeItemAction()
+                    onRemoveHomeItem(selectedHomeItem.item.id)
+                },
+                onDismiss = onDismissHomeItemAction,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isAppPickerOpen,
+            enter = enterTransition,
+            exit = exitTransition,
+        ) {
+            HomeAppPickerScreen(
+                apps = allApps,
+                onSelectApp = onSelectHomeAppToAdd,
+                onClose = onCloseAppPicker,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isWidgetPickerOpen,
+            enter = enterTransition,
+            exit = exitTransition,
+        ) {
+            HomeWidgetPickerScreen(
+                loadWidgets = loadAvailableWidgets,
+                onSelectWidget = onSelectWidgetToAdd,
+                onClose = onCloseWidgetPicker,
             )
         }
 
@@ -230,6 +318,8 @@ fun LauncherRoot(
 
 @Composable
 private fun HomeContextMenuOverlay(
+    onAddApp: () -> Unit,
+    onAddWidget: () -> Unit,
     onCustomize: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onDismiss: () -> Unit,
@@ -273,6 +363,22 @@ private fun HomeContextMenuOverlay(
                 color = colors.onSurfaceMuted,
                 modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp),
             )
+
+            HomeMenuRow(
+                icon = Icons.Filled.Add,
+                label = stringResource(R.string.home_menu_add_app),
+                onClick = onAddApp,
+            )
+
+            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
+
+            HomeMenuRow(
+                icon = Icons.Filled.Star,
+                label = stringResource(R.string.home_menu_add_widget),
+                onClick = onAddWidget,
+            )
+
+            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
 
             HomeMenuRow(
                 icon = Icons.Filled.Settings,

@@ -7,27 +7,36 @@ import android.content.IntentFilter
 import android.graphics.Rect
 import android.text.format.DateFormat
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,9 +54,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.HomeGridSpec
+import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
@@ -57,23 +71,35 @@ import java.util.Locale
 
 /**
  * Tela inicial transparente sobre o papel de parede do sistema,
- * com relógio opcional e o Dash de favoritos fixo na parte inferior.
+ * com relógio opcional, grade de atalhos/widgets e o Dash fixo inferior.
  */
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
+    appWidgetController: AppWidgetController,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onOpenOverview: () -> Unit,
     onLongPress: () -> Unit,
+    onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
+    canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
+    onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    onCancelMovingItem: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val swipeThresholdPx = with(LocalDensity.current) { 36.dp.toPx() }
     val haptic = LocalHapticFeedback.current
+    val hasWorkspaceItems = uiState.workspaceItems.isNotEmpty()
+    val isMoving = uiState.movingItemId != null
 
-    Box(
+    if (isMoving) {
+        BackHandler(onBack = onCancelMovingItem)
+    }
+
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(onLongPress) {
+            .pointerInput(onLongPress, isMoving) {
+                if (isMoving) return@pointerInput
                 detectTapGestures(
                     onLongPress = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -81,7 +107,8 @@ fun HomeScreen(
                     },
                 )
             }
-            .pointerInput(swipeThresholdPx) {
+            .pointerInput(swipeThresholdPx, isMoving) {
+                if (isMoving) return@pointerInput
                 var totalDragY = 0f
                 var triggered = false
                 detectVerticalDragGestures(
@@ -108,23 +135,49 @@ fun HomeScreen(
             }
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (uiState.showClock) {
+        if (isMoving) {
+            MoveModeBanner(
+                onCancel = onCancelMovingItem,
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            )
+        } else if (uiState.showClock) {
             HomeClock(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 48.dp),
+                compact = hasWorkspaceItems,
+                modifier = Modifier.padding(
+                    top = if (hasWorkspaceItems) 8.dp else 44.dp,
+                    bottom = if (hasWorkspaceItems) 8.dp else 0.dp,
+                ),
             )
         }
 
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+        ) {
+            if (hasWorkspaceItems || isMoving) {
+                HomeWorkspaceGrid(
+                    items = uiState.workspaceItems,
+                    movingItemId = uiState.movingItemId,
+                    appWidgetController = appWidgetController,
+                    onAppClick = onAppClick,
+                    onItemLongPress = onWorkspaceItemLongPress,
+                    canPlaceMovingItemAt = canPlaceMovingItemAt,
+                    onPlaceMovingItemAt = onPlaceMovingItemAt,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Bottom,
         ) {
             OverviewHandlePill(onClick = onOpenOverview)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             DashBar(
                 apps = uiState.dashApps,
                 onAppClick = onAppClick,
@@ -134,7 +187,157 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeClock(modifier: Modifier = Modifier) {
+private fun HomeWorkspaceGrid(
+    items: List<HomeWorkspaceItem>,
+    movingItemId: String?,
+    appWidgetController: AppWidgetController,
+    onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onItemLongPress: (HomeWorkspaceItem) -> Unit,
+    canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
+    onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    val labelShadow = remember(colors.wallpaperShadow) {
+        Shadow(
+            color = colors.wallpaperShadow,
+            offset = Offset(0f, 1.5f),
+            blurRadius = 6f,
+        )
+    }
+
+    BoxWithConstraints(modifier = modifier) {
+        val cellWidth = maxWidth / HomeGridSpec.COLUMNS
+        val cellHeight = maxHeight / HomeGridSpec.ROWS
+
+        if (movingItemId != null) {
+            for (y in 0 until HomeGridSpec.ROWS) {
+                for (x in 0 until HomeGridSpec.COLUMNS) {
+                    val canPlace = canPlaceMovingItemAt(x, y)
+                    val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = cellWidth * x, y = cellHeight * y)
+                            .size(width = cellWidth, height = cellHeight)
+                            .padding(4.dp)
+                            .clip(cellShape)
+                            .background(
+                                if (canPlace) {
+                                    colors.accent.copy(alpha = 0.16f)
+                                } else {
+                                    colors.surface.copy(alpha = 0.08f)
+                                },
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (canPlace) {
+                                    colors.accent.copy(alpha = 0.75f)
+                                } else {
+                                    colors.hairlineBorder
+                                },
+                                shape = cellShape,
+                            )
+                            .clickable(enabled = canPlace) {
+                                onPlaceMovingItemAt(x, y)
+                            },
+                    )
+                }
+            }
+        }
+
+        for (workspaceItem in items) {
+            key(workspaceItem.item.id) {
+                val item = workspaceItem.item
+                val isMovingThis = item.id == movingItemId
+                val itemWidth = cellWidth * item.spanX
+                val itemHeight = cellHeight * item.spanY
+
+                Box(
+                    modifier = Modifier
+                        .offset(x = cellWidth * item.cellX, y = cellHeight * item.cellY)
+                        .size(width = itemWidth, height = itemHeight)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    when (workspaceItem) {
+                        is HomeWorkspaceItem.Shortcut -> {
+                            AppIconItem(
+                                app = workspaceItem.app,
+                                onClick = onAppClick,
+                                onLongClick = { onItemLongPress(workspaceItem) },
+                                iconSize = 52.dp,
+                                showLabel = true,
+                                labelColor = colors.wallpaperForeground,
+                                labelShadow = labelShadow,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        is HomeWorkspaceItem.Widget -> {
+                            HomeWidgetView(
+                                widgetItem = workspaceItem,
+                                appWidgetController = appWidgetController,
+                                widthDp = (itemWidth - 8.dp).coerceAtLeast(48.dp),
+                                heightDp = (itemHeight - 8.dp).coerceAtLeast(48.dp),
+                                onLongPress = { onItemLongPress(workspaceItem) },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(
+                                        if (isMovingThis) {
+                                            Modifier.border(
+                                                width = 2.dp,
+                                                color = colors.accent,
+                                                shape = RoundedCornerShape(OverviewCornerRadius.Large),
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoveModeBanner(
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(colors.dashBackground)
+            .border(1.dp, colors.hairlineBorder, shape)
+            .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.home_move_hint),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = colors.onSurface,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        TextButton(onClick = onCancel) {
+            Text(
+                text = stringResource(R.string.home_move_cancel),
+                color = colors.accent,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeClock(
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
     var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -179,13 +382,22 @@ private fun HomeClock(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = timeText,
-            style = MaterialTheme.typography.displayLarge.copy(shadow = textShadow),
+            style = if (compact) {
+                MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 38.sp,
+                    lineHeight = 42.sp,
+                    shadow = textShadow,
+                )
+            } else {
+                MaterialTheme.typography.displayLarge.copy(shadow = textShadow)
+            },
             color = colors.wallpaperForeground,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = dateText,
-            style = MaterialTheme.typography.titleMedium.copy(shadow = textShadow),
+            style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+                .copy(shadow = textShadow),
             color = colors.wallpaperForeground.copy(alpha = 0.92f),
         )
     }

@@ -10,10 +10,31 @@
 
     <!-- Menu da tela inicial e personalização -->
     <string name="home_menu_title">Tela inicial</string>
+    <string name="home_menu_add_app">Adicionar aplicativo</string>
+    <string name="home_menu_add_widget">Adicionar widget</string>
     <string name="home_menu_customize">Personalizar Overview</string>
     <string name="home_menu_wallpaper">Alterar papel de parede</string>
     <string name="wallpaper_chooser_title">Escolher papel de parede</string>
 
+    <!-- Adição e edição de apps e widgets na Home -->
+    <string name="picker_apps_title">Adicionar aplicativo</string>
+    <string name="picker_widgets_title">Adicionar widget</string>
+    <string name="picker_widgets_search_hint">Pesquisar widgets…</string>
+    <string name="picker_widgets_loading">Carregando widgets…</string>
+    <string name="picker_widgets_empty">Nenhum widget encontrado</string>
+    <string name="home_grid_full">Sem espaço livre na tela inicial</string>
+    <string name="home_item_added">Adicionado à tela inicial</string>
+    <string name="home_move_hint">Toque na nova posição</string>
+    <string name="home_move_cancel">Cancelar</string>
+    <string name="home_action_move">Mover posição</string>
+    <string name="home_action_remove">Remover da tela inicial</string>
+    <string name="home_widget_width">Largura</string>
+    <string name="home_widget_height">Altura</string>
+    <string name="home_widget_unavailable">Widget indisponível</string>
+    <string name="overview_action_add_home">Adicionar à tela inicial</string>
+    <string name="overview_action_app_info">Informações do aplicativo</string>
+
+    <!-- Personalização -->
     <string name="settings_title">Personalização</string>
     <string name="settings_back_content_description">Voltar</string>
     <string name="settings_section_appearance">Aparência</string>
