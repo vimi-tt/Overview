@@ -334,7 +334,7 @@ class MainActivity : ComponentActivity() {
                 isSettingsOpen = true
             }
 
-            intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN -> {
+            intent.hasCategory(Intent.CATEGORY_HOME) -> {
                 val wasAlreadyOnCleanHome = isNewIntent &&
                     hasWindowFocus() &&
                     !isOverviewOpen &&
@@ -360,6 +360,20 @@ class MainActivity : ComponentActivity() {
                 ) {
                     executeGestureAction(currentPreferences.gestures.homeButtonAction)
                 }
+            }
+
+            intent.action == Intent.ACTION_MAIN -> {
+                val launchedFromInsideLauncher = isNewIntent && hasWindowFocus()
+                isHomeMenuOpen = false
+                isAppPickerOpen = false
+                isWidgetPickerOpen = false
+                selectedHomeItemId = null
+                isOverviewOpen = false
+                homeViewModel.cancelMovingItem()
+                if (currentPreferences.search.clearOnClose) {
+                    overviewViewModel.onClearSearch()
+                }
+                isSettingsOpen = launchedFromInsideLauncher
             }
         }
     }

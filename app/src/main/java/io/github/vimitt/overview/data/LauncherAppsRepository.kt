@@ -188,7 +188,6 @@ class LauncherAppsRepository(
         val service = launcherApps ?: return@withContext emptyList()
         val profiles = userManager?.userProfiles ?: listOf(android.os.Process.myUserHandle())
         val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
-        val selfPackage = context.packageName
         val shape = currentIconShape
         val iconPack = iconPackRepository.loadIconPack(currentIconPackPackage)
         val packTag = iconPack?.packageName.orEmpty()
@@ -204,8 +203,6 @@ class LauncherAppsRepository(
 
             for (activityInfo in activities) {
                 val component = activityInfo.componentName
-                // O próprio Overview não precisa aparecer dentro da grade de aplicativos.
-                if (component.packageName == selfPackage) continue
 
                 val cacheKey =
                     "${component.packageName}/${component.className}/${profile.hashCode()}/${packTag}_${shape.name}"

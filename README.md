@@ -66,7 +66,7 @@ Atualmente o projeto usa o pacote `io.github.vimitt.overview`. Caso queira troca
 
 1. Clone o repositório e abra a pasta `Overview` no Android Studio.
 2. Aguarde a sincronização do Gradle.
-3. Conecte o celular via USB, selecione a variante `debug` e clique em **Run** (ou instale via terminal abaixo, já que a Activity principal responde apenas a `HOME` para não duplicar ícone no drawer de outros launchers).
+3. Conecte o celular via USB, selecione a variante `debug` e clique em **Run** (ou instale via terminal abaixo). O **Overview** também é registrado com `CATEGORY_LAUNCHER` para aparecer como um aplicativo normal na grade e na tela inicial.
 
 ### Via linha de comando (`./gradlew` + `adb`)
 
