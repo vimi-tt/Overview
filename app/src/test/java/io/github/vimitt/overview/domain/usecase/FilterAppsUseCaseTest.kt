@@ -2,6 +2,7 @@ package io.github.vimitt.overview.domain.usecase
 
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.AppSortOrder
+import io.github.vimitt.overview.domain.model.WebSearchEngine
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -79,5 +80,34 @@ class FilterAppsUseCaseTest {
             showHiddenInSearch = true,
         )
         assertEquals(listOf("Firefox"), allowedSearchResult.map { it.label })
+    }
+
+    @Test
+    fun `search respects matchPackageName flag`() {
+        val byPackageEnabled = useCase(
+            apps = sampleApps,
+            query = "mozilla",
+            matchPackageName = true,
+        )
+        assertEquals(listOf("Firefox"), byPackageEnabled.map { it.label })
+
+        val byPackageDisabled = useCase(
+            apps = sampleApps,
+            query = "mozilla",
+            matchPackageName = false,
+        )
+        assertEquals(emptyList<String>(), byPackageDisabled)
+    }
+
+    @Test
+    fun `web search engine encodes query properly`() {
+        assertEquals(
+            "https://duckduckgo.com/?q=gnome%20shell",
+            WebSearchEngine.DUCKDUCKGO.buildSearchUrl("gnome shell"),
+        )
+        assertEquals(
+            "https://www.google.com/search?q=android%2B15",
+            WebSearchEngine.GOOGLE.buildSearchUrl("android+15"),
+        )
     }
 }

@@ -20,9 +20,11 @@ _Pendente: capturas de tela da Home, Dash e Overview em dispositivo físico com 
 - **Dash de favoritos**: de 3 a 6 aplicativos selecionados automaticamente ou fixados pelo usuário, com opacidade configurável e barra de busca rápida opcional.
 - **Overview por gestos**: deslize para cima na tela inicial (ou toque no indicador/busca do Dash) para abrir o Overview com acompanhamento contínuo do gesto; deslize para baixo, pressione Voltar ou aperte Home para retornar. Arraste apps direto da grade para a tela inicial.
 - **Desfoque e animações do Overview**: `RenderEffect` e blur de janela (Android 12+), escurecimento do fundo configurável, estilo de transição (*GNOME Shell*, *Deslizar* ou *Esmaecer*), velocidade de animação, efeito de profundidade na tela inicial e animação de abertura dos aplicativos.
-- **Busca em tempo real**: filtra aplicativos instantaneamente ao digitar, ignorando acentos e maiúsculas/minúsculas.
+- **Busca em tempo real**: filtra aplicativos instantaneamente ao digitar, ignorando acentos e maiúsculas/minúsculas, com foco automático opcional, busca por nome do pacote, preservação/limpeza ao fechar e atalho de pesquisa na web (DuckDuckGo, Google, Startpage ou Ecosia).
+- **Pastas no Overview**: criação, edição e exclusão de pastas de aplicativos com visualização em grade `2 × 2` ou empilhada, popup configurável em 3 ou 4 colunas, ordenação interna e opção de fechar ao abrir um app.
+- **Gestos personalizáveis**: ações configuráveis na tela inicial para deslizar para cima, deslizar para baixo, toque duplo e botão Início (Overview, busca, notificações, configurações rápidas, configurações do Overview, papel de parede, assistente ou câmera), além de ajuste de sensibilidade.
 - **Grade paginada horizontalmente**: colunas, escala de ícones, ordenação (A–Z, Z–A ou mais recentes) e gerenciamento de apps ocultos.
-- **Configurações no estilo GNOME/libadwaita**: central organizada por categorias (**Aparência**, **Tela inicial**, **Dock**, **Grade de apps**, **Overview** e **Sobre**) com pacotes de ícones compatíveis com launchers, formato de ícone, cores de destaque do GNOME e pontos de notificação (`NotificationListenerService`).
+- **Configurações no estilo GNOME/libadwaita**: central organizada por categorias (**Aparência**, **Tela inicial**, **Dock**, **Grade de apps**, **Overview**, **Busca**, **Pastas**, **Gestos** e **Sobre**) com pacotes de ícones compatíveis com launchers, formato de ícone, cores de destaque do GNOME e pontos de notificação (`NotificationListenerService`).
 - **Atualização reativa**: escuta eventos de instalação, remoção, atualização e suspensão via `LauncherApps.Callback`.
 - **Tema Adwaita & Acessibilidade**: suporte a tema claro (`#fafafa`), escuro (`#242424`), automático (sistema), cor de destaque configurável (padrão azul Adwaita `#3584e4`) e respeito à configuração global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`).
 
@@ -120,6 +122,7 @@ adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.ove
 - [x] **Tela inicial e widgets**: atalhos e widgets na tela inicial (`AppWidgetHost`, arrastar e soltar do Overview e reposicionamento livre na grade configurável)
 - [x] **Configurações por categorias**: central com Aparência (pacote/forma de ícones, cores GNOME, pontos de notificação), Tela inicial, Dock, Grade de apps (apps ocultos/ordenação), Overview e Sobre
 - [x] **Overview (desfoque e animações)**: intensidade do blur, opacidade do fundo, estilo de transição, velocidade, efeito de profundidade e progresso contínuo no gesto vertical
-- [ ] **Busca (categoria dedicada)**: provedores de pesquisa, histórico e atalhos
-- [ ] **Pastas / Grupos de aplicativos**: criação e organização de pastas no Overview e na tela inicial
-- [ ] **Gestos e Painel superior**: gestos personalizáveis, configurações rápidas no estilo GNOME e fonte Adwaita Sans embarcada
+- [x] **Busca**: foco automático ao abrir, correspondência pelo pacote, limpeza ao fechar e atalho de pesquisa na web configurável
+- [x] **Pastas**: criação e edição nas configurações e direto no Overview, pré-visualização em grade 2 × 2 ou empilhada e janela popup com 3 ou 4 colunas
+- [x] **Gestos**: ações personalizáveis para deslizar para cima/baixo, toque duplo e botão Início na Home, com ajuste de sensibilidade
+- [ ] **Refinamentos futuros**: pastas na tela inicial, painel de configurações rápidas próprio estilo GNOME e fonte Adwaita Sans embarcada

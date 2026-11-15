@@ -66,6 +66,8 @@ import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.di.AppContainer
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.GestureSettings
+import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
@@ -98,6 +100,7 @@ fun LauncherRoot(
     isWidgetPickerOpen: Boolean,
     selectedHomeItem: HomeWorkspaceItem?,
     overviewSettings: OverviewSettings,
+    gestureSettings: GestureSettings,
     appWidgetController: AppWidgetController,
     homeUiState: HomeUiState,
     searchQuery: String,
@@ -106,6 +109,7 @@ fun LauncherRoot(
     onOpenOverview: () -> Unit,
     onOpenOverviewSearch: () -> Unit,
     onCloseOverview: () -> Unit,
+    onExecuteGesture: (LauncherGestureAction) -> Unit,
     onHomeLongPress: () -> Unit,
     onDismissHomeMenu: () -> Unit,
     onOpenAppPicker: () -> Unit,
@@ -132,6 +136,9 @@ fun LauncherRoot(
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onAddAppFromOverview: (AppInfo) -> Unit,
+    onMoveAppToFolder: (appKey: String, folderId: String) -> Unit,
+    onCreateFolderWithApp: (name: String, appKey: String) -> Unit,
+    onRemoveAppFromFolder: (appKey: String, folderId: String) -> Unit,
     onOpenAppInfo: (AppInfo) -> Unit,
     onLaunchFromHome: (
         app: AppInfo,
@@ -282,6 +289,8 @@ fun LauncherRoot(
             appWidgetController = appWidgetController,
             activeDrag = activeDrag,
             dropTarget = currentDropTarget,
+            gestureSettings = gestureSettings,
+            onExecuteGesture = onExecuteGesture,
             onAppClick = { app, view, bounds ->
                 onLaunchFromHome(app, view, bounds, reducedMotion)
             },
@@ -403,8 +412,12 @@ fun LauncherRoot(
                     focusSearchTrigger = overviewFocusSearchTrigger,
                     scrimAlpha = overviewSettings.scrimAlpha,
                     animationDurationScale = overviewSettings.animationSpeed.durationScale,
+                    closeSensitivity = gestureSettings.sensitivity,
                     onSearchQueryChange = onSearchQueryChange,
                     onClearSearch = onClearSearch,
+                    onMoveAppToFolder = onMoveAppToFolder,
+                    onCreateFolderWithApp = onCreateFolderWithApp,
+                    onRemoveAppFromFolder = onRemoveAppFromFolder,
                     onAppClick = { app, view, bounds ->
                         onLaunchFromOverview(app, view, bounds, reducedMotion)
                     },

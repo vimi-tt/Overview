@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.vimitt.overview.data.SystemPanelHelper
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
 import io.github.vimitt.overview.ui.LauncherRoot
 import io.github.vimitt.overview.ui.home.HomeViewModel
@@ -79,6 +82,7 @@ class MainActivity : ComponentActivity() {
     private var isWidgetPickerOpen by mutableStateOf(false)
     private var selectedHomeItemId by mutableStateOf<String?>(null)
     private var pendingWidgetRequest: PendingWidgetRequest? = null
+    private var currentPreferences: LauncherPreferences = LauncherPreferences()
 
     private val bindWidgetLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -100,11 +104,14 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
         )
-        handleIncomingIntent(intent)
+        handleIncomingIntent(intent, isNewIntent = false)
 
         setContent {
             val preferences by appContainer.settingsRepository.preferences
                 .collectAsStateWithLifecycle(initialValue = LauncherPreferences())
+            SideEffect {
+                currentPreferences = preferences
+            }
             val allApps by appContainer.appsRepository.apps
                 .collectAsStateWithLifecycle(initialValue = emptyList())
             val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -164,26 +171,16 @@ class MainActivity : ComponentActivity() {
                     isWidgetPickerOpen = isWidgetPickerOpen,
                     selectedHomeItem = selectedHomeItem,
                     overviewSettings = preferences.overview,
+                    gestureSettings = preferences.gestures,
                     appWidgetController = appContainer.appWidgetController,
                     homeUiState = homeUiState,
                     searchQuery = searchQuery,
                     overviewUiState = overviewUiState,
                     allApps = allApps,
-                    onOpenOverview = {
-                        isHomeMenuOpen = false
-                        selectedHomeItemId = null
-                        isOverviewOpen = true
-                    },
-                    onOpenOverviewSearch = {
-                        isHomeMenuOpen = false
-                        selectedHomeItemId = null
-                        isOverviewOpen = true
-                        overviewFocusSearchTrigger++
-                    },
-                    onCloseOverview = {
-                        isOverviewOpen = false
-                        overviewViewModel.onClearSearch()
-                    },
+                    onOpenOverview = ::openOverview,
+                    onOpenOverviewSearch = ::openOverviewSearch,
+                    onCloseOverview = ::closeOverview,
+                    onExecuteGesture = ::executeGestureAction,
                     onHomeLongPress = {
                         selectedHomeItemId = null
                         isHomeMenuOpen = true
@@ -233,6 +230,9 @@ class MainActivity : ComponentActivity() {
                     onAddAppFromOverview = { app ->
                         addAppShortcutToHome(app)
                     },
+                    onMoveAppToFolder = overviewViewModel::moveAppToFolder,
+                    onCreateFolderWithApp = overviewViewModel::createFolderWithApp,
+                    onRemoveAppFromFolder = overviewViewModel::removeAppFromFolder,
                     onOpenAppInfo = ::openAppInfo,
                     onLaunchFromHome = { app, view, bounds, reducedMotion ->
                         val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
@@ -242,8 +242,7 @@ class MainActivity : ComponentActivity() {
                         val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
                         val launched = overviewViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
                         if (launched) {
-                            isOverviewOpen = false
-                            overviewViewModel.onClearSearch()
+                            closeOverview()
                         }
                     },
                 )
@@ -264,7 +263,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleIncomingIntent(intent)
+        handleIncomingIntent(intent, isNewIntent = true)
     }
 
     @Deprecated("Necessário para o fluxo de configuração do AppWidgetHost")
@@ -282,7 +281,48 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleIncomingIntent(intent: Intent?) {
+    private fun openOverview() {
+        isHomeMenuOpen = false
+        selectedHomeItemId = null
+        isOverviewOpen = true
+        if (currentPreferences.search.autoFocusOnOpen) {
+            overviewFocusSearchTrigger++
+        }
+    }
+
+    private fun openOverviewSearch() {
+        isHomeMenuOpen = false
+        selectedHomeItemId = null
+        isOverviewOpen = true
+        overviewFocusSearchTrigger++
+    }
+
+    private fun closeOverview() {
+        isOverviewOpen = false
+        if (currentPreferences.search.clearOnClose) {
+            overviewViewModel.onClearSearch()
+        }
+    }
+
+    private fun executeGestureAction(action: LauncherGestureAction) {
+        when (action) {
+            LauncherGestureAction.NONE -> Unit
+            LauncherGestureAction.OPEN_OVERVIEW -> openOverview()
+            LauncherGestureAction.OPEN_OVERVIEW_SEARCH -> openOverviewSearch()
+            LauncherGestureAction.EXPAND_NOTIFICATIONS -> SystemPanelHelper.expandNotificationsPanel(this)
+            LauncherGestureAction.EXPAND_QUICK_SETTINGS -> SystemPanelHelper.expandQuickSettingsPanel(this)
+            LauncherGestureAction.OPEN_SETTINGS -> {
+                isHomeMenuOpen = false
+                isOverviewOpen = false
+                isSettingsOpen = true
+            }
+            LauncherGestureAction.OPEN_WALLPAPER -> openWallpaperPicker()
+            LauncherGestureAction.OPEN_ASSISTANT -> SystemPanelHelper.openAssistant(this)
+            LauncherGestureAction.OPEN_CAMERA -> SystemPanelHelper.openCamera(this)
+        }
+    }
+
+    private fun handleIncomingIntent(intent: Intent?, isNewIntent: Boolean) {
         if (intent == null) return
         when {
             intent.action == Intent.ACTION_APPLICATION_PREFERENCES -> {
@@ -295,6 +335,15 @@ class MainActivity : ComponentActivity() {
             }
 
             intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN -> {
+                val wasAlreadyOnCleanHome = isNewIntent &&
+                    hasWindowFocus() &&
+                    !isOverviewOpen &&
+                    !isHomeMenuOpen &&
+                    !isSettingsOpen &&
+                    !isAppPickerOpen &&
+                    !isWidgetPickerOpen &&
+                    selectedHomeItemId == null
+
                 isHomeMenuOpen = false
                 isSettingsOpen = false
                 isAppPickerOpen = false
@@ -302,7 +351,15 @@ class MainActivity : ComponentActivity() {
                 selectedHomeItemId = null
                 isOverviewOpen = false
                 homeViewModel.cancelMovingItem()
-                overviewViewModel.onClearSearch()
+                if (currentPreferences.search.clearOnClose) {
+                    overviewViewModel.onClearSearch()
+                }
+
+                if (wasAlreadyOnCleanHome &&
+                    currentPreferences.gestures.homeButtonAction != LauncherGestureAction.NONE
+                ) {
+                    executeGestureAction(currentPreferences.gestures.homeButtonAction)
+                }
             }
         }
     }

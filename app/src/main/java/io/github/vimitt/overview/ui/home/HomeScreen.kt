@@ -72,6 +72,8 @@ import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.GestureSettings
+import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.ui.ActiveDragState
 import io.github.vimitt.overview.ui.DragPayload
 import io.github.vimitt.overview.ui.HomeDropTarget
@@ -107,13 +109,19 @@ fun HomeScreen(
     onItemDragEnd: () -> Unit,
     onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    gestureSettings: GestureSettings = GestureSettings(),
+    onExecuteGesture: (LauncherGestureAction) -> Unit = {},
     onOverviewDragProgress: (Float) -> Unit = {},
     onOverviewDragEnd: (shouldOpen: Boolean) -> Unit = {},
 ) {
     val density = LocalDensity.current
     val dragRangePx = with(density) { 180.dp.toPx() }
-    val dragTriggerPx = with(density) { 42.dp.toPx() }
+    val dragTriggerPx = with(density) { gestureSettings.sensitivity.triggerDp.dp.toPx() }
     val minFlingDistancePx = with(density) { 12.dp.toPx() }
+    val velocityThreshold = gestureSettings.sensitivity.velocityThresholdPx
+    val swipeUpAction = gestureSettings.swipeUpAction
+    val swipeDownAction = gestureSettings.swipeDownAction
+    val doubleTapAction = gestureSettings.doubleTapAction
     val haptic = LocalHapticFeedback.current
     val velocityTracker = remember { VelocityTracker() }
     val hasWorkspaceItems = uiState.workspaceItems.isNotEmpty()
@@ -142,16 +150,33 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(onLongPress, isMoving, isDragInProgress) {
+                .pointerInput(onLongPress, doubleTapAction, isMoving, isDragInProgress) {
                     if (isMoving || isDragInProgress) return@pointerInput
                     detectTapGestures(
                         onLongPress = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onLongPress()
                         },
+                        onDoubleTap = if (doubleTapAction != LauncherGestureAction.NONE) {
+                            {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onExecuteGesture(doubleTapAction)
+                            }
+                        } else {
+                            null
+                        },
                     )
                 }
-                .pointerInput(dragRangePx, dragTriggerPx, minFlingDistancePx, isMoving, isDragInProgress) {
+                .pointerInput(
+                    dragRangePx,
+                    dragTriggerPx,
+                    minFlingDistancePx,
+                    velocityThreshold,
+                    swipeUpAction,
+                    swipeDownAction,
+                    isMoving,
+                    isDragInProgress,
+                ) {
                     if (isMoving || isDragInProgress) return@pointerInput
                     var totalDragY = 0f
                     detectVerticalDragGestures(
@@ -161,12 +186,26 @@ fun HomeScreen(
                         },
                         onDragEnd = {
                             val velocityY = velocityTracker.calculateVelocity().y
-                            val shouldOpen = totalDragY <= -dragTriggerPx ||
-                                (velocityY <= -550f && totalDragY <= -minFlingDistancePx)
+                            val swipeUpTriggered = totalDragY <= -dragTriggerPx ||
+                                (velocityY <= -velocityThreshold && totalDragY <= -minFlingDistancePx)
+                            val swipeDownTriggered = totalDragY >= dragTriggerPx ||
+                                (velocityY >= velocityThreshold && totalDragY >= minFlingDistancePx)
                             totalDragY = 0f
-                            onOverviewDragEnd(shouldOpen)
-                            if (shouldOpen) {
-                                onOpenOverview()
+
+                            if (swipeUpAction == LauncherGestureAction.OPEN_OVERVIEW) {
+                                onOverviewDragEnd(swipeUpTriggered)
+                                if (swipeUpTriggered) {
+                                    onOpenOverview()
+                                } else if (swipeDownTriggered && swipeDownAction != LauncherGestureAction.NONE) {
+                                    onExecuteGesture(swipeDownAction)
+                                }
+                            } else {
+                                onOverviewDragEnd(false)
+                                if (swipeUpTriggered && swipeUpAction != LauncherGestureAction.NONE) {
+                                    onExecuteGesture(swipeUpAction)
+                                } else if (swipeDownTriggered && swipeDownAction != LauncherGestureAction.NONE) {
+                                    onExecuteGesture(swipeDownAction)
+                                }
                             }
                         },
                         onDragCancel = {
@@ -176,7 +215,7 @@ fun HomeScreen(
                         onVerticalDrag = { change, dragAmount ->
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
                             totalDragY += dragAmount
-                            if (totalDragY < 0f) {
+                            if (swipeUpAction == LauncherGestureAction.OPEN_OVERVIEW && totalDragY < 0f) {
                                 onOverviewDragProgress((-totalDragY / dragRangePx).coerceIn(0f, 1f))
                             } else {
                                 onOverviewDragProgress(0f)
