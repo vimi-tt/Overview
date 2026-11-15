@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,7 +51,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,6 +72,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
@@ -98,6 +97,9 @@ import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
+import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
+import io.github.vimitt.overview.ui.components.OverviewPopupDivider
+import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.ceil
@@ -845,84 +847,77 @@ private fun FolderPopupOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val motion = OverviewTheme.motion
-    val cardShape = shapes.large
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-    val entryProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = motion.spatialSpec(durationMillis = 180),
-        label = "folderPopupEntry",
-    )
+    val isExpressive = OverviewTheme.components.isExpressive
     val columns = folderSettings.folderColumns.coerceIn(
         SettingsDefaults.MIN_FOLDER_COLUMNS,
         SettingsDefaults.MAX_FOLDER_COLUMNS,
     )
     val rows = remember(entry.apps, columns) { entry.apps.chunked(columns) }
 
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.42f * entryProgress.coerceIn(0f, 1f)))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 28.dp),
-        contentAlignment = Alignment.Center,
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = false,
+        scrimMaxAlpha = 0.42f,
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = 0.90f + 0.10f * entryProgress
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = entryProgress.coerceIn(0f, 1f)
-                }
-                .clip(cardShape)
-                .background(colors.surface)
-                .border(1.dp, colors.hairlineBorder, cardShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
+                .then(
+                    if (isExpressive) {
+                        Modifier.background(
+                            lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.24f),
+                        )
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(
+                    start = 20.dp,
+                    end = 10.dp,
+                    top = if (isExpressive) 14.dp else 10.dp,
+                    bottom = if (isExpressive) 14.dp else 10.dp,
                 ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = entry.folder.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = if (entry.apps.size == 1) {
-                            stringResource(R.string.settings_folders_app_count_one)
-                        } else {
-                            stringResource(R.string.settings_folders_app_count_many, entry.apps.size)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceMuted,
-                    )
-                }
-                IconButton(onClick = onDismiss) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.folder.name,
+                    style = if (isExpressive) {
+                        OverviewTheme.typography.sectionHeader
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (entry.apps.size == 1) {
+                        stringResource(R.string.settings_folders_app_count_one)
+                    } else {
+                        stringResource(R.string.settings_folders_app_count_many, entry.apps.size)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isExpressive) colors.onAccentContainer.copy(alpha = 0.85f) else colors.onSurfaceMuted,
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                if (isExpressive) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(colors.accentContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.settings_close_dialog),
+                            tint = colors.onAccentContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = stringResource(R.string.settings_close_dialog),
@@ -930,47 +925,47 @@ private fun FolderPopupOverlay(
                     )
                 }
             }
+        }
 
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
+        OverviewPopupDivider()
 
-            if (entry.apps.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.overview_folder_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceMuted,
-                    modifier = Modifier.padding(24.dp),
-                )
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 380.dp)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    rows.forEach { rowApps ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            rowApps.forEach { app ->
-                                key(app.key) {
-                                    AppIconItem(
-                                        app = app,
-                                        onClick = onAppClick,
-                                        onLongClick = onAppLongClick,
-                                        iconSize = iconSize,
-                                        showLabel = true,
-                                        showNotificationDot = showNotificationDots &&
-                                            app.packageName in badgePackages,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
+        if (entry.apps.isEmpty()) {
+            Text(
+                text = stringResource(R.string.overview_folder_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceMuted,
+                modifier = Modifier.padding(24.dp),
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rows.forEach { rowApps ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        rowApps.forEach { app ->
+                            key(app.key) {
+                                AppIconItem(
+                                    app = app,
+                                    onClick = onAppClick,
+                                    onLongClick = onAppLongClick,
+                                    iconSize = iconSize,
+                                    showLabel = true,
+                                    showNotificationDot = showNotificationDots &&
+                                        app.packageName in badgePackages,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
-                            repeat(columns - rowApps.size) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                        }
+                        repeat(columns - rowApps.size) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -990,161 +985,68 @@ private fun OverviewAppActionOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val motion = OverviewTheme.motion
-    val cardShape = shapes.large
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-    val entryProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = motion.spatialSpec(durationMillis = 160),
-        label = "overviewAppActionEntry",
-    )
+    val isExpressive = OverviewTheme.components.isExpressive
 
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.36f * entryProgress.coerceIn(0f, 1f)))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        contentAlignment = Alignment.BottomCenter,
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = true,
     ) {
         Column(
-            modifier = Modifier
-                .widthIn(max = 420.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = 0.94f + 0.06f * entryProgress
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = entryProgress.coerceIn(0f, 1f)
-                    translationY = (1f - entryProgress) * 28f
-                }
-                .clip(cardShape)
-                .background(colors.surface)
-                .border(1.dp, colors.hairlineBorder, cardShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
-                ),
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = if (isExpressive) 12.dp else 16.dp,
+            ),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            ) {
+            Text(
+                text = app.label,
+                style = if (isExpressive) {
+                    OverviewTheme.typography.sectionHeader
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (currentFolder != null) {
                 Text(
-                    text = app.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
+                    text = currentFolder.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isExpressive) colors.accent else colors.onSurfaceMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (currentFolder != null) {
-                    Text(
-                        text = currentFolder.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onAddToHome)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    tint = colors.accent,
-                    modifier = Modifier.size(22.dp),
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = stringResource(R.string.overview_action_add_home),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
-            }
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onMoveToFolder)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_settings_folders),
-                    contentDescription = null,
-                    tint = colors.onSurface,
-                    modifier = Modifier.size(22.dp),
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = stringResource(R.string.overview_action_move_to_folder),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
-            }
-            if (onRemoveFromFolder != null) {
-                HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onRemoveFromFolder)
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = null,
-                        tint = colors.onSurfaceMuted,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.overview_folder_remove_app),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurface,
-                    )
-                }
-            }
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onOpenAppInfo)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Info,
-                    contentDescription = null,
-                    tint = colors.onSurfaceMuted,
-                    modifier = Modifier.size(22.dp),
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = stringResource(R.string.overview_action_app_info),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
             }
         }
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Add,
+            label = stringResource(R.string.overview_action_add_home),
+            onClick = onAddToHome,
+        )
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            painter = painterResource(R.drawable.ic_settings_folders),
+            label = stringResource(R.string.overview_action_move_to_folder),
+            tint = if (isExpressive) colors.accent else colors.onSurface,
+            onClick = onMoveToFolder,
+        )
+        if (onRemoveFromFolder != null) {
+            OverviewPopupDivider()
+            OverviewPopupActionRow(
+                icon = Icons.Filled.Close,
+                label = stringResource(R.string.overview_folder_remove_app),
+                tint = colors.onSurfaceMuted,
+                onClick = onRemoveFromFolder,
+            )
+        }
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Info,
+            label = stringResource(R.string.overview_action_app_info),
+            tint = colors.onSurfaceMuted,
+            onClick = onOpenAppInfo,
+        )
     }
 }
 
@@ -1157,162 +1059,97 @@ private fun FolderPickerOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val motion = OverviewTheme.motion
-    val cardShape = shapes.large
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-    val entryProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = motion.spatialSpec(durationMillis = 170),
-        label = "folderPickerEntry",
-    )
+    val isExpressive = OverviewTheme.components.isExpressive
     var isCreating by remember { mutableStateOf(folders.isEmpty()) }
     var newFolderName by remember { mutableStateOf("") }
 
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.42f * entryProgress.coerceIn(0f, 1f)))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .imePadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        contentAlignment = Alignment.Center,
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = false,
+        enableImePadding = true,
+        scrimMaxAlpha = 0.42f,
     ) {
         Column(
-            modifier = Modifier
-                .widthIn(max = 420.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = 0.92f + 0.08f * entryProgress
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = entryProgress.coerceIn(0f, 1f)
-                }
-                .clip(cardShape)
-                .background(colors.surface)
-                .border(1.dp, colors.hairlineBorder, cardShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
-                ),
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = if (isExpressive) 14.dp else 16.dp,
+            ),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text(
-                    text = stringResource(R.string.overview_folder_picker_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
-                Text(
-                    text = app.label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = stringResource(R.string.overview_folder_picker_title),
+                style = if (isExpressive) {
+                    OverviewTheme.typography.sectionHeader
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
+                color = colors.onSurface,
+            )
+            Text(
+                text = app.label,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isExpressive) colors.accent else colors.onSurfaceMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
+        OverviewPopupDivider()
 
-            if (folders.isNotEmpty() && !isCreating) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 260.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    folders.forEach { folder ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectFolder(folder) }
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_settings_folders),
-                                contentDescription = null,
-                                tint = colors.accent,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = folder.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = colors.onSurface,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-                    }
-                }
-            }
-
-            if (isCreating) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    OutlinedTextField(
-                        value = newFolderName,
-                        onValueChange = { newFolderName = it },
-                        singleLine = true,
-                        label = { Text(stringResource(R.string.settings_folder_name_label)) },
-                        placeholder = { Text(stringResource(R.string.settings_folder_name_placeholder)) },
-                        modifier = Modifier.fillMaxWidth(),
+        if (folders.isNotEmpty() && !isCreating) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                folders.forEach { folder ->
+                    OverviewPopupActionRow(
+                        painter = painterResource(R.drawable.ic_settings_folders),
+                        label = folder.name,
+                        onClick = { onSelectFolder(folder) },
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        TextButton(onClick = onDismiss) {
-                            Text(stringResource(R.string.settings_cancel))
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(
-                            enabled = newFolderName.isNotBlank(),
-                            onClick = { onCreateFolder(newFolderName.trim()) },
-                        ) {
-                            Text(stringResource(R.string.settings_folder_save))
-                        }
-                    }
+                    OverviewPopupDivider()
                 }
-            } else {
+            }
+        }
+
+        if (isCreating) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.settings_folder_name_label)) },
+                    placeholder = { Text(stringResource(R.string.settings_folder_name_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isCreating = true }
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                        tint = colors.accent,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_folders_create),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.accent,
-                    )
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.settings_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        enabled = newFolderName.isNotBlank(),
+                        onClick = { onCreateFolder(newFolderName.trim()) },
+                    ) {
+                        Text(stringResource(R.string.settings_folder_save))
+                    }
                 }
             }
+        } else {
+            OverviewPopupActionRow(
+                icon = Icons.Filled.Add,
+                label = stringResource(R.string.settings_folders_create),
+                onClick = { isCreating = true },
+            )
         }
     }
 }

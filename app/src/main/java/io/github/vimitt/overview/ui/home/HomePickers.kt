@@ -5,7 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,8 +27,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -60,6 +61,9 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
+import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
+import io.github.vimitt.overview.ui.components.OverviewPopupDivider
+import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -393,109 +397,67 @@ fun HomeItemActionOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val cardShape = OverviewTheme.shapes.large
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
+    val isExpressive = OverviewTheme.components.isExpressive
 
     val title = when (workspaceItem) {
         is HomeWorkspaceItem.Shortcut -> workspaceItem.app.label
         is HomeWorkspaceItem.Widget -> workspaceItem.label
     }
 
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.36f))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        contentAlignment = Alignment.BottomCenter,
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = true,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 420.dp)
-                .fillMaxWidth()
-                .clip(cardShape)
-                .background(colors.surface)
-                .border(1.dp, colors.hairlineBorder, cardShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
-                ),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+        Text(
+            text = title,
+            style = if (isExpressive) {
+                OverviewTheme.typography.sectionHeader
+            } else {
+                MaterialTheme.typography.titleMedium
+            },
+            color = colors.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = if (isExpressive) 12.dp else 16.dp,
+            ),
+        )
+
+        if (workspaceItem is HomeWorkspaceItem.Widget) {
+            OverviewPopupDivider()
+            WidgetResizeRow(
+                label = stringResource(R.string.home_widget_width),
+                value = workspaceItem.item.spanX,
+                max = HomeGridSpec.COLUMNS,
+                onDecrement = { onResizeWidget(-1, 0) },
+                onIncrement = { onResizeWidget(1, 0) },
             )
-
-            if (workspaceItem is HomeWorkspaceItem.Widget) {
-                HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-                WidgetResizeRow(
-                    label = stringResource(R.string.home_widget_width),
-                    value = workspaceItem.item.spanX,
-                    max = HomeGridSpec.COLUMNS,
-                    onDecrement = { onResizeWidget(-1, 0) },
-                    onIncrement = { onResizeWidget(1, 0) },
-                )
-                WidgetResizeRow(
-                    label = stringResource(R.string.home_widget_height),
-                    value = workspaceItem.item.spanY,
-                    max = HomeGridSpec.ROWS,
-                    onDecrement = { onResizeWidget(0, -1) },
-                    onIncrement = { onResizeWidget(0, 1) },
-                )
-            }
-
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onMove)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.home_action_move),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
-            }
-
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onRemove)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = null,
-                    tint = Color(0xFFE62D42),
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.home_action_remove),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFE62D42),
-                )
-            }
+            WidgetResizeRow(
+                label = stringResource(R.string.home_widget_height),
+                value = workspaceItem.item.spanY,
+                max = HomeGridSpec.ROWS,
+                onDecrement = { onResizeWidget(0, -1) },
+                onIncrement = { onResizeWidget(0, 1) },
+            )
         }
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
+            icon = if (isExpressive) Icons.AutoMirrored.Filled.ArrowForward else null,
+            label = stringResource(R.string.home_action_move),
+            onClick = onMove,
+        )
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Delete,
+            label = stringResource(R.string.home_action_remove),
+            destructive = true,
+            onClick = onRemove,
+        )
     }
 }
 
@@ -508,6 +470,7 @@ private fun WidgetResizeRow(
     onIncrement: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
+    val isExpressive = OverviewTheme.components.isExpressive
 
     Row(
         modifier = Modifier
@@ -522,24 +485,62 @@ private fun WidgetResizeRow(
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onDecrement, enabled = value > 1) {
-            Text(
-                text = "−",
-                style = MaterialTheme.typography.titleLarge,
-                color = if (value > 1) colors.accent else colors.onSurfaceMuted,
-            )
+            if (isExpressive) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (value > 1) colors.accentContainer else colors.surfaceContainer,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "−",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (value > 1) colors.onAccentContainer else colors.onSurfaceMuted,
+                    )
+                }
+            } else {
+                Text(
+                    text = "−",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (value > 1) colors.accent else colors.onSurfaceMuted,
+                )
+            }
         }
         Text(
             text = "$value",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.Medium,
+            ),
             color = colors.onSurface,
             modifier = Modifier.padding(horizontal = 6.dp),
         )
         IconButton(onClick = onIncrement, enabled = value < max) {
-            Text(
-                text = "+",
-                style = MaterialTheme.typography.titleLarge,
-                color = if (value < max) colors.accent else colors.onSurfaceMuted,
-            )
+            if (isExpressive) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (value < max) colors.accentContainer else colors.surfaceContainer,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "+",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (value < max) colors.onAccentContainer else colors.onSurfaceMuted,
+                    )
+                }
+            } else {
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (value < max) colors.accent else colors.onSurfaceMuted,
+                )
+            }
         }
     }
 }

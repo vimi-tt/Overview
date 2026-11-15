@@ -5,36 +5,27 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -54,8 +45,8 @@ import androidx.compose.ui.geometry.Rect as ComposeRect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -72,6 +63,9 @@ import io.github.vimitt.overview.domain.model.GestureSettings
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
+import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
+import io.github.vimitt.overview.ui.components.OverviewPopupDivider
+import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
 import io.github.vimitt.overview.ui.home.HomeItemActionOverlay
 import io.github.vimitt.overview.ui.home.HomeScreen
@@ -386,6 +380,51 @@ fun LauncherRoot(
                 )
         }
 
+        val settingsEnterTransition = if (reducedMotion || !motion.usesSprings) {
+            enterTransition
+        } else {
+            // Abertura expressiva com expansão central e mola mais presente para Configurações
+            fadeIn(motion.effectSpec(durationMillis = 200, durationScale = modalDurationScale)) +
+                scaleIn(
+                    initialScale = 0.88f,
+                    transformOrigin = TransformOrigin.Center,
+                    animationSpec = motion.expressiveSpec(
+                        durationMillis = 280,
+                        durationScale = modalDurationScale,
+                    ),
+                ) +
+                slideInVertically(
+                    animationSpec = motion.expressiveSpec(
+                        durationMillis = 280,
+                        durationScale = modalDurationScale,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                    initialOffsetY = { fullHeight -> fullHeight / 8 },
+                )
+        }
+
+        val settingsExitTransition = if (reducedMotion || !motion.usesSprings) {
+            exitTransition
+        } else {
+            fadeOut(motion.effectSpec(durationMillis = 150, durationScale = modalDurationScale)) +
+                scaleOut(
+                    targetScale = 0.92f,
+                    transformOrigin = TransformOrigin.Center,
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 170,
+                        durationScale = modalDurationScale,
+                    ),
+                ) +
+                slideOutVertically(
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 170,
+                        durationScale = modalDurationScale,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                    targetOffsetY = { fullHeight -> fullHeight / 10 },
+                )
+        }
+
         if (shouldComposeOverview) {
             Box(
                 modifier = Modifier
@@ -551,8 +590,8 @@ fun LauncherRoot(
 
         AnimatedVisibility(
             visible = isSettingsOpen,
-            enter = enterTransition,
-            exit = exitTransition,
+            enter = settingsEnterTransition,
+            exit = settingsExitTransition,
         ) {
             SettingsNavHost(
                 appContainer = appContainer,
@@ -577,120 +616,55 @@ private fun HomeContextMenuOverlay(
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val motion = OverviewTheme.motion
-    val cardShape = shapes.large
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-    val entryProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = motion.spatialSpec(durationMillis = 160),
-        label = "homeContextMenuEntry",
-    )
+    val isExpressive = OverviewTheme.components.isExpressive
 
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.36f * entryProgress.coerceIn(0f, 1f)))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        contentAlignment = Alignment.BottomCenter,
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = true,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 420.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = 0.94f + 0.06f * entryProgress
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = entryProgress.coerceIn(0f, 1f)
-                    translationY = (1f - entryProgress) * 28f
-                }
-                .clip(cardShape)
-                .background(colors.surface)
-                .border(width = 1.dp, color = colors.hairlineBorder, shape = cardShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
-                ),
-        ) {
-            Text(
-                text = stringResource(R.string.home_menu_title),
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.onSurfaceMuted,
-                modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp),
-            )
-
-            HomeMenuRow(
-                icon = Icons.Filled.Add,
-                label = stringResource(R.string.home_menu_add_app),
-                onClick = onAddApp,
-            )
-
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-
-            HomeMenuRow(
-                icon = Icons.Filled.Star,
-                label = stringResource(R.string.home_menu_add_widget),
-                onClick = onAddWidget,
-            )
-
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-
-            HomeMenuRow(
-                icon = Icons.Filled.Settings,
-                label = stringResource(R.string.home_menu_customize),
-                onClick = onCustomize,
-            )
-
-            HorizontalDivider(thickness = 1.dp, color = colors.hairlineBorder)
-
-            HomeMenuRow(
-                icon = Icons.Filled.Edit,
-                label = stringResource(R.string.home_menu_wallpaper),
-                onClick = onChangeWallpaper,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeMenuRow(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    val colors = OverviewTheme.colors
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = colors.accent,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(modifier = Modifier.width(14.dp))
         Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.onSurface,
+            text = stringResource(R.string.home_menu_title),
+            style = if (isExpressive) {
+                OverviewTheme.typography.sectionHeader
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
+            color = if (isExpressive) colors.accent else colors.onSurfaceMuted,
+            modifier = Modifier.padding(
+                start = 20.dp,
+                top = if (isExpressive) 10.dp else 16.dp,
+                bottom = 8.dp,
+            ),
+        )
+
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Add,
+            label = stringResource(R.string.home_menu_add_app),
+            onClick = onAddApp,
+        )
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Star,
+            label = stringResource(R.string.home_menu_add_widget),
+            onClick = onAddWidget,
+        )
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Settings,
+            label = stringResource(R.string.home_menu_customize),
+            onClick = onCustomize,
+        )
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Edit,
+            label = stringResource(R.string.home_menu_wallpaper),
+            onClick = onChangeWallpaper,
         )
     }
 }

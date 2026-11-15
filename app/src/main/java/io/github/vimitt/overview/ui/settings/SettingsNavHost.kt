@@ -3,9 +3,12 @@ package io.github.vimitt.overview.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,6 +70,19 @@ fun SettingsNavHost(
 
     val enterAnim = if (reducedMotion) {
         fadeIn(motion.effectSpec())
+    } else if (motion.usesSprings) {
+        fadeIn(motion.effectSpec(durationMillis = 190)) +
+            scaleIn(
+                initialScale = 0.96f,
+                transformOrigin = TransformOrigin(0.8f, 0.5f),
+                animationSpec = motion.expressiveSpec(durationMillis = 240),
+            ) +
+            slideInHorizontally(
+                motion.expressiveSpec(
+                    durationMillis = 240,
+                    visibilityThreshold = IntOffset.VisibilityThreshold,
+                ),
+            ) { it / 5 }
     } else {
         fadeIn(motion.effectSpec(durationMillis = 180)) +
             slideInHorizontally(
@@ -79,18 +95,45 @@ fun SettingsNavHost(
 
     val exitAnim = if (reducedMotion) {
         fadeOut(motion.effectSpec())
+    } else if (motion.usesSprings) {
+        fadeOut(motion.effectSpec(durationMillis = 140)) +
+            scaleOut(
+                targetScale = 0.97f,
+                transformOrigin = TransformOrigin(0.2f, 0.5f),
+                animationSpec = motion.spatialSpec(durationMillis = 170),
+            )
     } else {
         fadeOut(motion.effectSpec(durationMillis = 140))
     }
 
     val popEnterAnim = if (reducedMotion) {
         fadeIn(motion.effectSpec())
+    } else if (motion.usesSprings) {
+        fadeIn(motion.effectSpec(durationMillis = 170)) +
+            scaleIn(
+                initialScale = 0.97f,
+                transformOrigin = TransformOrigin(0.2f, 0.5f),
+                animationSpec = motion.spatialSpec(durationMillis = 200),
+            )
     } else {
         fadeIn(motion.effectSpec(durationMillis = 160))
     }
 
     val popExitAnim = if (reducedMotion) {
         fadeOut(motion.effectSpec())
+    } else if (motion.usesSprings) {
+        fadeOut(motion.effectSpec(durationMillis = 150)) +
+            scaleOut(
+                targetScale = 0.95f,
+                transformOrigin = TransformOrigin(0.8f, 0.5f),
+                animationSpec = motion.spatialSpec(durationMillis = 190),
+            ) +
+            slideOutHorizontally(
+                motion.spatialSpec(
+                    durationMillis = 190,
+                    visibilityThreshold = IntOffset.VisibilityThreshold,
+                ),
+            ) { it / 5 }
     } else {
         fadeOut(motion.effectSpec(durationMillis = 140)) +
             slideOutHorizontally(
