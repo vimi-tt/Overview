@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
@@ -40,11 +41,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect as ComposeRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -614,36 +617,84 @@ private fun DockSearchBarPill(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
+    val isExpressive = OverviewTheme.components.isExpressive
     val shape = OverviewTheme.shapes.pill
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
+    val backgroundColor = if (isExpressive) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.24f).copy(alpha = effectiveAlpha)
+    } else {
+        colors.dashBackground.copy(alpha = effectiveAlpha)
+    }
+    val borderColor = if (isExpressive) {
+        colors.accent.copy(alpha = 0.26f * effectiveAlpha)
+    } else {
+        colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * effectiveAlpha)
+    }
 
     Row(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
+            .then(
+                if (isExpressive) {
+                    Modifier.shadow(
+                        elevation = (8f * effectiveAlpha).dp,
+                        shape = shape,
+                        clip = false,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .clip(shape)
-            .background(colors.dashBackground.copy(alpha = effectiveAlpha))
+            .background(backgroundColor)
             .border(
                 width = 1.dp,
-                color = colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * effectiveAlpha),
+                color = borderColor,
                 shape = shape,
             )
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(
+                horizontal = if (isExpressive) 12.dp else 16.dp,
+                vertical = if (isExpressive) 8.dp else 10.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = stringResource(R.string.search_apps_content_description),
-            tint = colors.onSurfaceMuted,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = stringResource(R.string.search_apps_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceMuted,
-        )
+        if (isExpressive) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(colors.accentContainer.copy(alpha = (0.85f + 0.15f * effectiveAlpha))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = stringResource(R.string.search_apps_content_description),
+                    tint = colors.onAccentContainer,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(R.string.search_apps_hint),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = colors.onSurface.copy(alpha = 0.85f),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search_apps_content_description),
+                tint = colors.onSurfaceMuted,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.search_apps_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceMuted,
+            )
+        }
     }
 }

@@ -130,6 +130,17 @@ object OverviewPolygonFactory {
         workMatrix.setScale(sizePx, sizePx)
         outPath.transform(workMatrix)
     }
+
+    /**
+     * Mostrador recortado de 12 lóbulos inspirado no relógio analógico Material 3 Expressive.
+     */
+    fun clockScallopPolygon(): RoundedPolygon = RoundedPolygon.star(
+        numVerticesPerRadius = 12,
+        radius = 1f,
+        innerRadius = 0.89f,
+        rounding = CornerRounding(radius = 0.45f, smoothing = 0.7f),
+        innerRounding = CornerRounding(radius = 0.34f, smoothing = 0.7f),
+    ).normalized()
 }
 
 /**

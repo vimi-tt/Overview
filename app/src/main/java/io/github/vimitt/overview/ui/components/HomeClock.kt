@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Matrix
+import android.graphics.Path as AndroidPath
 import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -30,11 +32,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -133,6 +138,7 @@ fun HomeClock(
         null
     }
 
+    val isExpressive = OverviewTheme.components.isExpressive
     val clampedAlpha = backgroundAlpha.coerceIn(
         SettingsDefaults.MIN_CLOCK_ALPHA,
         SettingsDefaults.MAX_CLOCK_ALPHA,
@@ -141,20 +147,43 @@ fun HomeClock(
     val useSurfaceContrast = !useWallpaperColors || clampedAlpha >= 0.35f
     val cardPrimaryForeground = if (useSurfaceContrast) colors.onSurface else primaryForeground
     val cardSecondaryForeground = if (useSurfaceContrast) colors.onSurfaceMuted else secondaryForeground
-    val cardFill = if (useWallpaperColors) {
+    val cardFill = if (isExpressive) {
+        val tonalBase = if (useWallpaperColors) {
+            lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.34f)
+        } else {
+            lerp(colors.surfaceElevated, colors.accentContainer, 0.28f)
+        }
+        tonalBase.copy(alpha = clampedAlpha)
+    } else if (useWallpaperColors) {
         colors.surface.copy(alpha = clampedAlpha)
     } else {
         colors.surfaceElevated.copy(alpha = clampedAlpha)
     }
-    val cardBorder = colors.hairlineBorder.copy(alpha = (clampedAlpha * 1.15f).coerceIn(0f, 1f))
+    val cardBorder = if (isExpressive) {
+        colors.accent.copy(alpha = (0.36f * clampedAlpha).coerceIn(0f, 1f))
+    } else {
+        colors.hairlineBorder.copy(alpha = (clampedAlpha * 1.15f).coerceIn(0f, 1f))
+    }
+
+    val dateChipFill = if (useWallpaperColors) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.38f).copy(alpha = 0.86f)
+    } else {
+        colors.accentContainer.copy(alpha = 0.92f)
+    }
+    val dateChipText = if (useWallpaperColors) colors.onSurface else colors.onAccentContainer
+    val dateChipBorder = colors.accent.copy(alpha = 0.34f)
 
     when (style) {
         HomeClockStyle.GNOME -> GnomeClassicClock(
             timeText = timeText,
             dateText = dateFullText,
             compact = compact,
+            isExpressive = isExpressive,
             primaryColor = primaryForeground,
             secondaryColor = secondaryForeground,
+            chipFill = dateChipFill,
+            chipTextColor = dateChipText,
+            chipBorder = dateChipBorder,
             shadow = textShadow,
             modifier = modifier,
         )
@@ -164,9 +193,13 @@ fun HomeClock(
             is24Hour = is24Hour,
             shortDateText = shortDateText,
             compact = compact,
+            isExpressive = isExpressive,
             primaryColor = primaryForeground,
             accentColor = colors.accent,
             secondaryColor = secondaryForeground,
+            chipFill = dateChipFill,
+            chipTextColor = dateChipText,
+            chipBorder = dateChipBorder,
             shadow = textShadow,
             modifier = modifier,
         )
@@ -175,15 +208,21 @@ fun HomeClock(
             calendar = calendar,
             dateText = shortDateText,
             compact = compact,
+            isExpressive = isExpressive,
             handColor = cardPrimaryForeground,
             dateColor = secondaryForeground,
             accentColor = colors.accent,
             dialFill = cardFill,
-            dialBorder = if (useSurfaceContrast) {
+            dialBorder = if (isExpressive) {
+                colors.accent.copy(alpha = (0.38f + clampedAlpha * 0.4f).coerceIn(0f, 1f))
+            } else if (useSurfaceContrast) {
                 cardBorder
             } else {
                 colors.wallpaperForeground.copy(alpha = (0.18f + clampedAlpha * 0.4f).coerceIn(0f, 1f))
             },
+            chipFill = dateChipFill,
+            chipTextColor = dateChipText,
+            chipBorder = dateChipBorder,
             shadow = textShadow,
             modifier = modifier,
         )
@@ -193,9 +232,12 @@ fun HomeClock(
             weekdayText = weekdayText,
             dayMonthText = dayMonthText,
             compact = compact,
+            isExpressive = isExpressive,
             primaryColor = primaryForeground,
             secondaryColor = secondaryForeground,
             accentColor = colors.accent,
+            accentContainer = colors.accentContainer,
+            onAccentContainer = colors.onAccentContainer,
             shadow = textShadow,
             modifier = modifier,
         )
@@ -204,11 +246,15 @@ fun HomeClock(
             timeText = timeText,
             shortDateText = shortDateText,
             compact = compact,
+            isExpressive = isExpressive,
             primaryColor = cardPrimaryForeground,
             secondaryColor = cardSecondaryForeground,
             accentColor = colors.accent,
+            accentContainer = colors.accentContainer,
+            onAccentContainer = colors.onAccentContainer,
             containerColor = cardFill,
             borderColor = cardBorder,
+            shadowAlpha = clampedAlpha,
             modifier = modifier,
         )
 
@@ -229,11 +275,15 @@ fun HomeClock(
                 dateText = if (compact) shortDateText else formattedDate,
                 greeting = greeting,
                 compact = compact,
+                isExpressive = isExpressive,
                 primaryColor = cardPrimaryForeground,
                 secondaryColor = cardSecondaryForeground,
                 accentColor = colors.accent,
+                accentContainer = colors.accentContainer,
+                onAccentContainer = colors.onAccentContainer,
                 containerColor = cardFill,
                 borderColor = cardBorder,
+                shadowAlpha = clampedAlpha,
                 modifier = modifier,
             )
         }
@@ -241,12 +291,43 @@ fun HomeClock(
 }
 
 @Composable
+private fun ClockDateChip(
+    text: String,
+    compact: Boolean,
+    fillColor: Color,
+    textColor: Color,
+    borderColor: Color,
+) {
+    val shape = OverviewTheme.shapes.pill
+    Text(
+        text = text,
+        style = (if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall)
+            .copy(fontWeight = FontWeight.SemiBold),
+        color = textColor,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .clip(shape)
+            .background(fillColor)
+            .border(width = 1.dp, color = borderColor, shape = shape)
+            .padding(
+                horizontal = if (compact) 10.dp else 14.dp,
+                vertical = if (compact) 3.dp else 5.dp,
+            ),
+    )
+}
+
+@Composable
 private fun GnomeClassicClock(
     timeText: String,
     dateText: String,
     compact: Boolean,
+    isExpressive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
+    chipFill: Color,
+    chipTextColor: Color,
+    chipBorder: Color,
     shadow: Shadow?,
     modifier: Modifier = Modifier,
 ) {
@@ -260,24 +341,38 @@ private fun GnomeClassicClock(
                 MaterialTheme.typography.displayLarge.copy(
                     fontSize = 38.sp,
                     lineHeight = 42.sp,
+                    fontWeight = if (isExpressive) FontWeight.Bold else MaterialTheme.typography.displayLarge.fontWeight,
+                    letterSpacing = if (isExpressive) (-0.8).sp else 0.sp,
                     fontFeatureSettings = "tnum",
                     shadow = shadow,
                 )
             } else {
                 MaterialTheme.typography.displayLarge.copy(
+                    fontWeight = if (isExpressive) FontWeight.Bold else MaterialTheme.typography.displayLarge.fontWeight,
+                    letterSpacing = if (isExpressive) (-1.2).sp else 0.sp,
                     fontFeatureSettings = "tnum",
                     shadow = shadow,
                 )
             },
             color = primaryColor,
         )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = dateText,
-            style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
-                .copy(shadow = shadow),
-            color = secondaryColor,
-        )
+        Spacer(modifier = Modifier.height(if (isExpressive) 6.dp else 2.dp))
+        if (isExpressive) {
+            ClockDateChip(
+                text = dateText,
+                compact = compact,
+                fillColor = chipFill,
+                textColor = chipTextColor,
+                borderColor = chipBorder,
+            )
+        } else {
+            Text(
+                text = dateText,
+                style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+                    .copy(shadow = shadow),
+                color = secondaryColor,
+            )
+        }
     }
 }
 
@@ -287,9 +382,13 @@ private fun StackedClock(
     is24Hour: Boolean,
     shortDateText: String,
     compact: Boolean,
+    isExpressive: Boolean,
     primaryColor: Color,
     accentColor: Color,
     secondaryColor: Color,
+    chipFill: Color,
+    chipTextColor: Color,
+    chipBorder: Color,
     shadow: Shadow?,
     modifier: Modifier = Modifier,
 ) {
@@ -302,6 +401,8 @@ private fun StackedClock(
     val minuteText = calendar.get(Calendar.MINUTE).toString().padStart(2, '0')
     val digitSize = if (compact) 36.sp else 58.sp
     val digitLineHeight = if (compact) 34.sp else 54.sp
+    val digitWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.Bold
+    val digitSpacing = if (isExpressive && !compact) (-1.5).sp else 0.sp
 
     if (compact) {
         Row(
@@ -315,7 +416,8 @@ private fun StackedClock(
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontSize = digitSize,
                         lineHeight = digitLineHeight,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = digitWeight,
+                        letterSpacing = digitSpacing,
                         fontFeatureSettings = "tnum",
                         shadow = shadow,
                     ),
@@ -326,7 +428,7 @@ private fun StackedClock(
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontSize = digitSize,
                         lineHeight = digitLineHeight,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = digitWeight,
                         shadow = shadow,
                     ),
                     color = accentColor,
@@ -336,18 +438,29 @@ private fun StackedClock(
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontSize = digitSize,
                         lineHeight = digitLineHeight,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = digitWeight,
+                        letterSpacing = digitSpacing,
                         fontFeatureSettings = "tnum",
                         shadow = shadow,
                     ),
                     color = accentColor,
                 )
             }
-            Text(
-                text = shortDateText,
-                style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow),
-                color = secondaryColor,
-            )
+            if (isExpressive) {
+                ClockDateChip(
+                    text = shortDateText,
+                    compact = true,
+                    fillColor = chipFill,
+                    textColor = chipTextColor,
+                    borderColor = chipBorder,
+                )
+            } else {
+                Text(
+                    text = shortDateText,
+                    style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow),
+                    color = secondaryColor,
+                )
+            }
         }
     } else {
         Column(
@@ -359,7 +472,8 @@ private fun StackedClock(
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontSize = digitSize,
                     lineHeight = digitLineHeight,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = digitWeight,
+                    letterSpacing = digitSpacing,
                     fontFeatureSettings = "tnum",
                     shadow = shadow,
                 ),
@@ -370,18 +484,29 @@ private fun StackedClock(
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontSize = digitSize,
                     lineHeight = digitLineHeight,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = digitWeight,
+                    letterSpacing = digitSpacing,
                     fontFeatureSettings = "tnum",
                     shadow = shadow,
                 ),
                 color = accentColor,
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = shortDateText,
-                style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                color = secondaryColor,
-            )
+            Spacer(modifier = Modifier.height(if (isExpressive) 8.dp else 6.dp))
+            if (isExpressive) {
+                ClockDateChip(
+                    text = shortDateText,
+                    compact = false,
+                    fillColor = chipFill,
+                    textColor = chipTextColor,
+                    borderColor = chipBorder,
+                )
+            } else {
+                Text(
+                    text = shortDateText,
+                    style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
+                    color = secondaryColor,
+                )
+            }
         }
     }
 }
@@ -391,11 +516,15 @@ private fun AnalogClock(
     calendar: Calendar,
     dateText: String,
     compact: Boolean,
+    isExpressive: Boolean,
     handColor: Color,
     dateColor: Color,
     accentColor: Color,
     dialFill: Color,
     dialBorder: Color,
+    chipFill: Color,
+    chipTextColor: Color,
+    chipBorder: Color,
     shadow: Shadow?,
     modifier: Modifier = Modifier,
 ) {
@@ -413,6 +542,7 @@ private fun AnalogClock(
         ) {
             AnalogDial(
                 dialSize = dialSize,
+                isExpressive = isExpressive,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
                 primaryColor = handColor,
@@ -420,11 +550,21 @@ private fun AnalogClock(
                 dialFill = dialFill,
                 dialBorder = dialBorder,
             )
-            Text(
-                text = dateText,
-                style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
-                color = dateColor,
-            )
+            if (isExpressive) {
+                ClockDateChip(
+                    text = dateText,
+                    compact = true,
+                    fillColor = chipFill,
+                    textColor = chipTextColor,
+                    borderColor = chipBorder,
+                )
+            } else {
+                Text(
+                    text = dateText,
+                    style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
+                    color = dateColor,
+                )
+            }
         }
     } else {
         Column(
@@ -433,6 +573,7 @@ private fun AnalogClock(
         ) {
             AnalogDial(
                 dialSize = dialSize,
+                isExpressive = isExpressive,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
                 primaryColor = handColor,
@@ -441,11 +582,21 @@ private fun AnalogClock(
                 dialBorder = dialBorder,
             )
             Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = dateText,
-                style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                color = dateColor,
-            )
+            if (isExpressive) {
+                ClockDateChip(
+                    text = dateText,
+                    compact = false,
+                    fillColor = chipFill,
+                    textColor = chipTextColor,
+                    borderColor = chipBorder,
+                )
+            } else {
+                Text(
+                    text = dateText,
+                    style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
+                    color = dateColor,
+                )
+            }
         }
     }
 }
@@ -453,6 +604,7 @@ private fun AnalogClock(
 @Composable
 private fun AnalogDial(
     dialSize: Dp,
+    isExpressive: Boolean,
     hourAngleDeg: Float,
     minuteAngleDeg: Float,
     primaryColor: Color,
@@ -460,28 +612,61 @@ private fun AnalogDial(
     dialFill: Color,
     dialBorder: Color,
 ) {
+    // Pré-aloca o mostrador recortado de 12 lóbulos fora do bloco Canvas para evitar alocações por frame
+    val scallopPolygon = remember { OverviewPolygonFactory.clockScallopPolygon() }
+    val scallopAndroidPath = remember { AndroidPath() }
+    val scallopComposePath = remember(scallopAndroidPath) { scallopAndroidPath.asComposePath() }
+    val scallopMatrix = remember { Matrix() }
+
     Canvas(modifier = Modifier.size(dialSize)) {
         val radius = size.minDimension / 2f
         val center = Offset(size.width / 2f, size.height / 2f)
 
-        drawCircle(
-            color = dialFill,
-            radius = radius,
-            center = center,
-        )
-        drawCircle(
-            color = dialBorder,
-            radius = radius - 1.dp.toPx(),
-            center = center,
-            style = Stroke(width = 1.5.dp.toPx()),
-        )
+        if (isExpressive) {
+            OverviewPolygonFactory.fillScaledAndroidPath(
+                polygon = scallopPolygon,
+                sizePx = size.minDimension,
+                outPath = scallopAndroidPath,
+                workMatrix = scallopMatrix,
+            )
+            drawPath(
+                path = scallopComposePath,
+                color = dialFill,
+            )
+            drawPath(
+                path = scallopComposePath,
+                color = dialBorder,
+                style = Stroke(width = 1.8.dp.toPx()),
+            )
+            drawCircle(
+                color = accentColor.copy(alpha = 0.14f),
+                radius = radius * 0.58f,
+                center = center,
+                style = Stroke(width = 1.2.dp.toPx()),
+            )
+        } else {
+            drawCircle(
+                color = dialFill,
+                radius = radius,
+                center = center,
+            )
+            drawCircle(
+                color = dialBorder,
+                radius = radius - 1.dp.toPx(),
+                center = center,
+                style = Stroke(width = 1.5.dp.toPx()),
+            )
+        }
 
-        // Marcações das 12 horas com destaque discreto às 12h.
+        // Marcações das 12 horas com destaque às 12h.
+        val outerFactor = if (isExpressive) 0.80f else 0.88f
+        val quarterInnerFactor = if (isExpressive) 0.67f else 0.74f
+        val regularInnerFactor = if (isExpressive) 0.73f else 0.80f
         for (tick in 0 until 12) {
             val angleRad = Math.toRadians((tick * 30.0) - 90.0)
             val isQuarter = tick % 3 == 0
-            val outer = radius * 0.88f
-            val inner = radius * if (isQuarter) 0.74f else 0.80f
+            val outer = radius * outerFactor
+            val inner = radius * if (isQuarter) quarterInnerFactor else regularInnerFactor
             val start = Offset(
                 x = center.x + (cos(angleRad) * inner).toFloat(),
                 y = center.y + (sin(angleRad) * inner).toFloat(),
@@ -501,35 +686,43 @@ private fun AnalogDial(
 
         val hourRad = Math.toRadians(hourAngleDeg.toDouble() - 90.0)
         val hourEnd = Offset(
-            x = center.x + (cos(hourRad) * radius * 0.48f).toFloat(),
-            y = center.y + (sin(hourRad) * radius * 0.48f).toFloat(),
+            x = center.x + (cos(hourRad) * radius * 0.46f).toFloat(),
+            y = center.y + (sin(hourRad) * radius * 0.46f).toFloat(),
         )
         drawLine(
             color = primaryColor,
             start = center,
             end = hourEnd,
-            strokeWidth = (dialSize * 0.048f).toPx().coerceAtLeast(2.5f),
+            strokeWidth = (dialSize * (if (isExpressive) 0.058f else 0.048f)).toPx().coerceAtLeast(2.5f),
             cap = StrokeCap.Round,
         )
 
         val minuteRad = Math.toRadians(minuteAngleDeg.toDouble() - 90.0)
         val minuteEnd = Offset(
-            x = center.x + (cos(minuteRad) * radius * 0.70f).toFloat(),
-            y = center.y + (sin(minuteRad) * radius * 0.70f).toFloat(),
+            x = center.x + (cos(minuteRad) * radius * 0.68f).toFloat(),
+            y = center.y + (sin(minuteRad) * radius * 0.68f).toFloat(),
         )
         drawLine(
             color = accentColor,
             start = center,
             end = minuteEnd,
-            strokeWidth = (dialSize * 0.032f).toPx().coerceAtLeast(1.8f),
+            strokeWidth = (dialSize * (if (isExpressive) 0.036f else 0.032f)).toPx().coerceAtLeast(1.8f),
             cap = StrokeCap.Round,
         )
 
+        val pivotRadius = (dialSize * (if (isExpressive) 0.056f else 0.046f)).toPx().coerceAtLeast(3f)
         drawCircle(
             color = accentColor,
-            radius = (dialSize * 0.046f).toPx().coerceAtLeast(3f),
+            radius = pivotRadius,
             center = center,
         )
+        if (isExpressive) {
+            drawCircle(
+                color = primaryColor,
+                radius = pivotRadius * 0.42f,
+                center = center,
+            )
+        }
     }
 }
 
@@ -539,9 +732,12 @@ private fun SideBySideClock(
     weekdayText: String,
     dayMonthText: String,
     compact: Boolean,
+    isExpressive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
     accentColor: Color,
+    accentContainer: Color,
+    onAccentContainer: Color,
     shadow: Shadow?,
     modifier: Modifier = Modifier,
 ) {
@@ -555,7 +751,8 @@ private fun SideBySideClock(
             style = MaterialTheme.typography.displayLarge.copy(
                 fontSize = if (compact) 34.sp else 48.sp,
                 lineHeight = if (compact) 38.sp else 52.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                letterSpacing = if (isExpressive) (-0.8).sp else 0.sp,
                 fontFeatureSettings = "tnum",
                 shadow = shadow,
             ),
@@ -564,26 +761,46 @@ private fun SideBySideClock(
 
         Box(
             modifier = Modifier
-                .width(3.dp)
-                .height(if (compact) 30.dp else 44.dp)
+                .width(if (isExpressive) 5.dp else 3.dp)
+                .height(if (compact) 32.dp else 46.dp)
                 .clip(OverviewTheme.shapes.pill)
                 .background(accentColor),
         )
 
-        Column(verticalArrangement = Arrangement.Center) {
-            Text(
-                text = weekdayText,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.1.sp,
-                    shadow = shadow,
-                ),
-                color = accentColor,
-            )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(if (isExpressive) 3.dp else 0.dp),
+        ) {
+            if (isExpressive) {
+                Text(
+                    text = weekdayText,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                    ),
+                    color = onAccentContainer,
+                    modifier = Modifier
+                        .clip(OverviewTheme.shapes.pill)
+                        .background(accentContainer)
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            } else {
+                Text(
+                    text = weekdayText,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                        shadow = shadow,
+                    ),
+                    color = accentColor,
+                )
+            }
             Text(
                 text = dayMonthText,
                 style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall)
-                    .copy(shadow = shadow),
+                    .copy(
+                        fontWeight = if (isExpressive) FontWeight.Medium else null,
+                        shadow = shadow,
+                    ),
                 color = secondaryColor,
             )
         }
@@ -595,52 +812,93 @@ private fun PillClock(
     timeText: String,
     shortDateText: String,
     compact: Boolean,
+    isExpressive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
     accentColor: Color,
+    accentContainer: Color,
+    onAccentContainer: Color,
     containerColor: Color,
     borderColor: Color,
+    shadowAlpha: Float,
     modifier: Modifier = Modifier,
 ) {
     val shape = OverviewTheme.shapes.pill
 
     Row(
         modifier = modifier
+            .then(
+                if (isExpressive && shadowAlpha > 0.15f) {
+                    Modifier.shadow(elevation = (8f * shadowAlpha).dp, shape = shape, clip = false)
+                } else {
+                    Modifier
+                },
+            )
             .clip(shape)
             .background(containerColor)
             .border(1.dp, borderColor, shape)
             .padding(
-                horizontal = if (compact) 14.dp else 18.dp,
-                vertical = if (compact) 7.dp else 10.dp,
+                horizontal = if (isExpressive) {
+                    if (compact) 10.dp else 12.dp
+                } else {
+                    if (compact) 14.dp else 18.dp
+                },
+                vertical = if (compact) 6.dp else 8.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(accentColor),
-        )
-        Text(
-            text = timeText,
-            style = (if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
-                .copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontFeatureSettings = "tnum",
-                ),
-            color = primaryColor,
-        )
-        Text(
-            text = "·",
-            style = MaterialTheme.typography.titleSmall,
-            color = secondaryColor,
-        )
-        Text(
-            text = shortDateText,
-            style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-            color = secondaryColor,
-        )
+        if (isExpressive) {
+            Text(
+                text = timeText,
+                style = (if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
+                    .copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                color = onAccentContainer,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(accentContainer)
+                    .padding(
+                        horizontal = if (compact) 10.dp else 12.dp,
+                        vertical = if (compact) 3.dp else 4.dp,
+                    ),
+            )
+            Text(
+                text = shortDateText,
+                style = (if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
+                    .copy(fontWeight = FontWeight.Medium),
+                color = primaryColor,
+                modifier = Modifier.padding(end = 4.dp),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(accentColor),
+            )
+            Text(
+                text = timeText,
+                style = (if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
+                    .copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                color = primaryColor,
+            )
+            Text(
+                text = "·",
+                style = MaterialTheme.typography.titleSmall,
+                color = secondaryColor,
+            )
+            Text(
+                text = shortDateText,
+                style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                color = secondaryColor,
+            )
+        }
     }
 }
 
@@ -650,11 +908,15 @@ private fun FullPillSummaryClock(
     dateText: String,
     greeting: String,
     compact: Boolean,
+    isExpressive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
     accentColor: Color,
+    accentContainer: Color,
+    onAccentContainer: Color,
     containerColor: Color,
     borderColor: Color,
+    shadowAlpha: Float,
     modifier: Modifier = Modifier,
 ) {
     val shape = OverviewTheme.shapes.pill
@@ -662,12 +924,23 @@ private fun FullPillSummaryClock(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (isExpressive && shadowAlpha > 0.15f) {
+                    Modifier.shadow(elevation = (10f * shadowAlpha).dp, shape = shape, clip = false)
+                } else {
+                    Modifier
+                },
+            )
             .clip(shape)
             .background(containerColor)
             .border(1.dp, borderColor, shape)
             .padding(
-                horizontal = if (compact) 18.dp else 22.dp,
-                vertical = if (compact) 11.dp else 15.dp,
+                horizontal = if (compact) 16.dp else 20.dp,
+                vertical = if (isExpressive) {
+                    if (compact) 10.dp else 13.dp
+                } else {
+                    if (compact) 11.dp else 15.dp
+                },
             ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -681,7 +954,7 @@ private fun FullPillSummaryClock(
             Text(
                 text = dateText,
                 style = (if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
-                    .copy(fontWeight = FontWeight.SemiBold),
+                    .copy(fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold),
                 color = primaryColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -706,15 +979,35 @@ private fun FullPillSummaryClock(
             }
         }
 
-        Text(
-            text = timeText,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = if (compact) 22.sp else 28.sp,
-                lineHeight = if (compact) 26.sp else 32.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFeatureSettings = "tnum",
-            ),
-            color = primaryColor,
-        )
+        if (isExpressive) {
+            Text(
+                text = timeText,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = if (compact) 20.sp else 26.sp,
+                    lineHeight = if (compact) 24.sp else 30.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFeatureSettings = "tnum",
+                ),
+                color = onAccentContainer,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(accentContainer)
+                    .padding(
+                        horizontal = if (compact) 12.dp else 16.dp,
+                        vertical = if (compact) 5.dp else 8.dp,
+                    ),
+            )
+        } else {
+            Text(
+                text = timeText,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = if (compact) 22.sp else 28.sp,
+                    lineHeight = if (compact) 26.sp else 32.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFeatureSettings = "tnum",
+                ),
+                color = primaryColor,
+            )
+        }
     }
 }

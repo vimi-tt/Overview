@@ -14,6 +14,8 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.ui.theme.OverviewTheme
@@ -33,18 +35,42 @@ fun DashBar(
     if (apps.isEmpty()) return
 
     val colors = OverviewTheme.colors
-    val dashShape = OverviewTheme.shapes.dash
+    val isExpressive = OverviewTheme.components.isExpressive
+    val containerShape = if (isExpressive) OverviewTheme.shapes.pill else OverviewTheme.shapes.dash
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
-    val borderColor = colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * clampedAlpha)
+    val backgroundColor = if (isExpressive) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.26f).copy(alpha = clampedAlpha)
+    } else {
+        colors.dashBackground.copy(alpha = clampedAlpha)
+    }
+    val borderColor = if (isExpressive) {
+        colors.accent.copy(alpha = 0.28f * clampedAlpha)
+    } else {
+        colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * clampedAlpha)
+    }
 
     Row(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
-            .clip(dashShape)
-            .background(colors.dashBackground.copy(alpha = clampedAlpha))
-            .border(width = 1.dp, color = borderColor, shape = dashShape)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .then(
+                if (isExpressive && clampedAlpha > 0.15f) {
+                    Modifier.shadow(
+                        elevation = (10f * clampedAlpha).dp,
+                        shape = containerShape,
+                        clip = false,
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .clip(containerShape)
+            .background(backgroundColor)
+            .border(width = 1.dp, color = borderColor, shape = containerShape)
+            .padding(
+                horizontal = if (isExpressive) 14.dp else 12.dp,
+                vertical = if (isExpressive) 8.dp else 6.dp,
+            ),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
