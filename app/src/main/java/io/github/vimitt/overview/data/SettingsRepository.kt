@@ -21,6 +21,7 @@ import io.github.vimitt.overview.domain.model.FolderPreviewStyle
 import io.github.vimitt.overview.domain.model.FolderSettings
 import io.github.vimitt.overview.domain.model.GestureSensitivity
 import io.github.vimitt.overview.domain.model.GestureSettings
+import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.HomeSettings
 import io.github.vimitt.overview.domain.model.IconShape
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
@@ -422,6 +423,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setHomeClockStyle(style: HomeClockStyle) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_CLOCK_STYLE] = style.name
+        }
+    }
+
     // endregion
 
     // region Dock
@@ -581,6 +588,9 @@ class SettingsRepository(
 
         val lockLayout = prefs[KEY_HOME_LOCK_LAYOUT] ?: false
         val showClock = prefs[KEY_SHOW_CLOCK] ?: true
+        val clockStyle = prefs[KEY_HOME_CLOCK_STYLE]?.let { saved ->
+            runCatching { HomeClockStyle.valueOf(saved) }.getOrNull()
+        } ?: HomeClockStyle.GNOME
 
         return HomeSettings(
             gridColumns = columns,
@@ -590,6 +600,7 @@ class SettingsRepository(
             labelScale = labelScale,
             lockLayout = lockLayout,
             showClock = showClock,
+            clockStyle = clockStyle,
         )
     }
 
@@ -763,6 +774,7 @@ class SettingsRepository(
         val KEY_HOME_SHOW_LABELS = booleanPreferencesKey("home_show_labels")
         val KEY_HOME_LABEL_SCALE = floatPreferencesKey("home_label_scale")
         val KEY_HOME_LOCK_LAYOUT = booleanPreferencesKey("home_lock_layout")
+        val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
 
         // Chaves de Dock
         val KEY_DOCK_ICON_COUNT = intPreferencesKey("dock_icon_count")

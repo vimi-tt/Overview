@@ -254,12 +254,14 @@ fun NavigationRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
     SettingsRow(
         title = title,
         subtitle = subtitle,
         icon = icon,
+        enabled = enabled,
         onClick = onClick,
         role = Role.Button,
         modifier = modifier,
@@ -444,6 +446,7 @@ fun <T> SingleChoiceRow(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     subtitleOverride: String? = null,
+    enabled: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
     var dialogOpen by remember { mutableStateOf(false) }
@@ -453,6 +456,7 @@ fun <T> SingleChoiceRow(
     NavigationRow(
         title = title,
         subtitle = selectedLabel,
+        enabled = enabled,
         onClick = { dialogOpen = true },
         modifier = modifier,
     )

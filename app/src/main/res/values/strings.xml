@@ -100,6 +100,7 @@
 
     <!-- Categoria: Tela inicial -->
     <string name="settings_section_home_grid">Grade</string>
+    <string name="settings_section_home_clock">Relógio</string>
     <string name="settings_section_home_items">Ícones e rótulos</string>
     <string name="settings_section_home_general">Geral</string>
     <string name="settings_home_columns">Colunas da grade</string>
@@ -112,6 +113,13 @@
     <string name="settings_home_lock_layout_subtitle">Impede mover, redimensionar ou remover itens da tela inicial</string>
     <string name="settings_show_clock">Mostrar relógio</string>
     <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
+    <string name="settings_home_clock_style">Estilo do relógio</string>
+    <string name="settings_home_clock_style_gnome">GNOME Clássico</string>
+    <string name="settings_home_clock_style_stacked">Empilhado</string>
+    <string name="settings_home_clock_style_analog">Analógico Adwaita</string>
+    <string name="settings_home_clock_style_side">Editorial lateral</string>
+    <string name="settings_home_clock_style_pill">Cápsula compacta</string>
+    <string name="settings_home_clock_preview_hint">Toque para alternar entre os estilos</string>
     <string name="settings_wallpaper_row">Papel de parede do sistema</string>
 
     <!-- Categoria: Dock -->

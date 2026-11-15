@@ -2,6 +2,7 @@ package io.github.vimitt.overview.ui.settings.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,16 +20,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.ui.components.HomeClock
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
+import io.github.vimitt.overview.ui.settings.components.SingleChoiceRow
 import io.github.vimitt.overview.ui.settings.components.SliderRow
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
@@ -44,6 +50,7 @@ fun HomeSettingsScreen(
     onLabelScaleChange: (Float) -> Unit,
     onLockLayoutChange: (Boolean) -> Unit,
     onShowClockChange: (Boolean) -> Unit,
+    onClockStyleChange: (HomeClockStyle) -> Unit,
     onOpenWallpaperPicker: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -115,13 +122,24 @@ fun HomeSettingsScreen(
             }
         }
 
-        item(key = "home_general_group") {
-            SettingsGroup(title = stringResource(R.string.settings_section_home_general)) {
-                SwitchRow(
-                    title = stringResource(R.string.settings_home_lock_layout),
-                    subtitle = stringResource(R.string.settings_home_lock_layout_subtitle),
-                    checked = settings.lockLayout,
-                    onCheckedChange = onLockLayoutChange,
+        item(key = "home_clock_group") {
+            val clockOptions = listOf(
+                HomeClockStyle.GNOME to stringResource(R.string.settings_home_clock_style_gnome),
+                HomeClockStyle.STACKED to stringResource(R.string.settings_home_clock_style_stacked),
+                HomeClockStyle.ANALOG to stringResource(R.string.settings_home_clock_style_analog),
+                HomeClockStyle.SIDE_BY_SIDE to stringResource(R.string.settings_home_clock_style_side),
+                HomeClockStyle.PILL to stringResource(R.string.settings_home_clock_style_pill),
+            )
+
+            SettingsGroup(title = stringResource(R.string.settings_section_home_clock)) {
+                HomeClockPreview(
+                    showClock = settings.showClock,
+                    style = settings.clockStyle,
+                    onCycleStyle = {
+                        val values = HomeClockStyle.entries
+                        val next = values[(values.indexOf(settings.clockStyle) + 1) % values.size]
+                        onClockStyleChange(next)
+                    },
                 )
                 SettingsDivider()
                 SwitchRow(
@@ -129,6 +147,25 @@ fun HomeSettingsScreen(
                     subtitle = stringResource(R.string.settings_show_clock_subtitle),
                     checked = settings.showClock,
                     onCheckedChange = onShowClockChange,
+                )
+                SettingsDivider()
+                SingleChoiceRow(
+                    title = stringResource(R.string.settings_home_clock_style),
+                    options = clockOptions,
+                    selected = settings.clockStyle,
+                    enabled = settings.showClock,
+                    onSelect = onClockStyleChange,
+                )
+            }
+        }
+
+        item(key = "home_general_group") {
+            SettingsGroup(title = stringResource(R.string.settings_section_home_general)) {
+                SwitchRow(
+                    title = stringResource(R.string.settings_home_lock_layout),
+                    subtitle = stringResource(R.string.settings_home_lock_layout_subtitle),
+                    checked = settings.lockLayout,
+                    onCheckedChange = onLockLayoutChange,
                 )
                 SettingsDivider()
                 NavigationRow(
@@ -148,6 +185,50 @@ fun HomeSettingsScreen(
 
         item(key = "bottom_spacer") {
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun HomeClockPreview(
+    showClock: Boolean,
+    style: HomeClockStyle,
+    onCycleStyle: () -> Unit,
+) {
+    val colors = OverviewTheme.colors
+    val shape = RoundedCornerShape(OverviewCornerRadius.Medium)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 176.dp)
+                .clip(shape)
+                .background(colors.windowBackground)
+                .border(1.dp, colors.hairlineBorder, shape)
+                .clickable(enabled = showClock, onClick = onCycleStyle)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            HomeClock(
+                style = style,
+                compact = false,
+                useWallpaperColors = false,
+                modifier = Modifier.alpha(if (showClock) 1f else 0.32f),
+            )
+        }
+        if (showClock) {
+            Text(
+                text = stringResource(R.string.settings_home_clock_preview_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceMuted,
+            )
         }
     }
 }

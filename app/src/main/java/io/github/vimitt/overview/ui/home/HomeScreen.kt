@@ -1,11 +1,6 @@
 package io.github.vimitt.overview.ui.home
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Rect
-import android.text.format.DateFormat
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -39,13 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +51,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -68,7 +59,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
@@ -79,11 +69,9 @@ import io.github.vimitt.overview.ui.DragPayload
 import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
+import io.github.vimitt.overview.ui.components.HomeClock
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Tela inicial transparente sobre o papel de parede do sistema,
@@ -235,6 +223,7 @@ fun HomeScreen(
                 )
             } else if (uiState.showClock) {
                 HomeClock(
+                    style = uiState.clockStyle,
                     compact = hasWorkspaceItems,
                     modifier = Modifier
                         .graphicsLayer {
@@ -584,76 +573,6 @@ private fun MoveModeBanner(
                 color = colors.accent,
             )
         }
-    }
-}
-
-@Composable
-private fun HomeClock(
-    compact: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val colors = OverviewTheme.colors
-    var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
-
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                currentTimeMillis = System.currentTimeMillis()
-            }
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_TIME_TICK)
-            addAction(Intent.ACTION_TIME_CHANGED)
-            addAction(Intent.ACTION_TIMEZONE_CHANGED)
-        }
-        context.registerReceiver(receiver, filter)
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
-    }
-
-    val now = remember(currentTimeMillis) { Date(currentTimeMillis) }
-    val is24Hour = DateFormat.is24HourFormat(context)
-    val timeText = remember(now, is24Hour) {
-        val pattern = if (is24Hour) "HH:mm" else "h:mm"
-        SimpleDateFormat(pattern, Locale.getDefault()).format(now)
-    }
-    val dateText = remember(now) {
-        val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM")
-        SimpleDateFormat(pattern, Locale.getDefault()).format(now)
-    }
-
-    val textShadow = Shadow(
-        color = colors.wallpaperShadow,
-        offset = Offset(0f, 2f),
-        blurRadius = 10f,
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = timeText,
-            style = if (compact) {
-                MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 38.sp,
-                    lineHeight = 42.sp,
-                    shadow = textShadow,
-                )
-            } else {
-                MaterialTheme.typography.displayLarge.copy(shadow = textShadow)
-            },
-            color = colors.wallpaperForeground,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = dateText,
-            style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
-                .copy(shadow = textShadow),
-            color = colors.wallpaperForeground.copy(alpha = 0.92f),
-        )
     }
 }
 

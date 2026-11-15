@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetProviderInfo
 import androidx.compose.runtime.Immutable
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.DockSettings
+import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.HomeSettings
 
@@ -49,6 +50,7 @@ data class HomeUiState(
     val showLabels: Boolean get() = homeSettings.showLabels
     val labelScale: Float get() = homeSettings.labelScale
     val lockLayout: Boolean get() = homeSettings.lockLayout
+    val clockStyle: HomeClockStyle get() = homeSettings.clockStyle
     val dockBackgroundAlpha: Float get() = dockSettings.backgroundAlpha
     val showDockSearchBar: Boolean get() = dockSettings.showSearchBar
 }

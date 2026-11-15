@@ -168,6 +168,17 @@ data class OverviewSettings(
 )
 
 /**
+ * Estilo visual do relógio na tela inicial.
+ */
+enum class HomeClockStyle {
+    GNOME,
+    STACKED,
+    ANALOG,
+    SIDE_BY_SIDE,
+    PILL,
+}
+
+/**
  * Preferências da categoria Tela inicial.
  */
 @Immutable
@@ -179,6 +190,7 @@ data class HomeSettings(
     val labelScale: Float = SettingsDefaults.DEFAULT_LABEL_SCALE,
     val lockLayout: Boolean = false,
     val showClock: Boolean = true,
+    val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
 )
 
 /**

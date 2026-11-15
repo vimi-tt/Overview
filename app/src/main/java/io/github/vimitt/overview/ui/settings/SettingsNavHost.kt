@@ -159,6 +159,7 @@ fun SettingsNavHost(
                 onLabelScaleChange = viewModel::onLabelScaleChange,
                 onLockLayoutChange = viewModel::onLockLayoutChange,
                 onShowClockChange = viewModel::onShowClockChange,
+                onClockStyleChange = viewModel::onClockStyleChange,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
                 onBack = { navController.popBackStack() },
             )
