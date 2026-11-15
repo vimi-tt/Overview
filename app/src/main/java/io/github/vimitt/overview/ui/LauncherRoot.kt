@@ -77,6 +77,7 @@ fun LauncherRoot(
     isSettingsOpen: Boolean,
     blurRadiusDp: Float,
     homeUiState: HomeUiState,
+    searchQuery: String,
     overviewUiState: OverviewUiState,
     settingsUiState: SettingsUiState,
     onOpenOverview: () -> Unit,
@@ -176,6 +177,7 @@ fun LauncherRoot(
             exit = exitTransition,
         ) {
             OverviewScreen(
+                searchQuery = searchQuery,
                 uiState = overviewUiState,
                 onSearchQueryChange = onSearchQueryChange,
                 onClearSearch = onClearSearch,

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -24,11 +25,14 @@ class OverviewViewModel(
     private val filterAppsUseCase: FilterAppsUseCase,
 ) : ViewModel() {
 
-    private val searchQuery = MutableStateFlow("")
+    private val _searchQuery = MutableStateFlow("")
+
+    /** Exposto de forma síncrona para evitar atrasos no campo de busca. */
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     val uiState: StateFlow<OverviewUiState> = combine(
         appsRepository.apps,
-        searchQuery,
+        _searchQuery,
     ) { apps, query ->
         OverviewUiState(
             searchQuery = query,
@@ -43,11 +47,11 @@ class OverviewViewModel(
         )
 
     fun onSearchQueryChange(query: String) {
-        searchQuery.value = query
+        _searchQuery.value = query
     }
 
     fun onClearSearch() {
-        searchQuery.value = ""
+        _searchQuery.value = ""
     }
 
     fun onAppClick(

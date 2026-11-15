@@ -65,6 +65,7 @@ import kotlin.math.ceil
  */
 @Composable
 fun OverviewScreen(
+    searchQuery: String,
     uiState: OverviewUiState,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
@@ -77,6 +78,7 @@ fun OverviewScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val rootView = LocalView.current
     val swipeDownThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
+    val isSearching = searchQuery.isNotBlank()
 
     BackHandler {
         keyboardController?.hide()
@@ -111,7 +113,7 @@ fun OverviewScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         OverviewSearchBar(
-            query = uiState.searchQuery,
+            query = searchQuery,
             onQueryChange = onSearchQueryChange,
             onClear = onClearSearch,
             onOpenSettings = {
@@ -136,12 +138,12 @@ fun OverviewScreen(
         when {
             uiState.apps.isEmpty() -> {
                 EmptyOverviewState(
-                    isSearching = uiState.isSearching,
+                    isSearching = isSearching,
                     modifier = Modifier.weight(1f),
                 )
             }
 
-            uiState.isSearching -> {
+            isSearching -> {
                 SearchResultsGrid(
                     apps = uiState.apps,
                     onAppClick = { app, view, bounds ->
@@ -178,23 +180,26 @@ private fun SearchResultsGrid(
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 84.dp),
-        modifier = modifier,
-        contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        items(
-            items = apps,
-            key = { it.key },
-        ) { app ->
-            AppIconItem(
-                app = app,
-                onClick = onAppClick,
-                iconSize = 54.dp,
-                showLabel = true,
-            )
+    BoxWithConstraints(modifier = modifier) {
+        val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(
+                items = apps,
+                key = { it.key },
+            ) { app ->
+                AppIconItem(
+                    app = app,
+                    onClick = onAppClick,
+                    iconSize = 54.dp,
+                    showLabel = true,
+                )
+            }
         }
     }
 }
@@ -272,13 +277,12 @@ private fun AppGridPage(
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.SpaceEvenly,
-    ) {
+    Column(modifier = modifier) {
         for (row in 0 until rows) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.Top,
             ) {

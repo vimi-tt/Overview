@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
             val preferences by appContainer.preferencesRepository.preferences
                 .collectAsStateWithLifecycle(initialValue = LauncherPreferences())
             val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+            val searchQuery by overviewViewModel.searchQuery.collectAsStateWithLifecycle()
             val overviewUiState by overviewViewModel.uiState.collectAsStateWithLifecycle()
             val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
                     isSettingsOpen = isSettingsOpen,
                     blurRadiusDp = preferences.overviewBlurRadiusDp,
                     homeUiState = homeUiState,
+                    searchQuery = searchQuery,
                     overviewUiState = overviewUiState,
                     settingsUiState = settingsUiState,
                     onOpenOverview = {

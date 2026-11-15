@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +34,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
@@ -41,6 +44,9 @@ import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
  * Barra de busca no estilo Adwaita para filtrar aplicativos no Overview.
+ *
+ * Mantém o [TextFieldValue] localmente de forma síncrona para preservar a posição
+ * do cursor e a composição do teclado (IME) sem saltos durante a filtragem assíncrona.
  */
 @Composable
 fun OverviewSearchBar(
@@ -53,6 +59,16 @@ fun OverviewSearchBar(
 ) {
     val colors = OverviewTheme.colors
     var isFocused by remember { mutableStateOf(false) }
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(text = query, selection = TextRange(query.length)))
+    }
+
+    // Sincroniza apenas quando a busca é limpa externamente (ex.: botão Limpar ou Home).
+    LaunchedEffect(query) {
+        if (query.isEmpty() && fieldValue.text.isNotEmpty()) {
+            fieldValue = TextFieldValue(text = "", selection = TextRange.Zero)
+        }
+    }
 
     val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
     val borderColor = if (isFocused) colors.accent else colors.hairlineBorder
@@ -81,7 +97,7 @@ fun OverviewSearchBar(
             modifier = Modifier.weight(1f),
             contentAlignment = Alignment.CenterStart,
         ) {
-            if (query.isEmpty()) {
+            if (fieldValue.text.isEmpty()) {
                 Text(
                     text = stringResource(R.string.search_apps_hint),
                     style = MaterialTheme.typography.bodyLarge,
@@ -89,8 +105,14 @@ fun OverviewSearchBar(
                 )
             }
             BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
+                value = fieldValue,
+                onValueChange = { updated ->
+                    val previousText = fieldValue.text
+                    fieldValue = updated
+                    if (updated.text != previousText) {
+                        onQueryChange(updated.text)
+                    }
+                },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = colors.onSurface,
@@ -104,8 +126,13 @@ fun OverviewSearchBar(
             )
         }
 
-        if (query.isNotEmpty()) {
-            IconButton(onClick = onClear) {
+        if (fieldValue.text.isNotEmpty()) {
+            IconButton(
+                onClick = {
+                    fieldValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                    onClear()
+                },
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.clear_search_content_description),
