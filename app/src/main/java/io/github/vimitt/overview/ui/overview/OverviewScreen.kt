@@ -46,12 +46,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,6 +64,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppInfo
@@ -98,6 +101,7 @@ fun OverviewScreen(
     onClose: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    focusSearchTrigger: Int = 0,
 ) {
     val colors = OverviewTheme.colors
     val reducedMotion = OverviewTheme.reducedMotion
@@ -105,8 +109,18 @@ fun OverviewScreen(
     val rootView = LocalView.current
     val swipeDownThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
     val isSearching = searchQuery.isNotBlank()
+    val searchFocusRequester = remember { FocusRequester() }
+    var handledFocusTrigger by remember { mutableIntStateOf(0) }
     var actionTargetApp by remember { mutableStateOf<AppInfo?>(null) }
     var dragCandidateApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    LaunchedEffect(isActive, focusSearchTrigger) {
+        if (isActive && focusSearchTrigger > handledFocusTrigger) {
+            handledFocusTrigger = focusSearchTrigger
+            searchFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (isDraggingToHome) 0f else 1f,
@@ -197,6 +211,7 @@ fun OverviewScreen(
                 query = searchQuery,
                 onQueryChange = onSearchQueryChange,
                 onClear = onClearSearch,
+                focusRequester = searchFocusRequester,
                 onOpenSettings = {
                     keyboardController?.hide()
                     onOpenSettings()
@@ -216,6 +231,8 @@ fun OverviewScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            val iconSize = remember(uiState.iconScale) { (54f * uiState.iconScale).dp }
+
             when {
                 uiState.apps.isEmpty() -> {
                     EmptyOverviewState(
@@ -227,6 +244,10 @@ fun OverviewScreen(
                 isSearching -> {
                     SearchResultsGrid(
                         apps = uiState.apps,
+                        columns = uiState.gridColumns,
+                        iconSize = iconSize,
+                        showNotificationDots = uiState.showNotificationDots,
+                        badgePackages = uiState.badgePackages,
                         scrollEnabled = isActive && !isDraggingToHome,
                         onAppClick = handleAppClick,
                         onAppDragStart = handleAppDragStart,
@@ -242,6 +263,11 @@ fun OverviewScreen(
                 else -> {
                     PaginatedAppGrid(
                         apps = uiState.apps,
+                        columns = uiState.gridColumns,
+                        iconScale = uiState.iconScale,
+                        iconSize = iconSize,
+                        showNotificationDots = uiState.showNotificationDots,
+                        badgePackages = uiState.badgePackages,
                         scrollEnabled = isActive && !isDraggingToHome,
                         onAppClick = handleAppClick,
                         onAppDragStart = handleAppDragStart,
@@ -277,6 +303,10 @@ fun OverviewScreen(
 @Composable
 private fun SearchResultsGrid(
     apps: List<AppInfo>,
+    columns: Int,
+    iconSize: Dp,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onAppDragStart: (AppInfo, Offset) -> Unit,
@@ -286,32 +316,31 @@ private fun SearchResultsGrid(
     modifier: Modifier = Modifier,
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val safeColumns = columns.coerceIn(3, 6)
 
-    BoxWithConstraints(modifier = modifier) {
-        val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            userScrollEnabled = scrollEnabled,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(
-                items = apps,
-                key = { it.key },
-            ) { app ->
-                AppIconItem(
-                    app = app,
-                    onClick = onAppClick,
-                    onDragStart = onAppDragStart,
-                    onDragMove = onAppDragMove,
-                    onDragEnd = onAppDragEnd,
-                    onDragCancel = onAppDragCancel,
-                    iconSize = 54.dp,
-                    showLabel = true,
-                )
-            }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(safeColumns),
+        userScrollEnabled = scrollEnabled,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = imeBottom + 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items(
+            items = apps,
+            key = { it.key },
+        ) { app ->
+            AppIconItem(
+                app = app,
+                onClick = onAppClick,
+                onDragStart = onAppDragStart,
+                onDragMove = onAppDragMove,
+                onDragEnd = onAppDragEnd,
+                onDragCancel = onAppDragCancel,
+                iconSize = iconSize,
+                showLabel = true,
+                showNotificationDot = showNotificationDots && app.packageName in badgePackages,
+            )
         }
     }
 }
@@ -319,6 +348,11 @@ private fun SearchResultsGrid(
 @Composable
 private fun PaginatedAppGrid(
     apps: List<AppInfo>,
+    columns: Int,
+    iconScale: Float,
+    iconSize: Dp,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onAppDragStart: (AppInfo, Offset) -> Unit,
@@ -327,12 +361,14 @@ private fun PaginatedAppGrid(
     onAppDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val safeColumns = columns.coerceIn(3, 6)
+
     BoxWithConstraints(modifier = modifier) {
-        val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
         // Reserva espaço inferior para os indicadores de página.
         val gridAvailableHeight = (maxHeight - 28.dp).coerceAtLeast(120.dp)
-        val rows = (gridAvailableHeight / 108.dp).toInt().coerceIn(3, 6)
-        val pageSize = columns * rows
+        val rowUnit = (104f * iconScale.coerceAtLeast(0.85f)).dp
+        val rows = (gridAvailableHeight / rowUnit).toInt().coerceIn(3, 6)
+        val pageSize = safeColumns * rows
         val pageCount = remember(apps.size, pageSize) {
             ceil(apps.size / pageSize.toFloat()).toInt().coerceAtLeast(1)
         }
@@ -369,8 +405,11 @@ private fun PaginatedAppGrid(
 
                 AppGridPage(
                     apps = pageApps,
-                    columns = columns,
+                    columns = safeColumns,
                     rows = rows,
+                    iconSize = iconSize,
+                    showNotificationDots = showNotificationDots,
+                    badgePackages = badgePackages,
                     onAppClick = onAppClick,
                     onAppDragStart = onAppDragStart,
                     onAppDragMove = onAppDragMove,
@@ -398,6 +437,9 @@ private fun AppGridPage(
     apps: List<AppInfo>,
     columns: Int,
     rows: Int,
+    iconSize: Dp,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onAppDragStart: (AppInfo, Offset) -> Unit,
     onAppDragMove: (Offset) -> Unit,
@@ -426,8 +468,9 @@ private fun AppGridPage(
                                 onDragMove = onAppDragMove,
                                 onDragEnd = onAppDragEnd,
                                 onDragCancel = onAppDragCancel,
-                                iconSize = 54.dp,
+                                iconSize = iconSize,
                                 showLabel = true,
+                                showNotificationDot = showNotificationDots && app.packageName in badgePackages,
                                 modifier = Modifier.weight(1f),
                             )
                         }

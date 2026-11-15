@@ -9,7 +9,6 @@ import io.github.vimitt.overview.data.HomeWorkspaceRepository
 import io.github.vimitt.overview.data.IconPackRepository
 import io.github.vimitt.overview.data.LauncherAppsRepository
 import io.github.vimitt.overview.data.NotificationBadgeRepository
-import io.github.vimitt.overview.data.PreferencesRepository
 import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.domain.usecase.FilterAppsUseCase
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
@@ -26,7 +25,6 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val settingsRepository: SettingsRepository = SettingsRepository(appContext)
-    val preferencesRepository: PreferencesRepository = PreferencesRepository(settingsRepository)
     val iconPackRepository: IconPackRepository = IconPackRepository(appContext)
     val notificationBadgeRepository: NotificationBadgeRepository = NotificationBadgeRepository(appContext)
 

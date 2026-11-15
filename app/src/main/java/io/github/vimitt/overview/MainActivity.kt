@@ -17,6 +17,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,7 +31,6 @@ import io.github.vimitt.overview.ui.LauncherRoot
 import io.github.vimitt.overview.ui.home.HomeViewModel
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.overview.OverviewViewModel
-import io.github.vimitt.overview.ui.settings.SettingsViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -52,7 +52,8 @@ class MainActivity : ComponentActivity() {
         HomeViewModel.Factory(
             appContext = applicationContext,
             appsRepository = appContainer.appsRepository,
-            preferencesRepository = appContainer.preferencesRepository,
+            settingsRepository = appContainer.settingsRepository,
+            notificationBadgeRepository = appContainer.notificationBadgeRepository,
             homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
             appWidgetController = appContainer.appWidgetController,
             homeGridPlacementUseCase = appContainer.homeGridPlacementUseCase,
@@ -65,17 +66,13 @@ class MainActivity : ComponentActivity() {
         OverviewViewModel.Factory(
             appsRepository = appContainer.appsRepository,
             filterAppsUseCase = appContainer.filterAppsUseCase,
-        )
-    }
-
-    private val settingsViewModel: SettingsViewModel by viewModels {
-        SettingsViewModel.Factory(
-            appsRepository = appContainer.appsRepository,
-            preferencesRepository = appContainer.preferencesRepository,
+            settingsRepository = appContainer.settingsRepository,
+            notificationBadgeRepository = appContainer.notificationBadgeRepository,
         )
     }
 
     private var isOverviewOpen by mutableStateOf(false)
+    private var overviewFocusSearchTrigger by mutableIntStateOf(0)
     private var isHomeMenuOpen by mutableStateOf(false)
     private var isSettingsOpen by mutableStateOf(false)
     private var isAppPickerOpen by mutableStateOf(false)
@@ -106,12 +103,13 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
 
         setContent {
-            val preferences by appContainer.preferencesRepository.preferences
+            val preferences by appContainer.settingsRepository.preferences
                 .collectAsStateWithLifecycle(initialValue = LauncherPreferences())
+            val allApps by appContainer.appsRepository.apps
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
             val searchQuery by overviewViewModel.searchQuery.collectAsStateWithLifecycle()
             val overviewUiState by overviewViewModel.uiState.collectAsStateWithLifecycle()
-            val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
             var wallpaperSupportsDarkText by remember {
                 mutableStateOf(readWallpaperSupportsDarkText())
@@ -157,7 +155,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LauncherRoot(
+                    appContainer = appContainer,
                     isOverviewOpen = isOverviewOpen,
+                    overviewFocusSearchTrigger = overviewFocusSearchTrigger,
                     isHomeMenuOpen = isHomeMenuOpen,
                     isSettingsOpen = isSettingsOpen,
                     isAppPickerOpen = isAppPickerOpen,
@@ -168,12 +168,17 @@ class MainActivity : ComponentActivity() {
                     homeUiState = homeUiState,
                     searchQuery = searchQuery,
                     overviewUiState = overviewUiState,
-                    settingsUiState = settingsUiState,
-                    allApps = settingsUiState.allApps,
+                    allApps = allApps,
                     onOpenOverview = {
                         isHomeMenuOpen = false
                         selectedHomeItemId = null
                         isOverviewOpen = true
+                    },
+                    onOpenOverviewSearch = {
+                        isHomeMenuOpen = false
+                        selectedHomeItemId = null
+                        isOverviewOpen = true
+                        overviewFocusSearchTrigger++
                     },
                     onCloseOverview = {
                         isOverviewOpen = false
@@ -239,12 +244,6 @@ class MainActivity : ComponentActivity() {
                             overviewViewModel.onClearSearch()
                         }
                     },
-                    onThemeModeChange = settingsViewModel::onThemeModeChange,
-                    onAccentColorChange = settingsViewModel::onAccentColorChange,
-                    onBlurRadiusChange = settingsViewModel::onBlurRadiusChange,
-                    onShowClockChange = settingsViewModel::onShowClockChange,
-                    onToggleDashApp = settingsViewModel::onToggleDashApp,
-                    onResetDashToAuto = settingsViewModel::onResetDashToAuto,
                 )
             }
         }

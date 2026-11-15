@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -72,8 +73,10 @@ fun AppIconItem(
     modifier: Modifier = Modifier,
     iconSize: Dp = 54.dp,
     showLabel: Boolean = true,
+    labelFontScale: Float = 1f,
     labelColor: Color? = null,
     labelShadow: Shadow? = null,
+    showNotificationDot: Boolean = false,
     onLongClick: ((AppInfo) -> Unit)? = null,
     onDragStart: ((AppInfo, Offset) -> Unit)? = null,
     onDragMove: ((Offset) -> Unit)? = null,
@@ -207,13 +210,31 @@ fun AppIconItem(
                     )
                 }
             }
+
+            if (showNotificationDot) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(colors.surface)
+                        .padding(1.5.dp)
+                        .clip(CircleShape)
+                        .background(colors.accent),
+                )
+            }
         }
 
         if (showLabel) {
             Spacer(modifier = Modifier.height(8.dp))
+            val labelStyle = MaterialTheme.typography.labelMedium
             Text(
                 text = app.label,
-                style = MaterialTheme.typography.labelMedium.copy(shadow = labelShadow),
+                style = labelStyle.copy(
+                    fontSize = labelStyle.fontSize * labelFontScale,
+                    lineHeight = labelStyle.lineHeight * labelFontScale,
+                    shadow = labelShadow,
+                ),
                 color = labelColor ?: colors.onSurface,
                 minLines = 2,
                 maxLines = 2,

@@ -31,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
@@ -55,6 +57,7 @@ fun OverviewSearchBar(
     onClear: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
     onOpenSettings: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
@@ -122,6 +125,13 @@ fun OverviewSearchBar(
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (focusRequester != null) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .onFocusChanged { focusState -> isFocused = focusState.isFocused },
             )
         }

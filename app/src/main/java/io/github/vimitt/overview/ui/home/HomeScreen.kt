@@ -29,9 +29,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,7 +71,6 @@ import androidx.compose.ui.unit.sp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
-import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.ui.ActiveDragState
 import io.github.vimitt.overview.ui.DragPayload
 import io.github.vimitt.overview.ui.HomeDropTarget
@@ -93,6 +94,7 @@ fun HomeScreen(
     dropTarget: HomeDropTarget?,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onOpenOverview: () -> Unit,
+    onOpenOverviewSearch: () -> Unit,
     onLongPress: () -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
@@ -197,6 +199,13 @@ fun HomeScreen(
                 if (hasWorkspaceItems || isMoving || isDraggingOverGrid) {
                     HomeWorkspaceGrid(
                         items = uiState.workspaceItems,
+                        gridColumns = uiState.gridColumns,
+                        gridRows = uiState.gridRows,
+                        iconScale = uiState.iconScale,
+                        showLabels = uiState.showLabels,
+                        labelScale = uiState.labelScale,
+                        showNotificationDots = uiState.showNotificationDots,
+                        badgePackages = uiState.badgePackages,
                         movingItemId = uiState.movingItemId,
                         activeDrag = activeDrag,
                         dropTarget = dropTarget,
@@ -218,10 +227,20 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.Bottom,
             ) {
                 OverviewHandlePill(onClick = onOpenOverview)
+                if (uiState.showDockSearchBar) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    DockSearchBarPill(
+                        backgroundAlpha = uiState.dockBackgroundAlpha,
+                        onClick = onOpenOverviewSearch,
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
                 DashBar(
                     apps = uiState.dashApps,
                     onAppClick = onAppClick,
+                    backgroundAlpha = uiState.dockBackgroundAlpha,
+                    showNotificationDots = uiState.showNotificationDots,
+                    badgePackages = uiState.badgePackages,
                 )
             }
         }
@@ -244,6 +263,13 @@ fun HomeScreen(
 @Composable
 private fun HomeWorkspaceGrid(
     items: List<HomeWorkspaceItem>,
+    gridColumns: Int,
+    gridRows: Int,
+    iconScale: Float,
+    showLabels: Boolean,
+    labelScale: Float,
+    showNotificationDots: Boolean,
+    badgePackages: Set<String>,
     movingItemId: String?,
     activeDrag: ActiveDragState?,
     dropTarget: HomeDropTarget?,
@@ -266,15 +292,18 @@ private fun HomeWorkspaceGrid(
         )
     }
     val isDraggingOverGrid = activeDrag?.hasMovedPastSlop == true
+    val safeColumns = gridColumns.coerceIn(3, 6)
+    val safeRows = gridRows.coerceIn(3, 6)
+    val shortcutIconSize = remember(iconScale) { (52f * iconScale).dp }
 
     BoxWithConstraints(modifier = modifier) {
-        val cellWidth = maxWidth / HomeGridSpec.COLUMNS
-        val cellHeight = maxHeight / HomeGridSpec.ROWS
+        val cellWidth = maxWidth / safeColumns
+        val cellHeight = maxHeight / safeRows
 
         if (isDraggingOverGrid) {
             val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
-            for (y in 0 until HomeGridSpec.ROWS) {
-                for (x in 0 until HomeGridSpec.COLUMNS) {
+            for (y in 0 until safeRows) {
+                for (x in 0 until safeColumns) {
                     Box(
                         modifier = Modifier
                             .offset(x = cellWidth * x, y = cellHeight * y)
@@ -314,8 +343,8 @@ private fun HomeWorkspaceGrid(
                 )
             }
         } else if (movingItemId != null) {
-            for (y in 0 until HomeGridSpec.ROWS) {
-                for (x in 0 until HomeGridSpec.COLUMNS) {
+            for (y in 0 until safeRows) {
+                for (x in 0 until safeColumns) {
                     val canPlace = canPlaceMovingItemAt(x, y)
                     val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
                     Box(
@@ -353,12 +382,16 @@ private fun HomeWorkspaceGrid(
                 val item = workspaceItem.item
                 val isMovingThis = item.id == movingItemId
                 val isDraggingThis = isDraggingOverGrid && activeDrag.payload.ignoreItemId == item.id
-                val itemWidth = cellWidth * item.spanX
-                val itemHeight = cellHeight * item.spanY
+                val displaySpanX = item.spanX.coerceIn(1, safeColumns)
+                val displaySpanY = item.spanY.coerceIn(1, safeRows)
+                val displayCellX = item.cellX.coerceIn(0, (safeColumns - displaySpanX).coerceAtLeast(0))
+                val displayCellY = item.cellY.coerceIn(0, (safeRows - displaySpanY).coerceAtLeast(0))
+                val itemWidth = cellWidth * displaySpanX
+                val itemHeight = cellHeight * displaySpanY
 
                 Box(
                     modifier = Modifier
-                        .offset(x = cellWidth * item.cellX, y = cellHeight * item.cellY)
+                        .offset(x = cellWidth * displayCellX, y = cellHeight * displayCellY)
                         .size(width = itemWidth, height = itemHeight)
                         .padding(4.dp)
                         .graphicsLayer {
@@ -377,10 +410,13 @@ private fun HomeWorkspaceGrid(
                                 onDragMove = onItemDragMove,
                                 onDragEnd = onItemDragEnd,
                                 onDragCancel = onItemDragCancel,
-                                iconSize = 52.dp,
-                                showLabel = true,
+                                iconSize = shortcutIconSize,
+                                showLabel = showLabels,
+                                labelFontScale = labelScale,
                                 labelColor = colors.wallpaperForeground,
                                 labelShadow = labelShadow,
+                                showNotificationDot = showNotificationDots &&
+                                    workspaceItem.app.packageName in badgePackages,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -589,6 +625,47 @@ private fun OverviewHandlePill(
                 .size(width = 40.dp, height = 4.dp)
                 .clip(RoundedCornerShape(OverviewCornerRadius.Pill))
                 .background(colors.wallpaperForeground.copy(alpha = 0.72f)),
+        )
+    }
+}
+
+@Composable
+private fun DockSearchBarPill(
+    backgroundAlpha: Float,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
+    val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
+
+    Row(
+        modifier = modifier
+            .widthIn(max = 420.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.dashBackground.copy(alpha = effectiveAlpha))
+            .border(
+                width = 1.dp,
+                color = colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * effectiveAlpha),
+                shape = shape,
+            )
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = stringResource(R.string.search_apps_content_description),
+            tint = colors.onSurfaceMuted,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = stringResource(R.string.search_apps_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceMuted,
         )
     }
 }

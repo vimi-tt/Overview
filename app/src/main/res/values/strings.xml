@@ -145,9 +145,4 @@
     <string name="settings_close_dialog">Fechar</string>
     <string name="settings_home_grid_format">%1$d × %2$d</string>
     <string name="settings_home_summary_locked">%1$d × %2$d · Bloqueado</string>
-
-    <!-- Compatibilidade temporária até substituição da SettingsScreen antiga -->
-    <string name="settings_section_appearance">Aparência</string>
-    <string name="settings_section_home">Tela inicial</string>
-    <string name="settings_section_dash">Dash (favoritos)</string>
 </resources>

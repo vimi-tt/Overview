@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
@@ -63,8 +64,8 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
+import io.github.vimitt.overview.di.AppContainer
 import io.github.vimitt.overview.domain.model.AppInfo
-import io.github.vimitt.overview.domain.model.ThemeMode
 import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
 import io.github.vimitt.overview.ui.home.HomeItemActionOverlay
 import io.github.vimitt.overview.ui.home.HomeScreen
@@ -73,8 +74,7 @@ import io.github.vimitt.overview.ui.home.HomeWidgetPickerScreen
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.overview.OverviewScreen
 import io.github.vimitt.overview.ui.overview.OverviewUiState
-import io.github.vimitt.overview.ui.settings.SettingsScreen
-import io.github.vimitt.overview.ui.settings.SettingsUiState
+import io.github.vimitt.overview.ui.settings.SettingsNavHost
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewTween
@@ -86,7 +86,9 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun LauncherRoot(
+    appContainer: AppContainer,
     isOverviewOpen: Boolean,
+    overviewFocusSearchTrigger: Int,
     isHomeMenuOpen: Boolean,
     isSettingsOpen: Boolean,
     isAppPickerOpen: Boolean,
@@ -97,9 +99,9 @@ fun LauncherRoot(
     homeUiState: HomeUiState,
     searchQuery: String,
     overviewUiState: OverviewUiState,
-    settingsUiState: SettingsUiState,
     allApps: List<AppInfo>,
     onOpenOverview: () -> Unit,
+    onOpenOverviewSearch: () -> Unit,
     onCloseOverview: () -> Unit,
     onHomeLongPress: () -> Unit,
     onDismissHomeMenu: () -> Unit,
@@ -140,18 +142,21 @@ fun LauncherRoot(
         sourceBounds: android.graphics.Rect?,
         reducedMotion: Boolean,
     ) -> Unit,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    onAccentColorChange: (Long) -> Unit,
-    onBlurRadiusChange: (Float) -> Unit,
-    onShowClockChange: (Boolean) -> Unit,
-    onToggleDashApp: (AppInfo) -> Unit,
-    onResetDashToAuto: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val reducedMotion = OverviewTheme.reducedMotion
     val density = LocalDensity.current
     val context = LocalContext.current
     val viewConfig = LocalViewConfiguration.current
+    val showLockedToast = remember(context) {
+        {
+            Toast.makeText(
+                context,
+                R.string.home_layout_locked_notice,
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
 
     var activeDrag by remember { mutableStateOf<ActiveDragState?>(null) }
     var homeGridBounds by remember { mutableStateOf<ComposeRect?>(null) }
@@ -189,6 +194,8 @@ fun LauncherRoot(
             removeZoneBounds = removeZoneBounds,
             payload = drag.payload,
             canPlace = canPlaceDragItemAt,
+            gridColumns = homeUiState.gridColumns,
+            gridRows = homeUiState.gridRows,
         )
     }
 
@@ -225,6 +232,7 @@ fun LauncherRoot(
                 onLaunchFromHome(app, view, bounds, reducedMotion)
             },
             onOpenOverview = onOpenOverview,
+            onOpenOverviewSearch = onOpenOverviewSearch,
             onLongPress = onHomeLongPress,
             canPlaceMovingItemAt = canPlaceMovingItemAt,
             onPlaceMovingItemAt = onPlaceMovingItemAt,
@@ -232,12 +240,16 @@ fun LauncherRoot(
             onGridBoundsChanged = { bounds -> homeGridBounds = bounds },
             onRemoveZoneBoundsChanged = { bounds -> removeZoneBounds = bounds },
             onStartItemDrag = { item, startPos ->
-                activeDrag = ActiveDragState(
-                    payload = DragPayload.FromHome(item),
-                    startInWindow = startPos,
-                    pointerInWindow = startPos,
-                    hasMovedPastSlop = false,
-                )
+                if (homeUiState.lockLayout) {
+                    showLockedToast()
+                } else {
+                    activeDrag = ActiveDragState(
+                        payload = DragPayload.FromHome(item),
+                        startInWindow = startPos,
+                        pointerInWindow = startPos,
+                        hasMovedPastSlop = false,
+                    )
+                }
             },
             onItemDragMove = updateDragPosition,
             onItemDragEnd = {
@@ -304,6 +316,7 @@ fun LauncherRoot(
                 isDraggingToHome = isDraggingFromOverviewActive,
                 searchQuery = searchQuery,
                 uiState = overviewUiState,
+                focusSearchTrigger = overviewFocusSearchTrigger,
                 onSearchQueryChange = onSearchQueryChange,
                 onClearSearch = onClearSearch,
                 onAppClick = { app, view, bounds ->
@@ -323,25 +336,31 @@ fun LauncherRoot(
                     val target = currentDropTarget
                     activeDrag = null
                     val wasDrag = finished?.hasMovedPastSlop == true
-                    if (wasDrag &&
-                        finished.payload is DragPayload.FromOverview &&
-                        target != null &&
-                        target.isValid
-                    ) {
-                        onDropAppFromOverviewAt(
-                            finished.payload.app,
-                            target.cellX,
-                            target.cellY,
-                        )
-                        lastClosedByDrag = true
-                        onCloseOverview()
+                    if (wasDrag && finished.payload is DragPayload.FromOverview && target != null) {
+                        if (homeUiState.lockLayout) {
+                            showLockedToast()
+                        } else if (target.isValid) {
+                            onDropAppFromOverviewAt(
+                                finished.payload.app,
+                                target.cellX,
+                                target.cellY,
+                            )
+                            lastClosedByDrag = true
+                            onCloseOverview()
+                        }
                     }
                     wasDrag
                 },
                 onAppDragCancel = {
                     activeDrag = null
                 },
-                onAddAppToHome = onAddAppFromOverview,
+                onAddAppToHome = { app ->
+                    if (homeUiState.lockLayout) {
+                        showLockedToast()
+                    } else {
+                        onAddAppFromOverview(app)
+                    }
+                },
                 onOpenAppInfo = onOpenAppInfo,
                 onClose = onCloseOverview,
                 onOpenSettings = onOpenSettings,
@@ -356,11 +375,11 @@ fun LauncherRoot(
             HomeContextMenuOverlay(
                 onAddApp = {
                     onDismissHomeMenu()
-                    onOpenAppPicker()
+                    if (homeUiState.lockLayout) showLockedToast() else onOpenAppPicker()
                 },
                 onAddWidget = {
                     onDismissHomeMenu()
-                    onOpenWidgetPicker()
+                    if (homeUiState.lockLayout) showLockedToast() else onOpenWidgetPicker()
                 },
                 onCustomize = {
                     onDismissHomeMenu()
@@ -421,14 +440,8 @@ fun LauncherRoot(
             enter = enterTransition,
             exit = exitTransition,
         ) {
-            SettingsScreen(
-                uiState = settingsUiState,
-                onThemeModeChange = onThemeModeChange,
-                onAccentColorChange = onAccentColorChange,
-                onBlurRadiusChange = onBlurRadiusChange,
-                onShowClockChange = onShowClockChange,
-                onToggleDashApp = onToggleDashApp,
-                onResetDashToAuto = onResetDashToAuto,
+            SettingsNavHost(
+                appContainer = appContainer,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
                 onClose = onCloseSettings,
             )

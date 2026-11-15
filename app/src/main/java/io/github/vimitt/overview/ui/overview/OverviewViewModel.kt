@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.vimitt.overview.data.AppsRepository
+import io.github.vimitt.overview.data.NotificationBadgeRepository
+import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.usecase.FilterAppsUseCase
 import kotlinx.coroutines.Dispatchers
@@ -18,11 +20,14 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * ViewModel responsável pelo Overview: filtragem em tempo real e abertura de apps.
+ * ViewModel responsável pelo Overview: filtragem em tempo real, ordenação,
+ * visibilidade de aplicativos e abertura com animação.
  */
 class OverviewViewModel(
     private val appsRepository: AppsRepository,
     private val filterAppsUseCase: FilterAppsUseCase,
+    settingsRepository: SettingsRepository,
+    notificationBadgeRepository: NotificationBadgeRepository,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -33,10 +38,23 @@ class OverviewViewModel(
     val uiState: StateFlow<OverviewUiState> = combine(
         appsRepository.apps,
         _searchQuery,
-    ) { apps, query ->
+        settingsRepository.appGridSettings,
+        settingsRepository.appearanceSettings,
+        notificationBadgeRepository.activeBadgePackages,
+    ) { apps, query, gridSettings, appearance, badges ->
         OverviewUiState(
             searchQuery = query,
-            apps = filterAppsUseCase(apps, query),
+            apps = filterAppsUseCase(
+                apps = apps,
+                query = query,
+                sortOrder = gridSettings.sortOrder,
+                hiddenAppKeys = gridSettings.hiddenAppKeys,
+                showHiddenInSearch = gridSettings.showHiddenInSearch,
+            ),
+            gridColumns = gridSettings.columns,
+            iconScale = gridSettings.iconScale,
+            showNotificationDots = appearance.notificationDotsEnabled,
+            badgePackages = badges,
         )
     }
         .flowOn(Dispatchers.Default)
@@ -71,12 +89,16 @@ class OverviewViewModel(
     class Factory(
         private val appsRepository: AppsRepository,
         private val filterAppsUseCase: FilterAppsUseCase,
+        private val settingsRepository: SettingsRepository,
+        private val notificationBadgeRepository: NotificationBadgeRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return OverviewViewModel(
                 appsRepository = appsRepository,
                 filterAppsUseCase = filterAppsUseCase,
+                settingsRepository = settingsRepository,
+                notificationBadgeRepository = notificationBadgeRepository,
             ) as T
         }
     }

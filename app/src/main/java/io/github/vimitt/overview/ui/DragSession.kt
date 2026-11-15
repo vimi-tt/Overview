@@ -80,7 +80,7 @@ data class ActiveDragState(
 )
 
 /**
- * Célula de destino calculada na grade 4×5 da tela inicial durante um arraste.
+ * Célula de destino calculada na grade da tela inicial durante um arraste.
  */
 data class HomeDropTarget(
     val cellX: Int,
@@ -100,6 +100,8 @@ fun computeHomeDropTarget(
     removeZoneBounds: Rect?,
     payload: DragPayload,
     canPlace: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
+    gridColumns: Int = HomeGridSpec.COLUMNS,
+    gridRows: Int = HomeGridSpec.ROWS,
 ): HomeDropTarget? {
     if (payload is DragPayload.FromHome &&
         removeZoneBounds != null &&
@@ -131,18 +133,20 @@ fun computeHomeDropTarget(
     val clampedX = pointerInWindow.x.coerceIn(gridBounds.left, gridBounds.right - 1f)
     val clampedY = pointerInWindow.y.coerceIn(gridBounds.top, gridBounds.bottom - 1f)
 
-    val cellWidth = gridBounds.width / HomeGridSpec.COLUMNS
-    val cellHeight = gridBounds.height / HomeGridSpec.ROWS
+    val safeColumns = gridColumns.coerceAtLeast(1)
+    val safeRows = gridRows.coerceAtLeast(1)
+    val cellWidth = gridBounds.width / safeColumns
+    val cellHeight = gridBounds.height / safeRows
 
     val rawCol = (clampedX - gridBounds.left) / cellWidth
     val rawRow = (clampedY - gridBounds.top) / cellHeight
 
     val targetCellX = floor(rawCol - (payload.spanX - 1) / 2f)
         .toInt()
-        .coerceIn(0, (HomeGridSpec.COLUMNS - payload.spanX).coerceAtLeast(0))
+        .coerceIn(0, (safeColumns - payload.spanX).coerceAtLeast(0))
     val targetCellY = floor(rawRow - (payload.spanY - 1) / 2f)
         .toInt()
-        .coerceIn(0, (HomeGridSpec.ROWS - payload.spanY).coerceAtLeast(0))
+        .coerceIn(0, (safeRows - payload.spanY).coerceAtLeast(0))
 
     val isValid = canPlace(
         targetCellX,

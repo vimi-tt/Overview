@@ -11,10 +11,10 @@ import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.data.AppsRepository
 import io.github.vimitt.overview.data.DefaultDashPackageProvider
 import io.github.vimitt.overview.data.HomeWorkspaceRepository
-import io.github.vimitt.overview.data.PreferencesRepository
+import io.github.vimitt.overview.data.NotificationBadgeRepository
+import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.domain.model.AppInfo
-import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
@@ -31,7 +31,8 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val appContext: Context,
     private val appsRepository: AppsRepository,
-    preferencesRepository: PreferencesRepository,
+    settingsRepository: SettingsRepository,
+    notificationBadgeRepository: NotificationBadgeRepository,
     private val homeWorkspaceRepository: HomeWorkspaceRepository,
     private val appWidgetController: AppWidgetController,
     private val homeGridPlacementUseCase: HomeGridPlacementUseCase,
@@ -47,14 +48,16 @@ class HomeViewModel(
 
     val uiState: StateFlow<HomeUiState> = combine(
         appsRepository.apps,
-        preferencesRepository.preferences,
+        settingsRepository.preferences,
         homeWorkspaceRepository.items,
         movingItemId,
-    ) { apps, preferences, rawItems, movingId ->
+        notificationBadgeRepository.activeBadgePackages,
+    ) { apps, preferences, rawItems, movingId, badgePackages ->
         val dashApps = resolveDefaultDashAppsUseCase(
             apps = apps,
             pinnedKeys = preferences.pinnedDashKeys,
             preferredPackagesBySlot = preferredPackagesBySlot,
+            maxItems = preferences.dock.iconCount,
         )
 
         val appsByKey = apps.associateBy { it.key }
@@ -87,7 +90,11 @@ class HomeViewModel(
             }
         }
 
-        val activeMovingId = if (movingId != null && rawItems.any { it.id == movingId }) {
+        val activeMovingId = if (
+            !preferences.home.lockLayout &&
+            movingId != null &&
+            rawItems.any { it.id == movingId }
+        ) {
             movingId
         } else {
             null
@@ -98,6 +105,10 @@ class HomeViewModel(
             workspaceItems = resolvedWorkspace,
             showClock = preferences.showClock,
             movingItemId = activeMovingId,
+            homeSettings = preferences.home,
+            dockSettings = preferences.dock,
+            showNotificationDots = preferences.appearance.notificationDotsEnabled,
+            badgePackages = badgePackages,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -125,11 +136,18 @@ class HomeViewModel(
         preferredCellY: Int? = null,
         onResult: (Boolean) -> Unit = {},
     ) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) {
+            onResult(false)
+            return
+        }
         viewModelScope.launch {
             val added = homeWorkspaceRepository.addAppShortcut(
                 app = app,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
             )
             onResult(added)
         }
@@ -142,7 +160,9 @@ class HomeViewModel(
         spanY: Int,
         ignoreItemId: String? = null,
     ): Boolean {
-        val items = uiState.value.workspaceItems.map { it.item }
+        val currentState = uiState.value
+        if (currentState.lockLayout) return false
+        val items = currentState.workspaceItems.map { it.item }
         return homeGridPlacementUseCase.canPlace(
             existingItems = items,
             cellX = cellX,
@@ -150,12 +170,22 @@ class HomeViewModel(
             spanX = spanX,
             spanY = spanY,
             ignoreItemId = ignoreItemId,
+            columns = currentState.gridColumns,
+            rows = currentState.gridRows,
         )
     }
 
     fun moveItemTo(itemId: String, cellX: Int, cellY: Int) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) return
         viewModelScope.launch {
-            val moved = homeWorkspaceRepository.moveItem(itemId, cellX, cellY)
+            val moved = homeWorkspaceRepository.moveItem(
+                id = itemId,
+                newCellX = cellX,
+                newCellY = cellY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
+            )
             if (moved && movingItemId.value == itemId) {
                 movingItemId.value = null
             }
@@ -169,12 +199,20 @@ class HomeViewModel(
         spanY: Int,
         onResult: (Boolean) -> Unit = {},
     ) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) {
+            appWidgetController.deleteAppWidgetId(appWidgetId)
+            onResult(false)
+            return
+        }
         viewModelScope.launch {
             val added = homeWorkspaceRepository.addWidget(
                 appWidgetId = appWidgetId,
                 provider = provider,
                 desiredSpanX = spanX,
                 desiredSpanY = spanY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
             )
             if (!added) {
                 appWidgetController.deleteAppWidgetId(appWidgetId)
@@ -184,6 +222,7 @@ class HomeViewModel(
     }
 
     fun startMovingItem(itemId: String) {
+        if (uiState.value.lockLayout) return
         movingItemId.value = itemId
     }
 
@@ -192,9 +231,17 @@ class HomeViewModel(
     }
 
     fun placeMovingItemAt(cellX: Int, cellY: Int) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) return
         val targetId = movingItemId.value ?: return
         viewModelScope.launch {
-            val moved = homeWorkspaceRepository.moveItem(targetId, cellX, cellY)
+            val moved = homeWorkspaceRepository.moveItem(
+                id = targetId,
+                newCellX = cellX,
+                newCellY = cellY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
+            )
             if (moved) {
                 movingItemId.value = null
             }
@@ -202,8 +249,10 @@ class HomeViewModel(
     }
 
     fun canPlaceMovingItemAt(cellX: Int, cellY: Int): Boolean {
+        val currentState = uiState.value
+        if (currentState.lockLayout) return false
         val targetId = movingItemId.value ?: return false
-        val items = uiState.value.workspaceItems.map { it.item }
+        val items = currentState.workspaceItems.map { it.item }
         val moving = items.firstOrNull { it.id == targetId } ?: return false
         return homeGridPlacementUseCase.canPlace(
             existingItems = items,
@@ -212,25 +261,36 @@ class HomeViewModel(
             spanX = moving.spanX,
             spanY = moving.spanY,
             ignoreItemId = targetId,
+            columns = currentState.gridColumns,
+            rows = currentState.gridRows,
         )
     }
 
     fun resizeWidget(itemId: String, deltaSpanX: Int, deltaSpanY: Int) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) return
         viewModelScope.launch {
-            val widget = uiState.value.workspaceItems
+            val widget = currentState.workspaceItems
                 .firstOrNull { it.item.id == itemId }
                 ?.item as? HomeItem.Widget
                 ?: return@launch
 
-            val nextX = (widget.spanX + deltaSpanX).coerceIn(1, HomeGridSpec.COLUMNS)
-            val nextY = (widget.spanY + deltaSpanY).coerceIn(1, HomeGridSpec.ROWS)
+            val nextX = (widget.spanX + deltaSpanX).coerceIn(1, currentState.gridColumns)
+            val nextY = (widget.spanY + deltaSpanY).coerceIn(1, currentState.gridRows)
             if (nextX == widget.spanX && nextY == widget.spanY) return@launch
 
-            homeWorkspaceRepository.resizeWidget(itemId, nextX, nextY)
+            homeWorkspaceRepository.resizeWidget(
+                id = itemId,
+                newSpanX = nextX,
+                newSpanY = nextY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
+            )
         }
     }
 
     fun removeHomeItem(itemId: String) {
+        if (uiState.value.lockLayout) return
         viewModelScope.launch {
             if (movingItemId.value == itemId) {
                 movingItemId.value = null
@@ -249,7 +309,8 @@ class HomeViewModel(
     class Factory(
         private val appContext: Context,
         private val appsRepository: AppsRepository,
-        private val preferencesRepository: PreferencesRepository,
+        private val settingsRepository: SettingsRepository,
+        private val notificationBadgeRepository: NotificationBadgeRepository,
         private val homeWorkspaceRepository: HomeWorkspaceRepository,
         private val appWidgetController: AppWidgetController,
         private val homeGridPlacementUseCase: HomeGridPlacementUseCase,
@@ -261,7 +322,8 @@ class HomeViewModel(
             return HomeViewModel(
                 appContext = appContext,
                 appsRepository = appsRepository,
-                preferencesRepository = preferencesRepository,
+                settingsRepository = settingsRepository,
+                notificationBadgeRepository = notificationBadgeRepository,
                 homeWorkspaceRepository = homeWorkspaceRepository,
                 appWidgetController = appWidgetController,
                 homeGridPlacementUseCase = homeGridPlacementUseCase,
