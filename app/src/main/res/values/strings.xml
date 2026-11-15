@@ -44,10 +44,10 @@
     <string name="settings_hub_dock">Dock</string>
     <string name="settings_hub_app_grid">Grade de apps</string>
     <string name="settings_hub_overview">Overview</string>
+    <string name="settings_hub_search">Busca</string>
+    <string name="settings_hub_folders">Pastas</string>
+    <string name="settings_hub_gestures">Gestos</string>
     <string name="settings_hub_about">Sobre</string>
-    <string name="settings_hub_future_header">Em breve</string>
-    <string name="settings_hub_future_search">Busca, Pastas e Gestos</string>
-    <string name="settings_hub_future_subtitle">Planejado para próximas atualizações</string>
 
     <!-- Categoria: Aparência -->
     <string name="settings_section_theme">Tema e cores</string>
@@ -162,8 +162,83 @@
     <string name="settings_about_credit_lawnchair">Lawnchair</string>
     <string name="settings_about_credit_lawnchair_sub">Inspiração na organização das categorias e subtítulos dinâmicos das configurações</string>
 
+    <!-- Categoria: Busca -->
+    <string name="settings_section_search_behavior">Comportamento</string>
+    <string name="settings_section_search_web">Pesquisa na web</string>
+    <string name="settings_search_autofocus">Abrir teclado ao entrar no Overview</string>
+    <string name="settings_search_autofocus_subtitle">Foca automaticamente a barra de busca ao abrir o Overview</string>
+    <string name="settings_search_match_pkg">Buscar pelo nome do pacote</string>
+    <string name="settings_search_match_pkg_subtitle">Encontra apps pelo identificador técnico além do título</string>
+    <string name="settings_search_clear_close">Limpar busca ao fechar</string>
+    <string name="settings_search_clear_close_subtitle">Reinicia o texto pesquisado ao sair do Overview</string>
+    <string name="settings_search_web_suggestion">Atalho de pesquisa na web</string>
+    <string name="settings_search_web_suggestion_subtitle">Oferece pesquisar o termo digitado no navegador</string>
+    <string name="settings_search_engine_label">Mecanismo de busca</string>
+    <string name="settings_search_engine_duckduckgo">DuckDuckGo</string>
+    <string name="settings_search_engine_google">Google</string>
+    <string name="settings_search_engine_startpage">Startpage</string>
+    <string name="settings_search_engine_ecosia">Ecosia</string>
+    <string name="settings_search_summary_autofocus">Teclado automático · %1$s</string>
+    <string name="settings_search_summary_manual">Busca sob demanda · %1$s</string>
+    <string name="overview_web_search_pill">Pesquisar \"%1$s\" no %2$s</string>
+
+    <!-- Categoria: Pastas -->
+    <string name="settings_section_folders_appearance">Visual e organização</string>
+    <string name="settings_section_folders_manage">Suas pastas</string>
+    <string name="settings_folders_preview_label">Estilo da miniatura</string>
+    <string name="settings_folders_preview_grid">Grade 2 × 2</string>
+    <string name="settings_folders_preview_stacked">Empilhada</string>
+    <string name="settings_folders_columns_label">Colunas na pasta aberta</string>
+    <string name="settings_folders_sort_inside">Ordenar apps na pasta</string>
+    <string name="settings_folders_sort_inside_subtitle">Exibe os aplicativos em ordem alfabética ao abrir</string>
+    <string name="settings_folders_close_launch">Fechar ao abrir app</string>
+    <string name="settings_folders_close_launch_subtitle">Fecha a pasta automaticamente ao iniciar um aplicativo</string>
+    <string name="settings_folders_create">Criar pasta</string>
+    <string name="settings_folders_create_subtitle">Agrupe aplicativos semelhantes na grade do Overview</string>
+    <string name="settings_folders_empty">Nenhuma pasta criada ainda</string>
+    <string name="settings_folders_app_count_one">1 aplicativo</string>
+    <string name="settings_folders_app_count_many">%1$d aplicativos</string>
+    <string name="settings_folders_summary_none">Sem pastas · %1$s</string>
+    <string name="settings_folders_summary_one">1 pasta · %1$s</string>
+    <string name="settings_folders_summary_many">%1$d pastas · %2$s</string>
+    <string name="settings_folder_dialog_title_new">Nova pasta</string>
+    <string name="settings_folder_dialog_title_edit">Editar pasta</string>
+    <string name="settings_folder_name_label">Nome da pasta</string>
+    <string name="settings_folder_name_placeholder">Ex.: Ferramentas, Jogos…</string>
+    <string name="settings_folder_select_apps">Selecionar aplicativos (%1$d)</string>
+    <string name="settings_folder_save">Salvar</string>
+    <string name="settings_folder_delete">Excluir pasta</string>
+    <string name="overview_action_move_to_folder">Mover para pasta…</string>
+    <string name="overview_folder_picker_title">Escolher pasta</string>
+    <string name="overview_folder_remove_app">Remover da pasta</string>
+    <string name="overview_folder_edit_apps">Editar pasta</string>
+    <string name="overview_folder_empty">Pasta vazia</string>
+
+    <!-- Categoria: Gestos -->
+    <string name="settings_section_gestures_home">Gestos na tela inicial</string>
+    <string name="settings_section_gestures_feel">Sensibilidade</string>
+    <string name="settings_gesture_swipe_up">Deslizar para cima</string>
+    <string name="settings_gesture_swipe_down">Deslizar para baixo</string>
+    <string name="settings_gesture_double_tap">Toque duplo</string>
+    <string name="settings_gesture_home_button">Botão Início (na Home)</string>
+    <string name="settings_gesture_sensitivity">Sensibilidade ao deslizar</string>
+    <string name="settings_gesture_sensitivity_low">Baixa</string>
+    <string name="settings_gesture_sensitivity_medium">Média</string>
+    <string name="settings_gesture_sensitivity_high">Alta</string>
+    <string name="settings_gesture_action_none">Nenhuma ação</string>
+    <string name="settings_gesture_action_overview">Abrir Overview</string>
+    <string name="settings_gesture_action_overview_search">Abrir busca no Overview</string>
+    <string name="settings_gesture_action_notifications">Expandir notificações</string>
+    <string name="settings_gesture_action_quick_settings">Configurações rápidas</string>
+    <string name="settings_gesture_action_settings">Configurações do Overview</string>
+    <string name="settings_gesture_action_wallpaper">Alterar papel de parede</string>
+    <string name="settings_gesture_action_assistant">Abrir assistente</string>
+    <string name="settings_gesture_action_camera">Abrir câmera</string>
+    <string name="settings_gestures_summary_format">Para cima: %1$s · Para baixo: %2$s</string>
+
     <!-- Comuns -->
     <string name="settings_close_dialog">Fechar</string>
+    <string name="settings_cancel">Cancelar</string>
     <string name="settings_home_grid_format">%1$d × %2$d</string>
     <string name="settings_home_summary_locked">%1$d × %2$d · Bloqueado</string>
 </resources>

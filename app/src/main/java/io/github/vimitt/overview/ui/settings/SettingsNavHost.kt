@@ -22,10 +22,16 @@ import io.github.vimitt.overview.ui.settings.appearance.AppearanceSettingsScreen
 import io.github.vimitt.overview.ui.settings.appearance.AppearanceViewModel
 import io.github.vimitt.overview.ui.settings.dock.DockSettingsScreen
 import io.github.vimitt.overview.ui.settings.dock.DockSettingsViewModel
+import io.github.vimitt.overview.ui.settings.folders.FoldersSettingsScreen
+import io.github.vimitt.overview.ui.settings.folders.FoldersSettingsViewModel
+import io.github.vimitt.overview.ui.settings.gestures.GesturesSettingsScreen
+import io.github.vimitt.overview.ui.settings.gestures.GesturesSettingsViewModel
 import io.github.vimitt.overview.ui.settings.home.HomeSettingsScreen
 import io.github.vimitt.overview.ui.settings.home.HomeSettingsViewModel
 import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsScreen
 import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsViewModel
+import io.github.vimitt.overview.ui.settings.search.SearchSettingsScreen
+import io.github.vimitt.overview.ui.settings.search.SearchSettingsViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewTween
 
@@ -37,6 +43,9 @@ private object SettingsRoute {
     const val APP_GRID = "settings_app_grid"
     const val HIDDEN_APPS = "settings_hidden_apps"
     const val OVERVIEW = "settings_overview"
+    const val SEARCH = "settings_search"
+    const val FOLDERS = "settings_folders"
+    const val GESTURES = "settings_gestures"
     const val ABOUT = "settings_about"
 }
 
@@ -104,6 +113,9 @@ fun SettingsNavHost(
                 onOpenDock = { navController.navigate(SettingsRoute.DOCK) },
                 onOpenAppGrid = { navController.navigate(SettingsRoute.APP_GRID) },
                 onOpenOverview = { navController.navigate(SettingsRoute.OVERVIEW) },
+                onOpenSearch = { navController.navigate(SettingsRoute.SEARCH) },
+                onOpenFolders = { navController.navigate(SettingsRoute.FOLDERS) },
+                onOpenGestures = { navController.navigate(SettingsRoute.GESTURES) },
                 onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
                 onClose = onClose,
             )
@@ -226,6 +238,61 @@ fun SettingsNavHost(
                 onAnimationSpeedChange = viewModel::onAnimationSpeedChange,
                 onHomeDepthEffectChange = viewModel::onHomeDepthEffectChange,
                 onAppLaunchAnimationChange = viewModel::onAppLaunchAnimationChange,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.SEARCH) {
+            val viewModel: SearchSettingsViewModel = viewModel(
+                factory = SearchSettingsViewModel.Factory(appContainer.settingsRepository),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            SearchSettingsScreen(
+                uiState = uiState,
+                onAutoFocusChange = viewModel::onAutoFocusChange,
+                onMatchPackageNameChange = viewModel::onMatchPackageNameChange,
+                onClearOnCloseChange = viewModel::onClearOnCloseChange,
+                onShowWebSuggestionChange = viewModel::onShowWebSuggestionChange,
+                onWebEngineChange = viewModel::onWebEngineChange,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.FOLDERS) {
+            val viewModel: FoldersSettingsViewModel = viewModel(
+                factory = FoldersSettingsViewModel.Factory(
+                    appsRepository = appContainer.appsRepository,
+                    settingsRepository = appContainer.settingsRepository,
+                ),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            FoldersSettingsScreen(
+                uiState = uiState,
+                onPreviewStyleChange = viewModel::onPreviewStyleChange,
+                onColumnsChange = viewModel::onColumnsChange,
+                onSortAppsInsideChange = viewModel::onSortAppsInsideChange,
+                onCloseOnAppLaunchChange = viewModel::onCloseOnAppLaunchChange,
+                onSaveFolder = viewModel::saveFolder,
+                onDeleteFolder = viewModel::deleteFolder,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.GESTURES) {
+            val viewModel: GesturesSettingsViewModel = viewModel(
+                factory = GesturesSettingsViewModel.Factory(appContainer.settingsRepository),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            GesturesSettingsScreen(
+                uiState = uiState,
+                onSwipeUpChange = viewModel::onSwipeUpChange,
+                onSwipeDownChange = viewModel::onSwipeDownChange,
+                onDoubleTapChange = viewModel::onDoubleTapChange,
+                onHomeButtonChange = viewModel::onHomeButtonChange,
+                onSensitivityChange = viewModel::onSensitivityChange,
                 onBack = { navController.popBackStack() },
             )
         }

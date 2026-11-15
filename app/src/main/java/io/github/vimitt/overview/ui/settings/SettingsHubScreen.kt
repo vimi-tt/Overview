@@ -15,13 +15,15 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.BuildConfig
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppSortOrder
+import io.github.vimitt.overview.domain.model.FolderPreviewStyle
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.domain.model.ThemeMode
+import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
-import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
+import io.github.vimitt.overview.ui.settings.gestures.gestureActionLabel
 import io.github.vimitt.overview.ui.theme.AdwaitaPalette
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -33,6 +35,9 @@ fun SettingsHubScreen(
     onOpenDock: () -> Unit,
     onOpenAppGrid: () -> Unit,
     onOpenOverview: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenFolders: () -> Unit,
+    onOpenGestures: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -95,6 +100,38 @@ fun SettingsHubScreen(
         OverviewTransitionStyle.FADE -> stringResource(R.string.settings_overview_transition_fade)
     }
     val overviewSubtitle = "$blurText · $transitionText"
+
+    val engineName = when (prefs.search.webSearchEngine) {
+        WebSearchEngine.DUCKDUCKGO -> stringResource(R.string.settings_search_engine_duckduckgo)
+        WebSearchEngine.GOOGLE -> stringResource(R.string.settings_search_engine_google)
+        WebSearchEngine.STARTPAGE -> stringResource(R.string.settings_search_engine_startpage)
+        WebSearchEngine.ECOSIA -> stringResource(R.string.settings_search_engine_ecosia)
+    }
+    val searchSubtitle = if (prefs.search.autoFocusOnOpen) {
+        stringResource(R.string.settings_search_summary_autofocus, engineName)
+    } else {
+        stringResource(R.string.settings_search_summary_manual, engineName)
+    }
+
+    val folderStyleText = when (prefs.folders.previewStyle) {
+        FolderPreviewStyle.GRID_2X2 -> stringResource(R.string.settings_folders_preview_grid)
+        FolderPreviewStyle.STACKED -> stringResource(R.string.settings_folders_preview_stacked)
+    }
+    val foldersSubtitle = when (prefs.folders.folders.size) {
+        0 -> stringResource(R.string.settings_folders_summary_none, folderStyleText)
+        1 -> stringResource(R.string.settings_folders_summary_one, folderStyleText)
+        else -> stringResource(
+            R.string.settings_folders_summary_many,
+            prefs.folders.folders.size,
+            folderStyleText,
+        )
+    }
+
+    val gesturesSubtitle = stringResource(
+        R.string.settings_gestures_summary_format,
+        gestureActionLabel(prefs.gestures.swipeUpAction),
+        gestureActionLabel(prefs.gestures.swipeDownAction),
+    )
 
     val aboutSubtitle = "${BuildConfig.VERSION_NAME} · ${stringResource(R.string.settings_about_license_value)}"
 
@@ -174,6 +211,48 @@ fun SettingsHubScreen(
                     },
                     onClick = onOpenOverview,
                 )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_hub_search),
+                    subtitle = searchSubtitle,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings_search),
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onOpenSearch,
+                )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_hub_folders),
+                    subtitle = foldersSubtitle,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings_folders),
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onOpenFolders,
+                )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_hub_gestures),
+                    subtitle = gesturesSubtitle,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings_gestures),
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onOpenGestures,
+                )
             }
         }
 
@@ -191,16 +270,6 @@ fun SettingsHubScreen(
                         )
                     },
                     onClick = onOpenAbout,
-                )
-            }
-        }
-
-        item(key = "categories_planned") {
-            SettingsGroup(title = stringResource(R.string.settings_hub_future_header)) {
-                SettingsRow(
-                    title = stringResource(R.string.settings_hub_future_search),
-                    subtitle = stringResource(R.string.settings_hub_future_subtitle),
-                    enabled = false,
                 )
             }
         }
