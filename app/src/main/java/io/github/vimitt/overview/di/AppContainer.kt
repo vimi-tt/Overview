@@ -2,11 +2,14 @@ package io.github.vimitt.overview.di
 
 import android.content.Context
 import io.github.vimitt.overview.data.AppIconCache
+import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.data.AppsRepository
 import io.github.vimitt.overview.data.DefaultDashPackageProvider
+import io.github.vimitt.overview.data.HomeWorkspaceRepository
 import io.github.vimitt.overview.data.LauncherAppsRepository
 import io.github.vimitt.overview.data.PreferencesRepository
 import io.github.vimitt.overview.domain.usecase.FilterAppsUseCase
+import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,4 +38,12 @@ class AppContainer(context: Context) {
 
     val filterAppsUseCase: FilterAppsUseCase = FilterAppsUseCase()
     val resolveDefaultDashAppsUseCase: ResolveDefaultDashAppsUseCase = ResolveDefaultDashAppsUseCase()
+    val homeGridPlacementUseCase: HomeGridPlacementUseCase = HomeGridPlacementUseCase()
+
+    val homeWorkspaceRepository: HomeWorkspaceRepository = HomeWorkspaceRepository(
+        context = appContext,
+        placementUseCase = homeGridPlacementUseCase,
+    )
+
+    val appWidgetController: AppWidgetController = AppWidgetController(appContext)
 }
