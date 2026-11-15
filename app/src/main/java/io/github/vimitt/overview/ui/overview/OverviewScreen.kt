@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -60,11 +61,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +77,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
@@ -86,6 +92,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppFolder
@@ -244,6 +251,88 @@ fun OverviewScreen(
         }
     }
 
+    val continuousGridState = rememberLazyGridState()
+    val isContinuousMode = !isSearching && uiState.gridLayoutMode == AppGridLayoutMode.CONTINUOUS
+    val isContinuousAtTop by remember(isContinuousMode, continuousGridState) {
+        derivedStateOf {
+            !isContinuousMode || (
+                continuousGridState.firstVisibleItemIndex == 0 &&
+                    continuousGridState.firstVisibleItemScrollOffset == 0
+                )
+        }
+    }
+    val currentCanDragClose by rememberUpdatedState(isActive && !isDraggingToHome && isContinuousAtTop)
+    val currentOnCloseDragProgress by rememberUpdatedState(onCloseDragProgress)
+    val currentOnCloseDragEnd by rememberUpdatedState(onCloseDragEnd)
+    val currentOnClose by rememberUpdatedState(onClose)
+
+    // No modo contínuo, só permite puxar para sair quando o gesto começa nos primeiros apps (topo)
+    val continuousCloseConnection = remember(
+        dragRangePx,
+        dragTriggerPx,
+        minFlingDistancePx,
+        velocityThreshold,
+        keyboardController,
+    ) {
+        object : NestedScrollConnection {
+            private var dragStarted = false
+            private var startedAtTop = false
+            private var totalCloseY = 0f
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!currentCanDragClose || source != NestedScrollSource.UserInput) {
+                    return Offset.Zero
+                }
+                if (!dragStarted) {
+                    dragStarted = true
+                    startedAtTop = isContinuousAtTop
+                }
+                if (totalCloseY > 0f) {
+                    val nextY = (totalCloseY + available.y).coerceAtLeast(0f)
+                    val consumedY = nextY - totalCloseY
+                    totalCloseY = nextY
+                    currentOnCloseDragProgress((nextY / dragRangePx).coerceIn(0f, 1f))
+                    return Offset(0f, consumedY)
+                }
+                if (startedAtTop && isContinuousAtTop && available.y > 0f) {
+                    totalCloseY = available.y
+                    currentOnCloseDragProgress((totalCloseY / dragRangePx).coerceIn(0f, 1f))
+                    return Offset(0f, available.y)
+                }
+                if (available.y < 0f) {
+                    startedAtTop = false
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (totalCloseY > 0f) {
+                    val shouldClose = totalCloseY >= dragTriggerPx ||
+                        (available.y >= velocityThreshold && totalCloseY >= minFlingDistancePx)
+                    totalCloseY = 0f
+                    dragStarted = false
+                    startedAtTop = false
+                    currentOnCloseDragEnd(shouldClose)
+                    if (shouldClose) {
+                        keyboardController?.hide()
+                        currentOnClose()
+                    }
+                    return available
+                }
+                dragStarted = false
+                startedAtTop = false
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                totalCloseY = 0f
+                dragStarted = false
+                startedAtTop = false
+                return Velocity.Zero
+            }
+        }
+    }
+
     BackHandler(
         enabled = isActive &&
             actionTargetApp == null &&
@@ -273,16 +362,23 @@ fun OverviewScreen(
                 ) {
                     if (!isActive || isDraggingToHome) return@pointerInput
                     var totalDragY = 0f
+                    var gestureAllowedToClose = false
                     detectVerticalDragGestures(
                         onDragStart = {
                             totalDragY = 0f
+                            gestureAllowedToClose = currentCanDragClose
                             velocityTracker.resetTracking()
                         },
                         onDragEnd = {
+                            if (!gestureAllowedToClose) {
+                                totalDragY = 0f
+                                return@detectVerticalDragGestures
+                            }
                             val velocityY = velocityTracker.calculateVelocity().y
                             val shouldClose = totalDragY >= dragTriggerPx ||
                                 (velocityY >= velocityThreshold && totalDragY >= minFlingDistancePx)
                             totalDragY = 0f
+                            gestureAllowedToClose = false
                             onCloseDragEnd(shouldClose)
                             if (shouldClose) {
                                 keyboardController?.hide()
@@ -291,9 +387,11 @@ fun OverviewScreen(
                         },
                         onDragCancel = {
                             totalDragY = 0f
+                            gestureAllowedToClose = false
                             onCloseDragEnd(false)
                         },
                         onVerticalDrag = { change, dragAmount ->
+                            if (!gestureAllowedToClose) return@detectVerticalDragGestures
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
                             totalDragY += dragAmount
                             if (totalDragY > 0f) {
@@ -387,6 +485,7 @@ fun OverviewScreen(
 
                 uiState.gridLayoutMode == AppGridLayoutMode.CONTINUOUS -> {
                     ContinuousAppGrid(
+                        gridState = continuousGridState,
                         entries = uiState.gridEntries,
                         columns = uiState.gridColumns,
                         iconSize = iconSize,
@@ -402,7 +501,8 @@ fun OverviewScreen(
                         onAppDragCancel = handleAppDragCancel,
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .nestedScroll(continuousCloseConnection),
                     )
                 }
 
@@ -575,6 +675,7 @@ private fun SearchResultsGrid(
 
 @Composable
 private fun ContinuousAppGrid(
+    gridState: LazyGridState,
     entries: List<OverviewGridEntry>,
     columns: Int,
     iconSize: Dp,
@@ -593,7 +694,6 @@ private fun ContinuousAppGrid(
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val safeColumns = columns.coerceIn(3, 6)
     val contentPadding = remember(imeBottom) { PaddingValues(bottom = imeBottom + 16.dp) }
-    val gridState = rememberLazyGridState()
 
     LazyVerticalGrid(
         state = gridState,
