@@ -47,6 +47,8 @@ class HomeWorkspaceRepository(
         app: AppInfo,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
         var added = false
         context.homeWorkspaceDataStore.edit { prefs ->
@@ -57,6 +59,8 @@ class HomeWorkspaceRepository(
                 desiredSpanY = 1,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                columns = columns,
+                rows = rows,
             ) ?: return@edit
 
             current += HomeItem.AppShortcut(
@@ -80,6 +84,8 @@ class HomeWorkspaceRepository(
         desiredSpanY: Int,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
         var added = false
         context.homeWorkspaceDataStore.edit { prefs ->
@@ -90,6 +96,8 @@ class HomeWorkspaceRepository(
                 desiredSpanY = desiredSpanY,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                columns = columns,
+                rows = rows,
             ) ?: return@edit
 
             current += HomeItem.Widget(
@@ -108,7 +116,13 @@ class HomeWorkspaceRepository(
         return added
     }
 
-    suspend fun moveItem(id: String, newCellX: Int, newCellY: Int): Boolean {
+    suspend fun moveItem(
+        id: String,
+        newCellX: Int,
+        newCellY: Int,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
+    ): Boolean {
         var moved = false
         context.homeWorkspaceDataStore.edit { prefs ->
             val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
@@ -123,6 +137,8 @@ class HomeWorkspaceRepository(
                     spanX = item.spanX,
                     spanY = item.spanY,
                     ignoreItemId = id,
+                    columns = columns,
+                    rows = rows,
                 )
             ) {
                 return@edit
@@ -138,7 +154,13 @@ class HomeWorkspaceRepository(
         return moved
     }
 
-    suspend fun resizeWidget(id: String, newSpanX: Int, newSpanY: Int): Boolean {
+    suspend fun resizeWidget(
+        id: String,
+        newSpanX: Int,
+        newSpanY: Int,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
+    ): Boolean {
         var resized = false
         context.homeWorkspaceDataStore.edit { prefs ->
             val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
@@ -148,12 +170,10 @@ class HomeWorkspaceRepository(
 
             // Se expandir além da borda direita/inferior, tenta recuar a origem automaticamente.
             val candidateX = item.cellX.coerceAtMost(
-                (io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS - newSpanX)
-                    .coerceAtLeast(0),
+                (columns - newSpanX).coerceAtLeast(0),
             )
             val candidateY = item.cellY.coerceAtMost(
-                (io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS - newSpanY)
-                    .coerceAtLeast(0),
+                (rows - newSpanY).coerceAtLeast(0),
             )
 
             if (!placementUseCase.canPlace(
@@ -163,6 +183,8 @@ class HomeWorkspaceRepository(
                     spanX = newSpanX,
                     spanY = newSpanY,
                     ignoreItemId = id,
+                    columns = columns,
+                    rows = rows,
                 )
             ) {
                 return@edit

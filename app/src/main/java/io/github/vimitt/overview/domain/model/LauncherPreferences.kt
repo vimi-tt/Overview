@@ -12,22 +12,128 @@ enum class ThemeMode {
 }
 
 /**
- * Preferências persistidas do Overview.
- *
- * Mantém valores configuráveis para o MVP e já prepara campos
- * para a futura tela de personalização.
+ * Formato visual aplicado aos ícones de aplicativos.
+ */
+enum class IconShape {
+    CIRCLE,
+    ROUNDED_SQUARE,
+    SQUARE,
+}
+
+/**
+ * Critério de ordenação dos aplicativos na grade do Overview.
+ */
+enum class AppSortOrder {
+    ALPHABETICAL_ASC,
+    ALPHABETICAL_DESC,
+    RECENTLY_INSTALLED,
+}
+
+/**
+ * Valores padrão e limites validados centralizados para todas as configurações do Overview.
+ */
+object SettingsDefaults {
+    const val DEFAULT_ACCENT_COLOR_ARGB: Long = 0xFF3584E4L
+    const val MIN_BLUR_RADIUS_DP: Float = 0f
+    const val MAX_BLUR_RADIUS_DP: Float = 48f
+    const val DEFAULT_BLUR_RADIUS_DP: Float = 14f
+
+    const val MIN_GRID_COLUMNS: Int = 3
+    const val MAX_GRID_COLUMNS: Int = 6
+    const val MIN_GRID_ROWS: Int = 3
+    const val MAX_GRID_ROWS: Int = 6
+    const val DEFAULT_HOME_COLUMNS: Int = 4
+    const val DEFAULT_HOME_ROWS: Int = 5
+
+    const val MIN_ICON_SCALE: Float = 0.75f
+    const val MAX_ICON_SCALE: Float = 1.35f
+    const val DEFAULT_ICON_SCALE: Float = 1.0f
+
+    const val MIN_LABEL_SCALE: Float = 0.75f
+    const val MAX_LABEL_SCALE: Float = 1.30f
+    const val DEFAULT_LABEL_SCALE: Float = 1.0f
+
+    const val MIN_DOCK_ICONS: Int = 3
+    const val MAX_DOCK_ICONS: Int = 6
+    const val DEFAULT_DOCK_ICONS: Int = 5
+
+    const val MIN_DOCK_ALPHA: Float = 0f
+    const val MAX_DOCK_ALPHA: Float = 1f
+    const val DEFAULT_DOCK_ALPHA: Float = 0.85f
+
+    const val DEFAULT_APP_GRID_COLUMNS: Int = 4
+}
+
+/**
+ * Preferências da categoria Aparência (tema, destaque, ícones e desfoque temporário).
+ */
+@Immutable
+data class AppearanceSettings(
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val accentColorArgb: Long = SettingsDefaults.DEFAULT_ACCENT_COLOR_ARGB,
+    val iconPackPackage: String? = null,
+    val iconShape: IconShape = IconShape.ROUNDED_SQUARE,
+    val notificationDotsEnabled: Boolean = false,
+    // Mantido em Aparência temporariamente até a implementação da categoria Overview.
+    val overviewBlurRadiusDp: Float = SettingsDefaults.DEFAULT_BLUR_RADIUS_DP,
+)
+
+/**
+ * Preferências da categoria Tela inicial.
+ */
+@Immutable
+data class HomeSettings(
+    val gridColumns: Int = SettingsDefaults.DEFAULT_HOME_COLUMNS,
+    val gridRows: Int = SettingsDefaults.DEFAULT_HOME_ROWS,
+    val iconScale: Float = SettingsDefaults.DEFAULT_ICON_SCALE,
+    val showLabels: Boolean = true,
+    val labelScale: Float = SettingsDefaults.DEFAULT_LABEL_SCALE,
+    val lockLayout: Boolean = false,
+    val showClock: Boolean = true,
+)
+
+/**
+ * Preferências da categoria Dock (Dash).
+ */
+@Immutable
+data class DockSettings(
+    val iconCount: Int = SettingsDefaults.DEFAULT_DOCK_ICONS,
+    val backgroundAlpha: Float = SettingsDefaults.DEFAULT_DOCK_ALPHA,
+    val showSearchBar: Boolean = false,
+    val pinnedKeys: List<String> = emptyList(),
+)
+
+/**
+ * Preferências da categoria Grade de aplicativos.
+ */
+@Immutable
+data class AppGridSettings(
+    val columns: Int = SettingsDefaults.DEFAULT_APP_GRID_COLUMNS,
+    val iconScale: Float = SettingsDefaults.DEFAULT_ICON_SCALE,
+    val sortOrder: AppSortOrder = AppSortOrder.ALPHABETICAL_ASC,
+    val hiddenAppKeys: Set<String> = emptySet(),
+    val showHiddenInSearch: Boolean = false,
+)
+
+/**
+ * Agregado completo das preferências persistidas do Overview.
  */
 @Immutable
 data class LauncherPreferences(
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val accentColorArgb: Long = DEFAULT_ACCENT_COLOR_ARGB,
-    val overviewBlurRadiusDp: Float = DEFAULT_BLUR_RADIUS_DP,
-    val showClock: Boolean = true,
-    val pinnedDashKeys: List<String> = emptyList(),
+    val appearance: AppearanceSettings = AppearanceSettings(),
+    val home: HomeSettings = HomeSettings(),
+    val dock: DockSettings = DockSettings(),
+    val appGrid: AppGridSettings = AppGridSettings(),
 ) {
+    val themeMode: ThemeMode get() = appearance.themeMode
+    val accentColorArgb: Long get() = appearance.accentColorArgb
+    val overviewBlurRadiusDp: Float get() = appearance.overviewBlurRadiusDp
+    val showClock: Boolean get() = home.showClock
+    val pinnedDashKeys: List<String> get() = dock.pinnedKeys
+
     companion object {
-        const val DEFAULT_ACCENT_COLOR_ARGB: Long = 0xFF3584E4L
-        const val DEFAULT_BLUR_RADIUS_DP: Float = 14f
-        const val MAX_DASH_ITEMS: Int = 5
+        const val DEFAULT_ACCENT_COLOR_ARGB: Long = SettingsDefaults.DEFAULT_ACCENT_COLOR_ARGB
+        const val DEFAULT_BLUR_RADIUS_DP: Float = SettingsDefaults.DEFAULT_BLUR_RADIUS_DP
+        const val MAX_DASH_ITEMS: Int = SettingsDefaults.MAX_DOCK_ICONS
     }
 }

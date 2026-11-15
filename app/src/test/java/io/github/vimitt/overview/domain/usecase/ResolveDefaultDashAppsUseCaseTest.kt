@@ -51,4 +51,13 @@ class ResolveDefaultDashAppsUseCaseTest {
 
         assertEquals(listOf("Zeta", "Alpha"), result.map { it.label })
     }
+
+    @Test
+    fun `respects configurable dock icon count between 3 and 6`() {
+        val threeApps = useCase(apps = sampleApps, maxItems = 3)
+        assertEquals(3, threeApps.size)
+
+        val sixApps = useCase(apps = sampleApps, maxItems = 6)
+        assertEquals(6, sixApps.size)
+    }
 }

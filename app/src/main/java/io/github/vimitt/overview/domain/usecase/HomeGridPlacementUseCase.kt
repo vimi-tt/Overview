@@ -21,7 +21,7 @@ class HomeGridPlacementUseCase(
     private val rows: Int = HomeGridSpec.ROWS,
 ) {
     /**
-     * Encontra a primeira posição livre capaz de acomodar um item de tamanho [spanX] x [spanY].
+     * Encontra a primeira posição livre capaz de acomodar um item de tamanho [desiredSpanX] x [desiredSpanY].
      * Se não houver espaço exato para um widget grande, reduz o tamanho progressivamente até `1x1`
      * se necessário.
      */
@@ -31,12 +31,14 @@ class HomeGridPlacementUseCase(
         desiredSpanY: Int,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        columns: Int = this.columns,
+        rows: Int = this.rows,
     ): GridPlacement? {
         val clampedX = desiredSpanX.coerceIn(1, columns)
         val clampedY = desiredSpanY.coerceIn(1, rows)
 
         if (preferredCellX != null && preferredCellY != null) {
-            if (canPlace(existingItems, preferredCellX, preferredCellY, clampedX, clampedY)) {
+            if (canPlace(existingItems, preferredCellX, preferredCellY, clampedX, clampedY, columns = columns, rows = rows)) {
                 return GridPlacement(preferredCellX, preferredCellY, clampedX, clampedY)
             }
         }
@@ -58,7 +60,7 @@ class HomeGridPlacementUseCase(
         for ((sx, sy) in candidateSpans) {
             for (y in 0..(rows - sy)) {
                 for (x in 0..(columns - sx)) {
-                    if (canPlace(existingItems, x, y, sx, sy)) {
+                    if (canPlace(existingItems, x, y, sx, sy, columns = columns, rows = rows)) {
                         return GridPlacement(x, y, sx, sy)
                     }
                 }
@@ -78,6 +80,8 @@ class HomeGridPlacementUseCase(
         spanX: Int,
         spanY: Int,
         ignoreItemId: String? = null,
+        columns: Int = this.columns,
+        rows: Int = this.rows,
     ): Boolean {
         if (cellX < 0 || cellY < 0 || spanX < 1 || spanY < 1) return false
         if (cellX + spanX > columns || cellY + spanY > rows) return false

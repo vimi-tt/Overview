@@ -12,9 +12,9 @@ import android.os.UserManager
 import android.util.Log
 import android.view.View
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.core.graphics.drawable.toBitmap
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.AppearanceSettings
+import io.github.vimitt.overview.domain.model.IconShape
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +22,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Collator
@@ -30,13 +34,15 @@ import kotlin.math.roundToInt
 /**
  * Implementação de [AppsRepository] apoiada em [LauncherApps] e cache de ícones em memória.
  *
- * Escuta alterações de pacotes em tempo real (instalação, remoção, atualização e suspensão)
- * e processa bitmaps fora da thread principal.
+ * Escuta alterações de pacotes em tempo real (instalação, remoção, atualização e suspensão),
+ * aplica pacote de ícones / forma configurada e processa bitmaps fora da thread principal.
  */
 class LauncherAppsRepository(
     private val context: Context,
     private val appScope: CoroutineScope,
     private val iconCache: AppIconCache = AppIconCache(),
+    private val iconPackRepository: IconPackRepository = IconPackRepository(context),
+    private val appearanceFlow: Flow<AppearanceSettings> = emptyFlow(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AppsRepository {
 
@@ -45,6 +51,12 @@ class LauncherAppsRepository(
 
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     override val apps: Flow<List<AppInfo>> = _apps.asStateFlow()
+
+    @Volatile
+    private var currentIconPackPackage: String? = null
+
+    @Volatile
+    private var currentIconShape: IconShape = IconShape.ROUNDED_SQUARE
 
     // Canal conflated evita múltiplas cargas simultâneas quando vários pacotes mudam em sequência.
     private val reloadTriggers = Channel<Unit>(Channel.CONFLATED)
@@ -100,6 +112,20 @@ class LauncherAppsRepository(
 
     init {
         launcherApps?.registerCallback(packageCallback, Handler(Looper.getMainLooper()))
+        appScope.launch {
+            appearanceFlow
+                .map { it.iconPackPackage to it.iconShape }
+                .distinctUntilChanged()
+                .collectLatest { (packPkg, shape) ->
+                    val changed = currentIconPackPackage != packPkg || currentIconShape != shape
+                    currentIconPackPackage = packPkg
+                    currentIconShape = shape
+                    if (changed) {
+                        iconCache.clear()
+                        refresh()
+                    }
+                }
+        }
         appScope.launch {
             // Carga inicial imediata antes de aguardar novos gatilhos.
             _apps.value = loadAllApps()
@@ -163,6 +189,9 @@ class LauncherAppsRepository(
         val profiles = userManager?.userProfiles ?: listOf(android.os.Process.myUserHandle())
         val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
         val selfPackage = context.packageName
+        val shape = currentIconShape
+        val iconPack = iconPackRepository.loadIconPack(currentIconPackPackage)
+        val packTag = iconPack?.packageName.orEmpty()
 
         val loaded = mutableListOf<AppInfo>()
         for (profile in profiles) {
@@ -178,10 +207,12 @@ class LauncherAppsRepository(
                 // O próprio Overview não precisa aparecer dentro da grade de aplicativos.
                 if (component.packageName == selfPackage) continue
 
-                val key = "${component.packageName}/${component.className}/${profile.hashCode()}"
-                val icon = iconCache.get(key) ?: decodeIcon(activityInfo)?.also { decoded ->
-                    iconCache.put(key, decoded)
-                }
+                val cacheKey =
+                    "${component.packageName}/${component.className}/${profile.hashCode()}/${packTag}_${shape.name}"
+                val icon = iconCache.get(cacheKey)
+                    ?: decodeIcon(activityInfo, iconPack, shape)?.also { decoded ->
+                        iconCache.put(cacheKey, decoded)
+                    }
 
                 loaded += AppInfo(
                     packageName = component.packageName,
@@ -190,6 +221,7 @@ class LauncherAppsRepository(
                         .ifEmpty { component.packageName },
                     icon = icon,
                     userHandle = profile,
+                    firstInstallTimeMillis = activityInfo.firstInstallTime,
                 )
             }
         }
@@ -200,10 +232,21 @@ class LauncherAppsRepository(
         loaded
     }
 
-    private fun decodeIcon(activityInfo: LauncherActivityInfo): ImageBitmap? {
+    private fun decodeIcon(
+        activityInfo: LauncherActivityInfo,
+        iconPack: LoadedIconPack?,
+        shape: IconShape,
+    ): ImageBitmap? {
         return try {
-            val drawable = activityInfo.getBadgedIcon(iconDensityDpi)
-            drawable.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap()
+            val component = activityInfo.componentName
+            val packDrawable = iconPack?.loadDrawable(component.packageName, component.className)
+            val drawable = packDrawable ?: activityInfo.getBadgedIcon(iconDensityDpi)
+            iconPackRepository.renderIconBitmap(
+                drawable = drawable,
+                shape = shape,
+                sizePx = iconSizePx,
+                fromIconPack = packDrawable != null,
+            )
         } catch (exception: Exception) {
             Log.w(TAG, "Falha ao renderizar ícone de ${activityInfo.componentName}", exception)
             null

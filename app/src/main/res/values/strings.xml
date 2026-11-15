@@ -4,7 +4,7 @@
     <string name="search_apps_content_description">Pesquisar aplicativos</string>
     <string name="clear_search_content_description">Limpar pesquisa</string>
     <string name="open_overview_content_description">Abrir visão geral de aplicativos</string>
-    <string name="open_settings_content_description">Personalizar Overview</string>
+    <string name="open_settings_content_description">Configurações do Overview</string>
     <string name="no_apps_found">Nenhum aplicativo encontrado</string>
     <string name="loading_apps">Carregando aplicativos…</string>
 
@@ -12,7 +12,7 @@
     <string name="home_menu_title">Tela inicial</string>
     <string name="home_menu_add_app">Adicionar aplicativo</string>
     <string name="home_menu_add_widget">Adicionar widget</string>
-    <string name="home_menu_customize">Personalizar Overview</string>
+    <string name="home_menu_customize">Configurações</string>
     <string name="home_menu_wallpaper">Alterar papel de parede</string>
     <string name="wallpaper_chooser_title">Escolher papel de parede</string>
 
@@ -24,6 +24,7 @@
     <string name="picker_widgets_empty">Nenhum widget encontrado</string>
     <string name="home_grid_full">Sem espaço livre na tela inicial</string>
     <string name="home_item_added">Adicionado à tela inicial</string>
+    <string name="home_layout_locked_notice">Layout bloqueado nas configurações</string>
     <string name="home_move_hint">Toque na nova posição</string>
     <string name="home_move_cancel">Cancelar</string>
     <string name="home_action_move">Mover posição</string>
@@ -35,25 +36,118 @@
     <string name="overview_action_add_home">Adicionar à tela inicial</string>
     <string name="overview_action_app_info">Informações do aplicativo</string>
 
-    <!-- Personalização -->
-    <string name="settings_title">Personalização</string>
+    <!-- Hub de Configurações -->
+    <string name="settings_title">Configurações</string>
     <string name="settings_back_content_description">Voltar</string>
-    <string name="settings_section_appearance">Aparência</string>
+    <string name="settings_hub_appearance">Aparência</string>
+    <string name="settings_hub_home">Tela inicial</string>
+    <string name="settings_hub_dock">Dock</string>
+    <string name="settings_hub_app_grid">Grade de apps</string>
+    <string name="settings_hub_about">Sobre</string>
+    <string name="settings_hub_future_header">Em breve</string>
+    <string name="settings_hub_future_overview">Overview (desfoque e animações)</string>
+    <string name="settings_hub_future_search">Busca, Pastas e Gestos</string>
+    <string name="settings_hub_future_subtitle">Planejado para próximas atualizações</string>
+
+    <!-- Categoria: Aparência -->
+    <string name="settings_section_theme">Tema e cores</string>
+    <string name="settings_section_icons">Ícones e emblemas</string>
+    <string name="settings_section_effects">Efeitos visuais (temporário)</string>
     <string name="settings_theme_label">Tema</string>
-    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_system">Automático</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Escuro</string>
     <string name="settings_accent_label">Cor de destaque</string>
+    <string name="settings_accent_subtitle">Inspirada na paleta Adwaita</string>
+    <string name="settings_icon_pack_label">Pacote de ícones</string>
+    <string name="settings_icon_pack_system">Ícones do sistema</string>
+    <string name="settings_icon_pack_loading">Buscando pacotes instalados…</string>
+    <string name="settings_icon_pack_empty">Nenhum pacote de ícones compatível instalado</string>
+    <string name="settings_icon_shape_label">Forma dos ícones</string>
+    <string name="settings_icon_shape_circle">Círculo</string>
+    <string name="settings_icon_shape_rounded">Quadrado arredondado</string>
+    <string name="settings_icon_shape_square">Quadrado</string>
+    <string name="settings_notification_dots">Pontos de notificação</string>
+    <string name="settings_notification_dots_subtitle">Mostra um ponto discreto quando há notificações ativas</string>
+    <string name="settings_notification_permission_title">Permitir acesso às notificações</string>
+    <string name="settings_notification_permission_body">Para exibir pontos de notificação nos ícones, conceda acesso ao serviço do Overview nas configurações do sistema.</string>
+    <string name="settings_notification_permission_grant">Abrir configurações</string>
+    <string name="settings_notification_permission_missing">Permissão de notificações não concedida</string>
     <string name="settings_blur_label">Desfoque do Overview</string>
+    <string name="settings_blur_subtitle">Migrará para a categoria Overview nas próximas versões</string>
     <string name="settings_blur_off">Desativado</string>
 
-    <string name="settings_section_home">Tela inicial</string>
+    <!-- Categoria: Tela inicial -->
+    <string name="settings_section_home_grid">Grade</string>
+    <string name="settings_section_home_items">Ícones e rótulos</string>
+    <string name="settings_section_home_general">Geral</string>
+    <string name="settings_home_columns">Colunas da grade</string>
+    <string name="settings_home_rows">Linhas da grade</string>
+    <string name="settings_home_icon_scale">Tamanho dos ícones</string>
+    <string name="settings_home_show_labels">Mostrar rótulos</string>
+    <string name="settings_home_show_labels_subtitle">Exibe o nome abaixo dos atalhos na tela inicial</string>
+    <string name="settings_home_label_scale">Tamanho dos rótulos</string>
+    <string name="settings_home_lock_layout">Bloquear layout</string>
+    <string name="settings_home_lock_layout_subtitle">Impede mover, redimensionar ou remover itens da tela inicial</string>
     <string name="settings_show_clock">Mostrar relógio</string>
     <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
     <string name="settings_wallpaper_row">Papel de parede do sistema</string>
 
-    <string name="settings_section_dash">Dash (favoritos)</string>
-    <string name="settings_dash_subtitle">Selecione até 5 aplicativos para fixar no Dash</string>
+    <!-- Categoria: Dock -->
+    <string name="settings_section_dock_layout">Aparência e layout</string>
+    <string name="settings_section_dock_favorites">Aplicativos fixados</string>
+    <string name="settings_dock_icon_count">Número de ícones</string>
+    <string name="settings_dock_icons_format">%1$d ícones</string>
+    <string name="settings_dock_bg_alpha">Opacidade do fundo</string>
+    <string name="settings_dock_show_search">Barra de busca no Dock</string>
+    <string name="settings_dock_show_search_subtitle">Exibe um atalho de pesquisa logo acima do Dock</string>
+    <string name="settings_dash_subtitle">Selecione até %1$d aplicativos para fixar no Dock</string>
     <string name="settings_dash_reset">Usar padrão automático</string>
     <string name="settings_dash_auto_badge">Automático</string>
+    <string name="settings_dock_summary_auto">%1$d ícones · Automático</string>
+    <string name="settings_dock_summary_pinned">%1$d ícones · %2$d fixados</string>
+
+    <!-- Categoria: Grade de apps -->
+    <string name="settings_section_drawer_layout">Grade</string>
+    <string name="settings_section_drawer_apps">Organização e visibilidade</string>
+    <string name="settings_app_grid_columns">Colunas</string>
+    <string name="settings_app_grid_columns_format">%1$d colunas</string>
+    <string name="settings_app_grid_icon_scale">Tamanho dos ícones</string>
+    <string name="settings_app_sort_order">Ordenação</string>
+    <string name="settings_sort_alpha_asc">Alfabética (A–Z)</string>
+    <string name="settings_sort_alpha_desc">Alfabética (Z–A)</string>
+    <string name="settings_sort_recent">Mais recentes</string>
+    <string name="settings_hidden_apps_title">Aplicativos ocultos</string>
+    <string name="settings_hidden_apps_none">Nenhum aplicativo oculto</string>
+    <string name="settings_hidden_apps_count">%1$d ocultos</string>
+    <string name="settings_hidden_apps_one">1 oculto</string>
+    <string name="settings_hidden_show_in_search">Mostrar ocultos na busca</string>
+    <string name="settings_hidden_show_in_search_subtitle">Permite encontrar apps ocultos ao digitar na pesquisa do Overview</string>
+    <string name="settings_hidden_apps_search_hint">Filtrar aplicativos…</string>
+    <string name="settings_hidden_apps_empty">Nenhum aplicativo para exibir</string>
+
+    <!-- Categoria: Sobre -->
+    <string name="settings_about_tagline">Launcher Android inspirado no GNOME / libadwaita</string>
+    <string name="settings_about_section_app">Aplicativo</string>
+    <string name="settings_about_version">Versão</string>
+    <string name="settings_about_license">Licença</string>
+    <string name="settings_about_license_value">GPL-3.0</string>
+    <string name="settings_about_source">Código-fonte no GitHub</string>
+    <string name="settings_about_source_subtitle">github.com/vimitt/Overview</string>
+    <string name="settings_about_github_url">https://github.com/vimitt/Overview</string>
+    <string name="settings_about_section_credits">Créditos e inspiração</string>
+    <string name="settings_about_credit_gnome">GNOME Shell / libadwaita</string>
+    <string name="settings_about_credit_gnome_sub">Estética limpa, tipografia legível, espaçamento generoso e foco em gestos</string>
+    <string name="settings_about_credit_lawnchair">Lawnchair</string>
+    <string name="settings_about_credit_lawnchair_sub">Inspiração na organização das categorias e subtítulos dinâmicos das configurações</string>
+
+    <!-- Comuns -->
+    <string name="settings_close_dialog">Fechar</string>
+    <string name="settings_home_grid_format">%1$d × %2$d</string>
+    <string name="settings_home_summary_locked">%1$d × %2$d · Bloqueado</string>
+
+    <!-- Compatibilidade temporária até substituição da SettingsScreen antiga -->
+    <string name="settings_section_appearance">Aparência</string>
+    <string name="settings_section_home">Tela inicial</string>
+    <string name="settings_section_dash">Dash (favoritos)</string>
 </resources>

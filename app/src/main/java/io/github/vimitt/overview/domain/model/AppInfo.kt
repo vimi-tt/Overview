@@ -21,6 +21,7 @@ data class AppInfo(
     val label: String,
     val icon: ImageBitmap?,
     val userHandle: UserHandle? = null,
+    val firstInstallTimeMillis: Long = 0L,
 ) {
     /** Identificador estável usado como chave em listas e caches. */
     val key: String
