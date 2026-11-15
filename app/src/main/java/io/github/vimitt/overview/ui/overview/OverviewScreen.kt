@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -79,6 +80,12 @@ fun OverviewScreen(
     val rootView = LocalView.current
     val swipeDownThresholdPx = with(LocalDensity.current) { 72.dp.toPx() }
     val isSearching = searchQuery.isNotBlank()
+    val handleAppClick = remember(onAppClick, keyboardController) {
+        { app: AppInfo, view: View, bounds: Rect? ->
+            keyboardController?.hide()
+            onAppClick(app, view, bounds)
+        }
+    }
 
     BackHandler {
         keyboardController?.hide()
@@ -146,10 +153,7 @@ fun OverviewScreen(
             isSearching -> {
                 SearchResultsGrid(
                     apps = uiState.apps,
-                    onAppClick = { app, view, bounds ->
-                        keyboardController?.hide()
-                        onAppClick(app, view, bounds)
-                    },
+                    onAppClick = handleAppClick,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
@@ -159,10 +163,7 @@ fun OverviewScreen(
             else -> {
                 PaginatedAppGrid(
                     apps = uiState.apps,
-                    onAppClick = { app, view, bounds ->
-                        keyboardController?.hide()
-                        onAppClick(app, view, bounds)
-                    },
+                    onAppClick = handleAppClick,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
@@ -254,14 +255,16 @@ private fun PaginatedAppGrid(
                     columns = columns,
                     rows = rows,
                     onAppClick = onAppClick,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(),
                 )
             }
 
             if (pageCount > 1) {
                 PageIndicator(
                     pageCount = pageCount,
-                    currentPage = pagerState.currentPage,
+                    currentPageProvider = { pagerState.currentPage },
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
             }
@@ -311,11 +314,12 @@ private fun AppGridPage(
 @Composable
 private fun PageIndicator(
     pageCount: Int,
-    currentPage: Int,
+    currentPageProvider: () -> Int,
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
     val reducedMotion = OverviewTheme.reducedMotion
+    val currentPage = currentPageProvider()
 
     Row(
         modifier = modifier,

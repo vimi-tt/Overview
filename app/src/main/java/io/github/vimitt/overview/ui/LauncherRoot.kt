@@ -122,7 +122,7 @@ fun LauncherRoot(
 
     val homeBlurPx = with(density) { (blurRadiusDp * blurProgress).dp.toPx() }
     val windowBlurPx = with(density) {
-        if (blurActive) blurRadiusDp.dp.toPx().roundToInt() else 0
+        if (blurActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
     }
 
     WindowBackgroundBlurEffect(

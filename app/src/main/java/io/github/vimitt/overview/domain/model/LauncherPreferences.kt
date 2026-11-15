@@ -27,7 +27,7 @@ data class LauncherPreferences(
 ) {
     companion object {
         const val DEFAULT_ACCENT_COLOR_ARGB: Long = 0xFF3584E4L
-        const val DEFAULT_BLUR_RADIUS_DP: Float = 24f
+        const val DEFAULT_BLUR_RADIUS_DP: Float = 14f
         const val MAX_DASH_ITEMS: Int = 5
     }
 }
