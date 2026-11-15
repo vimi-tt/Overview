@@ -208,6 +208,15 @@ class MainActivity : ComponentActivity() {
                     canPlaceMovingItemAt = homeViewModel::canPlaceMovingItemAt,
                     onPlaceMovingItemAt = homeViewModel::placeMovingItemAt,
                     onCancelMovingItem = homeViewModel::cancelMovingItem,
+                    canPlaceDragItemAt = homeViewModel::canPlaceItemAt,
+                    onMoveHomeItemTo = homeViewModel::moveItemTo,
+                    onDropAppFromOverviewAt = { app, cellX, cellY ->
+                        addAppShortcutToHome(
+                            app = app,
+                            preferredCellX = cellX,
+                            preferredCellY = cellY,
+                        )
+                    },
                     onOpenSettings = {
                         isHomeMenuOpen = false
                         isSettingsOpen = true
@@ -297,10 +306,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun addAppShortcutToHome(app: AppInfo) {
-        homeViewModel.addAppToHome(app) { added ->
-            val msg = if (added) R.string.home_item_added else R.string.home_grid_full
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    private fun addAppShortcutToHome(
+        app: AppInfo,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
+    ) {
+        homeViewModel.addAppToHome(
+            app = app,
+            preferredCellX = preferredCellX,
+            preferredCellY = preferredCellY,
+        ) { added ->
+            if (!added || preferredCellX == null) {
+                val msg = if (added) R.string.home_item_added else R.string.home_grid_full
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

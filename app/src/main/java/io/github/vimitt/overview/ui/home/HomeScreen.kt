@@ -30,11 +30,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
@@ -44,9 +48,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect as ComposeRect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -61,6 +70,9 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
+import io.github.vimitt.overview.ui.ActiveDragState
+import io.github.vimitt.overview.ui.DragPayload
+import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
@@ -77,110 +89,153 @@ import java.util.Locale
 fun HomeScreen(
     uiState: HomeUiState,
     appWidgetController: AppWidgetController,
+    activeDrag: ActiveDragState?,
+    dropTarget: HomeDropTarget?,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onOpenOverview: () -> Unit,
     onLongPress: () -> Unit,
-    onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
     onCancelMovingItem: () -> Unit,
+    onGridBoundsChanged: (ComposeRect) -> Unit,
+    onRemoveZoneBoundsChanged: (ComposeRect?) -> Unit,
+    onStartItemDrag: (HomeWorkspaceItem, Offset) -> Unit,
+    onItemDragMove: (Offset) -> Unit,
+    onItemDragEnd: () -> Unit,
+    onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val swipeThresholdPx = with(LocalDensity.current) { 36.dp.toPx() }
     val haptic = LocalHapticFeedback.current
     val hasWorkspaceItems = uiState.workspaceItems.isNotEmpty()
     val isMoving = uiState.movingItemId != null
+    val isDragInProgress = activeDrag != null
+    val isDraggingOverGrid = activeDrag?.hasMovedPastSlop == true
+    val isDraggingFromHome = isDraggingOverGrid && activeDrag.payload is DragPayload.FromHome
+
+    LaunchedEffect(isDraggingFromHome) {
+        if (!isDraggingFromHome) {
+            onRemoveZoneBoundsChanged(null)
+        }
+    }
 
     if (isMoving) {
         BackHandler(onBack = onCancelMovingItem)
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(onLongPress, isMoving) {
-                if (isMoving) return@pointerInput
-                detectTapGestures(
-                    onLongPress = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongPress()
-                    },
-                )
-            }
-            .pointerInput(swipeThresholdPx, isMoving) {
-                if (isMoving) return@pointerInput
-                var totalDragY = 0f
-                var triggered = false
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onDragEnd = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onDragCancel = {
-                        totalDragY = 0f
-                        triggered = false
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        totalDragY += dragAmount
-                        if (!triggered && totalDragY <= -swipeThresholdPx) {
-                            triggered = true
-                            onOpenOverview()
-                        }
-                    },
-                )
-            }
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (isMoving) {
-            MoveModeBanner(
-                onCancel = onCancelMovingItem,
-                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-            )
-        } else if (uiState.showClock) {
-            HomeClock(
-                compact = hasWorkspaceItems,
-                modifier = Modifier.padding(
-                    top = if (hasWorkspaceItems) 8.dp else 44.dp,
-                    bottom = if (hasWorkspaceItems) 8.dp else 0.dp,
-                ),
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-        ) {
-            if (hasWorkspaceItems || isMoving) {
-                HomeWorkspaceGrid(
-                    items = uiState.workspaceItems,
-                    movingItemId = uiState.movingItemId,
-                    appWidgetController = appWidgetController,
-                    onAppClick = onAppClick,
-                    onItemLongPress = onWorkspaceItemLongPress,
-                    canPlaceMovingItemAt = canPlaceMovingItemAt,
-                    onPlaceMovingItemAt = onPlaceMovingItemAt,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(onLongPress, isMoving, isDragInProgress) {
+                    if (isMoving || isDragInProgress) return@pointerInput
+                    detectTapGestures(
+                        onLongPress = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onLongPress()
+                        },
+                    )
+                }
+                .pointerInput(swipeThresholdPx, isMoving, isDragInProgress) {
+                    if (isMoving || isDragInProgress) return@pointerInput
+                    var totalDragY = 0f
+                    var triggered = false
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onDragEnd = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onDragCancel = {
+                            totalDragY = 0f
+                            triggered = false
+                        },
+                        onVerticalDrag = { _, dragAmount ->
+                            totalDragY += dragAmount
+                            if (!triggered && totalDragY <= -swipeThresholdPx) {
+                                triggered = true
+                                onOpenOverview()
+                            }
+                        },
+                    )
+                }
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Bottom,
         ) {
-            OverviewHandlePill(onClick = onOpenOverview)
-            Spacer(modifier = Modifier.height(10.dp))
-            DashBar(
-                apps = uiState.dashApps,
-                onAppClick = onAppClick,
+            if (isMoving) {
+                MoveModeBanner(
+                    onCancel = onCancelMovingItem,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                )
+            } else if (uiState.showClock) {
+                HomeClock(
+                    compact = hasWorkspaceItems,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = if (isDraggingFromHome) 0f else 1f
+                        }
+                        .padding(
+                            top = if (hasWorkspaceItems) 8.dp else 44.dp,
+                            bottom = if (hasWorkspaceItems) 8.dp else 0.dp,
+                        ),
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .onPlaced { coordinates ->
+                        onGridBoundsChanged(coordinates.boundsInWindow())
+                    },
+            ) {
+                if (hasWorkspaceItems || isMoving || isDraggingOverGrid) {
+                    HomeWorkspaceGrid(
+                        items = uiState.workspaceItems,
+                        movingItemId = uiState.movingItemId,
+                        activeDrag = activeDrag,
+                        dropTarget = dropTarget,
+                        appWidgetController = appWidgetController,
+                        onAppClick = onAppClick,
+                        canPlaceMovingItemAt = canPlaceMovingItemAt,
+                        onPlaceMovingItemAt = onPlaceMovingItemAt,
+                        onStartItemDrag = onStartItemDrag,
+                        onItemDragMove = onItemDragMove,
+                        onItemDragEnd = onItemDragEnd,
+                        onItemDragCancel = onItemDragCancel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                OverviewHandlePill(onClick = onOpenOverview)
+                Spacer(modifier = Modifier.height(10.dp))
+                DashBar(
+                    apps = uiState.dashApps,
+                    onAppClick = onAppClick,
+                )
+            }
+        }
+
+        if (isDraggingFromHome) {
+            RemoveDropZonePill(
+                isActive = dropTarget?.isOverRemoveZone == true,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 12.dp)
+                    .onPlaced { coordinates ->
+                        onRemoveZoneBoundsChanged(coordinates.boundsInWindow())
+                    },
             )
         }
     }
@@ -190,11 +245,16 @@ fun HomeScreen(
 private fun HomeWorkspaceGrid(
     items: List<HomeWorkspaceItem>,
     movingItemId: String?,
+    activeDrag: ActiveDragState?,
+    dropTarget: HomeDropTarget?,
     appWidgetController: AppWidgetController,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
-    onItemLongPress: (HomeWorkspaceItem) -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    onStartItemDrag: (HomeWorkspaceItem, Offset) -> Unit,
+    onItemDragMove: (Offset) -> Unit,
+    onItemDragEnd: () -> Unit,
+    onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
@@ -205,12 +265,55 @@ private fun HomeWorkspaceGrid(
             blurRadius = 6f,
         )
     }
+    val isDraggingOverGrid = activeDrag?.hasMovedPastSlop == true
 
     BoxWithConstraints(modifier = modifier) {
         val cellWidth = maxWidth / HomeGridSpec.COLUMNS
         val cellHeight = maxHeight / HomeGridSpec.ROWS
 
-        if (movingItemId != null) {
+        if (isDraggingOverGrid) {
+            val cellShape = RoundedCornerShape(OverviewCornerRadius.Medium)
+            for (y in 0 until HomeGridSpec.ROWS) {
+                for (x in 0 until HomeGridSpec.COLUMNS) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = cellWidth * x, y = cellHeight * y)
+                            .size(width = cellWidth, height = cellHeight)
+                            .padding(4.dp)
+                            .clip(cellShape)
+                            .border(
+                                width = 1.dp,
+                                color = colors.hairlineBorder.copy(alpha = 0.55f),
+                                shape = cellShape,
+                            ),
+                    )
+                }
+            }
+
+            if (dropTarget != null && !dropTarget.isOverRemoveZone) {
+                val targetColor = if (dropTarget.isValid) {
+                    colors.accent
+                } else {
+                    Color(0xFFE01B24)
+                }
+                val targetShape = RoundedCornerShape(OverviewCornerRadius.Large)
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = cellWidth * dropTarget.cellX,
+                            y = cellHeight * dropTarget.cellY,
+                        )
+                        .size(
+                            width = cellWidth * dropTarget.spanX,
+                            height = cellHeight * dropTarget.spanY,
+                        )
+                        .padding(4.dp)
+                        .clip(targetShape)
+                        .background(targetColor.copy(alpha = 0.24f))
+                        .border(width = 2.dp, color = targetColor, shape = targetShape),
+                )
+            }
+        } else if (movingItemId != null) {
             for (y in 0 until HomeGridSpec.ROWS) {
                 for (x in 0 until HomeGridSpec.COLUMNS) {
                     val canPlace = canPlaceMovingItemAt(x, y)
@@ -249,6 +352,7 @@ private fun HomeWorkspaceGrid(
             key(workspaceItem.item.id) {
                 val item = workspaceItem.item
                 val isMovingThis = item.id == movingItemId
+                val isDraggingThis = isDraggingOverGrid && activeDrag.payload.ignoreItemId == item.id
                 val itemWidth = cellWidth * item.spanX
                 val itemHeight = cellHeight * item.spanY
 
@@ -256,7 +360,10 @@ private fun HomeWorkspaceGrid(
                     modifier = Modifier
                         .offset(x = cellWidth * item.cellX, y = cellHeight * item.cellY)
                         .size(width = itemWidth, height = itemHeight)
-                        .padding(4.dp),
+                        .padding(4.dp)
+                        .graphicsLayer {
+                            alpha = if (isDraggingThis) 0.25f else 1f
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     when (workspaceItem) {
@@ -264,7 +371,12 @@ private fun HomeWorkspaceGrid(
                             AppIconItem(
                                 app = workspaceItem.app,
                                 onClick = onAppClick,
-                                onLongClick = { onItemLongPress(workspaceItem) },
+                                onDragStart = { _, windowPos ->
+                                    onStartItemDrag(workspaceItem, windowPos)
+                                },
+                                onDragMove = onItemDragMove,
+                                onDragEnd = onItemDragEnd,
+                                onDragCancel = onItemDragCancel,
                                 iconSize = 52.dp,
                                 showLabel = true,
                                 labelColor = colors.wallpaperForeground,
@@ -279,7 +391,12 @@ private fun HomeWorkspaceGrid(
                                 appWidgetController = appWidgetController,
                                 widthDp = (itemWidth - 8.dp).coerceAtLeast(48.dp),
                                 heightDp = (itemHeight - 8.dp).coerceAtLeast(48.dp),
-                                onLongPress = { onItemLongPress(workspaceItem) },
+                                onDragStart = { windowPos ->
+                                    onStartItemDrag(workspaceItem, windowPos)
+                                },
+                                onDragMove = onItemDragMove,
+                                onDragEnd = onItemDragEnd,
+                                onDragCancel = onItemDragCancel,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .then(
@@ -299,6 +416,48 @@ private fun HomeWorkspaceGrid(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RemoveDropZonePill(
+    isActive: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    val shape = RoundedCornerShape(OverviewCornerRadius.Pill)
+    val dangerColor = Color(0xFFE01B24)
+
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                if (isActive) {
+                    dangerColor.copy(alpha = 0.90f)
+                } else {
+                    colors.dashBackground
+                },
+            )
+            .border(
+                width = if (isActive) 1.5.dp else 1.dp,
+                color = if (isActive) dangerColor else colors.hairlineBorder,
+                shape = shape,
+            )
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = null,
+            tint = if (isActive) Color.White else dangerColor,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.home_drag_remove),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = if (isActive) Color.White else colors.onSurface,
+        )
     }
 }
 

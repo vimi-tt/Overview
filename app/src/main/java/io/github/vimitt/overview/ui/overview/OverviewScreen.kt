@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,6 +70,7 @@ import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewSpring
+import io.github.vimitt.overview.ui.theme.overviewTween
 import kotlin.math.ceil
 
 /**
@@ -80,11 +83,16 @@ import kotlin.math.ceil
 @Composable
 fun OverviewScreen(
     isActive: Boolean,
+    isDraggingToHome: Boolean,
     searchQuery: String,
     uiState: OverviewUiState,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onStartAppDrag: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Boolean,
+    onAppDragCancel: () -> Unit,
     onAddAppToHome: (AppInfo) -> Unit,
     onOpenAppInfo: (AppInfo) -> Unit,
     onClose: () -> Unit,
@@ -92,11 +100,19 @@ fun OverviewScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
+    val reducedMotion = OverviewTheme.reducedMotion
     val keyboardController = LocalSoftwareKeyboardController.current
     val rootView = LocalView.current
     val swipeDownThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
     val isSearching = searchQuery.isNotBlank()
     var actionTargetApp by remember { mutableStateOf<AppInfo?>(null) }
+    var dragCandidateApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isDraggingToHome) 0f else 1f,
+        animationSpec = overviewTween(reducedMotion = reducedMotion, durationMillis = 140),
+        label = "overviewDragFade",
+    )
 
     val handleAppClick = remember(onAppClick, keyboardController) {
         { app: AppInfo, view: View, bounds: Rect? ->
@@ -105,10 +121,29 @@ fun OverviewScreen(
         }
     }
 
-    val handleAppLongClick = remember(keyboardController) {
-        { app: AppInfo ->
+    val handleAppDragStart = remember(onStartAppDrag, keyboardController) {
+        { app: AppInfo, windowOffset: Offset ->
             keyboardController?.hide()
-            actionTargetApp = app
+            dragCandidateApp = app
+            onStartAppDrag(app, windowOffset)
+        }
+    }
+
+    val handleAppDragEnd = remember(onAppDragEnd) {
+        {
+            val handledAsDrop = onAppDragEnd()
+            val candidate = dragCandidateApp
+            dragCandidateApp = null
+            if (!handledAsDrop && candidate != null) {
+                actionTargetApp = candidate
+            }
+        }
+    }
+
+    val handleAppDragCancel = remember(onAppDragCancel) {
+        {
+            dragCandidateApp = null
+            onAppDragCancel()
         }
     }
 
@@ -117,13 +152,17 @@ fun OverviewScreen(
         onClose()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer { this.alpha = contentAlpha },
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colors.overviewScrim)
-                .pointerInput(isActive, swipeDownThresholdPx) {
-                    if (!isActive) return@pointerInput
+                .pointerInput(isActive, isDraggingToHome, swipeDownThresholdPx) {
+                    if (!isActive || isDraggingToHome) return@pointerInput
                     var totalDragY = 0f
                     var triggered = false
                     detectVerticalDragGestures(
@@ -188,9 +227,12 @@ fun OverviewScreen(
                 isSearching -> {
                     SearchResultsGrid(
                         apps = uiState.apps,
-                        scrollEnabled = isActive,
+                        scrollEnabled = isActive && !isDraggingToHome,
                         onAppClick = handleAppClick,
-                        onAppLongClick = handleAppLongClick,
+                        onAppDragStart = handleAppDragStart,
+                        onAppDragMove = onAppDragMove,
+                        onAppDragEnd = handleAppDragEnd,
+                        onAppDragCancel = handleAppDragCancel,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
@@ -200,9 +242,12 @@ fun OverviewScreen(
                 else -> {
                     PaginatedAppGrid(
                         apps = uiState.apps,
-                        scrollEnabled = isActive,
+                        scrollEnabled = isActive && !isDraggingToHome,
                         onAppClick = handleAppClick,
-                        onAppLongClick = handleAppLongClick,
+                        onAppDragStart = handleAppDragStart,
+                        onAppDragMove = onAppDragMove,
+                        onAppDragEnd = handleAppDragEnd,
+                        onAppDragCancel = handleAppDragCancel,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
@@ -234,7 +279,10 @@ private fun SearchResultsGrid(
     apps: List<AppInfo>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit,
+    onAppDragStart: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Unit,
+    onAppDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
@@ -256,7 +304,10 @@ private fun SearchResultsGrid(
                 AppIconItem(
                     app = app,
                     onClick = onAppClick,
-                    onLongClick = onAppLongClick,
+                    onDragStart = onAppDragStart,
+                    onDragMove = onAppDragMove,
+                    onDragEnd = onAppDragEnd,
+                    onDragCancel = onAppDragCancel,
                     iconSize = 54.dp,
                     showLabel = true,
                 )
@@ -270,7 +321,10 @@ private fun PaginatedAppGrid(
     apps: List<AppInfo>,
     scrollEnabled: Boolean,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit,
+    onAppDragStart: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Unit,
+    onAppDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -318,7 +372,10 @@ private fun PaginatedAppGrid(
                     columns = columns,
                     rows = rows,
                     onAppClick = onAppClick,
-                    onAppLongClick = onAppLongClick,
+                    onAppDragStart = onAppDragStart,
+                    onAppDragMove = onAppDragMove,
+                    onAppDragEnd = onAppDragEnd,
+                    onAppDragCancel = onAppDragCancel,
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer(),
@@ -342,7 +399,10 @@ private fun AppGridPage(
     columns: Int,
     rows: Int,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit,
+    onAppDragStart: (AppInfo, Offset) -> Unit,
+    onAppDragMove: (Offset) -> Unit,
+    onAppDragEnd: () -> Unit,
+    onAppDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -362,7 +422,10 @@ private fun AppGridPage(
                             AppIconItem(
                                 app = app,
                                 onClick = onAppClick,
-                                onLongClick = onAppLongClick,
+                                onDragStart = onAppDragStart,
+                                onDragMove = onAppDragMove,
+                                onDragEnd = onAppDragEnd,
+                                onDragCancel = onAppDragCancel,
                                 iconSize = 54.dp,
                                 showLabel = true,
                                 modifier = Modifier.weight(1f),

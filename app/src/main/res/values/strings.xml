@@ -31,6 +31,7 @@
     <string name="home_widget_width">Largura</string>
     <string name="home_widget_height">Altura</string>
     <string name="home_widget_unavailable">Widget indisponível</string>
+    <string name="home_drag_remove">Solte aqui para remover</string>
     <string name="overview_action_add_home">Adicionar à tela inicial</string>
     <string name="overview_action_app_info">Informações do aplicativo</string>
 

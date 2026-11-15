@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,10 +41,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect as ComposeRect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
@@ -51,6 +56,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
@@ -112,6 +118,9 @@ fun LauncherRoot(
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
     onCancelMovingItem: () -> Unit,
+    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
+    onMoveHomeItemTo: (itemId: String, cellX: Int, cellY: Int) -> Unit,
+    onDropAppFromOverviewAt: (app: AppInfo, cellX: Int, cellY: Int) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onOpenWallpaperPicker: () -> Unit,
@@ -142,18 +151,63 @@ fun LauncherRoot(
     val reducedMotion = OverviewTheme.reducedMotion
     val density = LocalDensity.current
     val context = LocalContext.current
+    val viewConfig = LocalViewConfiguration.current
+
+    var activeDrag by remember { mutableStateOf<ActiveDragState?>(null) }
+    var homeGridBounds by remember { mutableStateOf<ComposeRect?>(null) }
+    var removeZoneBounds by remember { mutableStateOf<ComposeRect?>(null) }
+    var lastClosedByDrag by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isOverviewOpen) {
+        if (isOverviewOpen) {
+            lastClosedByDrag = false
+        }
+    }
+
+    val dragSlopPx = maxOf(
+        viewConfig.touchSlop * 1.5f,
+        with(density) { 14.dp.toPx() },
+    )
+    val dragSlopSqPx = dragSlopPx * dragSlopPx
+
+    val updateDragPosition: (Offset) -> Unit = { pointerPos ->
+        val current = activeDrag
+        if (current != null) {
+            val movedPast = current.hasMovedPastSlop ||
+                (pointerPos - current.startInWindow).getDistanceSquared() >= dragSlopSqPx
+            activeDrag = current.copy(
+                pointerInWindow = pointerPos,
+                hasMovedPastSlop = movedPast,
+            )
+        }
+    }
+
+    val currentDropTarget: HomeDropTarget? = activeDrag?.takeIf { it.hasMovedPastSlop }?.let { drag ->
+        computeHomeDropTarget(
+            pointerInWindow = drag.pointerInWindow,
+            gridBounds = homeGridBounds,
+            removeZoneBounds = removeZoneBounds,
+            payload = drag.payload,
+            canPlace = canPlaceDragItemAt,
+        )
+    }
 
     val anyModalFullScreen = isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen
     val overviewActive = isOverviewOpen && !anyModalFullScreen
+    val isDraggingFromOverviewActive =
+        activeDrag?.payload is DragPayload.FromOverview && activeDrag?.hasMovedPastSlop == true
+    val overviewContentVisible = overviewActive || (activeDrag?.payload is DragPayload.FromOverview)
+    val blurActive = overviewActive && !isDraggingFromOverviewActive
+
     val blurProgress by animateFloatAsState(
-        targetValue = if (overviewActive) 1f else 0f,
-        animationSpec = overviewTween(reducedMotion, durationMillis = 200),
+        targetValue = if (blurActive) 1f else 0f,
+        animationSpec = overviewTween(reducedMotion, durationMillis = 160),
         label = "overviewBlurProgress",
     )
 
     val homeBlurPx = with(density) { (blurRadiusDp * blurProgress).dp.toPx() }
     val windowBlurPx = with(density) {
-        if (overviewActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
+        if (blurActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
     }
 
     WindowBackgroundBlurEffect(
@@ -165,15 +219,48 @@ fun LauncherRoot(
         HomeScreen(
             uiState = homeUiState,
             appWidgetController = appWidgetController,
+            activeDrag = activeDrag,
+            dropTarget = currentDropTarget,
             onAppClick = { app, view, bounds ->
                 onLaunchFromHome(app, view, bounds, reducedMotion)
             },
             onOpenOverview = onOpenOverview,
             onLongPress = onHomeLongPress,
-            onWorkspaceItemLongPress = onWorkspaceItemLongPress,
             canPlaceMovingItemAt = canPlaceMovingItemAt,
             onPlaceMovingItemAt = onPlaceMovingItemAt,
             onCancelMovingItem = onCancelMovingItem,
+            onGridBoundsChanged = { bounds -> homeGridBounds = bounds },
+            onRemoveZoneBoundsChanged = { bounds -> removeZoneBounds = bounds },
+            onStartItemDrag = { item, startPos ->
+                activeDrag = ActiveDragState(
+                    payload = DragPayload.FromHome(item),
+                    startInWindow = startPos,
+                    pointerInWindow = startPos,
+                    hasMovedPastSlop = false,
+                )
+            },
+            onItemDragMove = updateDragPosition,
+            onItemDragEnd = {
+                val finished = activeDrag
+                val target = currentDropTarget
+                activeDrag = null
+                if (finished != null && finished.payload is DragPayload.FromHome) {
+                    if (!finished.hasMovedPastSlop) {
+                        onWorkspaceItemLongPress(finished.payload.item)
+                    } else if (target != null && target.isOverRemoveZone) {
+                        onRemoveHomeItem(finished.payload.item.item.id)
+                    } else if (target != null && target.isValid) {
+                        onMoveHomeItemTo(
+                            finished.payload.item.item.id,
+                            target.cellX,
+                            target.cellY,
+                        )
+                    }
+                }
+            },
+            onItemDragCancel = {
+                activeDrag = null
+            },
             modifier = Modifier.graphicsLayer {
                 renderEffect = if (homeBlurPx > 0.5f) {
                     BlurEffect(
@@ -208,18 +295,51 @@ fun LauncherRoot(
         }
 
         AnimatedVisibility(
-            visible = overviewActive,
+            visible = overviewContentVisible,
             enter = enterTransition,
-            exit = exitTransition,
+            exit = if (lastClosedByDrag) ExitTransition.None else exitTransition,
         ) {
             OverviewScreen(
-                isActive = overviewActive,
+                isActive = overviewActive && !isDraggingFromOverviewActive,
+                isDraggingToHome = isDraggingFromOverviewActive,
                 searchQuery = searchQuery,
                 uiState = overviewUiState,
                 onSearchQueryChange = onSearchQueryChange,
                 onClearSearch = onClearSearch,
                 onAppClick = { app, view, bounds ->
                     onLaunchFromOverview(app, view, bounds, reducedMotion)
+                },
+                onStartAppDrag = { app, startPos ->
+                    activeDrag = ActiveDragState(
+                        payload = DragPayload.FromOverview(app),
+                        startInWindow = startPos,
+                        pointerInWindow = startPos,
+                        hasMovedPastSlop = false,
+                    )
+                },
+                onAppDragMove = updateDragPosition,
+                onAppDragEnd = {
+                    val finished = activeDrag
+                    val target = currentDropTarget
+                    activeDrag = null
+                    val wasDrag = finished?.hasMovedPastSlop == true
+                    if (wasDrag &&
+                        finished.payload is DragPayload.FromOverview &&
+                        target != null &&
+                        target.isValid
+                    ) {
+                        onDropAppFromOverviewAt(
+                            finished.payload.app,
+                            target.cellX,
+                            target.cellY,
+                        )
+                        lastClosedByDrag = true
+                        onCloseOverview()
+                    }
+                    wasDrag
+                },
+                onAppDragCancel = {
+                    activeDrag = null
                 },
                 onAddAppToHome = onAddAppFromOverview,
                 onOpenAppInfo = onOpenAppInfo,
@@ -313,6 +433,11 @@ fun LauncherRoot(
                 onClose = onCloseSettings,
             )
         }
+
+        DragGhostOverlay(
+            activeDrag = activeDrag,
+            isOverRemoveZone = currentDropTarget?.isOverRemoveZone == true,
+        )
     }
 }
 

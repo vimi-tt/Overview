@@ -121,11 +121,44 @@ class HomeViewModel(
 
     fun addAppToHome(
         app: AppInfo,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
         onResult: (Boolean) -> Unit = {},
     ) {
         viewModelScope.launch {
-            val added = homeWorkspaceRepository.addAppShortcut(app)
+            val added = homeWorkspaceRepository.addAppShortcut(
+                app = app,
+                preferredCellX = preferredCellX,
+                preferredCellY = preferredCellY,
+            )
             onResult(added)
+        }
+    }
+
+    fun canPlaceItemAt(
+        cellX: Int,
+        cellY: Int,
+        spanX: Int,
+        spanY: Int,
+        ignoreItemId: String? = null,
+    ): Boolean {
+        val items = uiState.value.workspaceItems.map { it.item }
+        return homeGridPlacementUseCase.canPlace(
+            existingItems = items,
+            cellX = cellX,
+            cellY = cellY,
+            spanX = spanX,
+            spanY = spanY,
+            ignoreItemId = ignoreItemId,
+        )
+    }
+
+    fun moveItemTo(itemId: String, cellX: Int, cellY: Int) {
+        viewModelScope.launch {
+            val moved = homeWorkspaceRepository.moveItem(itemId, cellX, cellY)
+            if (moved && movingItemId.value == itemId) {
+                movingItemId.value = null
+            }
         }
     }
 
