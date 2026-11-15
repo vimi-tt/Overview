@@ -14,14 +14,15 @@ _Pendente: capturas de tela da Home, Dash e Overview em dispositivo físico com 
 
 ---
 
-## Funcionalidades desta versão (MVP)
+## Funcionalidades atuais
 
-- **Tela inicial transparente**: exibe o papel de parede do sistema (`windowShowWallpaper`), relógio opcional e o **Dash** fixo na parte inferior.
-- **Dash de favoritos**: até 5 aplicativos essenciais selecionados automaticamente quando disponíveis (telefone, mensagens, navegador, câmera e configurações).
-- **Overview por gestos**: deslize para cima na tela inicial (ou toque no indicador acima do Dash) para abrir o Overview; deslize para baixo, pressione Voltar ou aperte Home para retornar.
+- **Tela inicial transparente**: exibe o papel de parede do sistema (`windowShowWallpaper`), relógio opcional, atalhos/widgets redimensionáveis na grade e o **Dash** fixo na parte inferior.
+- **Dash de favoritos**: de 3 a 6 aplicativos selecionados automaticamente ou fixados pelo usuário, com opacidade configurável e barra de busca rápida opcional.
+- **Overview por gestos**: deslize para cima na tela inicial (ou toque no indicador/busca do Dash) para abrir o Overview; deslize para baixo, pressione Voltar ou aperte Home para retornar. Arraste apps direto da grade para a tela inicial.
 - **Blur com `RenderEffect`**: desfoque configurável da camada inicial e do fundo da janela (Android 12+).
 - **Busca em tempo real**: filtra aplicativos instantaneamente ao digitar, ignorando acentos e maiúsculas/minúsculas.
-- **Grade paginada horizontalmente**: aplicativos ordenados alfabeticamente com rolagem por páginas e indicadores de página.
+- **Grade paginada horizontalmente**: colunas, escala de ícones, ordenação (A–Z, Z–A ou mais recentes) e gerenciamento de apps ocultos.
+- **Configurações no estilo GNOME/libadwaita**: central organizada por categorias (**Aparência**, **Tela inicial**, **Dock**, **Grade de apps** e **Sobre**) com pacotes de ícones compatíveis com launchers, formato de ícone, cores de destaque do GNOME e pontos de notificação (`NotificationListenerService`).
 - **Atualização reativa**: escuta eventos de instalação, remoção, atualização e suspensão via `LauncherApps.Callback`.
 - **Tema Adwaita & Acessibilidade**: suporte a tema claro (`#fafafa`), escuro (`#242424`), automático (sistema), cor de destaque configurável (padrão azul Adwaita `#3584e4`) e respeito à configuração global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`).
 
@@ -31,14 +32,15 @@ _Pendente: capturas de tela da Home, Dash e Overview em dispositivo físico com 
 
 ```text
 app/src/main/java/io/github/vimitt/overview/
-├── data/          # LauncherAppsRepository, AppIconCache (LruCache), PreferencesRepository (DataStore)
+├── data/          # LauncherAppsRepository, SettingsRepository (DataStore), IconPackRepository, NotificationBadgeRepository, HomeWorkspaceRepository
 ├── di/            # AppContainer (injeção de dependências manual leve)
 ├── domain/        # Modelos (AppInfo, LauncherPreferences) e casos de uso
 └── ui/
     ├── theme/     # Tokens de cor Adwaita, formas, tipografia e utilitários de movimento reduzido
     ├── components/# AppIconItem, DashBar, OverviewSearchBar
-    ├── home/      # HomeScreen, HomeViewModel, HomeUiState
+    ├── home/      # HomeScreen, HomeViewModel, HomeUiState, seletores de apps/widgets
     ├── overview/  # OverviewScreen, OverviewViewModel, OverviewUiState
+    ├── settings/  # SettingsNavHost, SettingsHubScreen, componentes libadwaita e subtelas por categoria
     └── LauncherRoot.kt
 ```
 
@@ -115,8 +117,9 @@ adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.ove
 - [x] Tema Adwaita claro/escuro/automático + modo de animações reduzidas
 - [x] Home transparente com papel de parede, relógio opcional e Dash inicial
 - [x] Overview com busca em tempo real, `RenderEffect` blur e grade paginada reativa
-- [x] **Tela de personalização** (tema, cor de destaque, blur, relógio e favoritos do Dash)
-- [x] **Atalhos de apps e widgets na tela inicial** (`AppWidgetHost`, redimensionamento e reposicionamento na grade 4×5)
-- [ ] **Painel superior / Configurações rápidas** (barra de status integrada, toggles rápidos no estilo GNOME)
-- [ ] **Pastas / Grupos de aplicativos** no Overview com edição por toque longo
-- [ ] **Gestos adicionais e refinamentos de blur** (progresso contínuo no gesto de arrastar para abrir/fechar, suporte à fonte Adwaita Sans embarcada)
+- [x] **Tela inicial e widgets**: atalhos e widgets na tela inicial (`AppWidgetHost`, arrastar e soltar do Overview e reposicionamento livre na grade configurável)
+- [x] **Configurações por categorias**: central com Aparência (pacote/forma de ícones, cores GNOME, pontos de notificação), Tela inicial, Dock, Grade de apps (apps ocultos/ordenação) e Sobre
+- [ ] **Overview (categoria dedicada)**: ajustes avançados de blur, escala e transições
+- [ ] **Busca (categoria dedicada)**: provedores de pesquisa, histórico e atalhos
+- [ ] **Pastas / Grupos de aplicativos**: criação e organização de pastas no Overview e na tela inicial
+- [ ] **Gestos e Painel superior**: gestos personalizáveis, configurações rápidas no estilo GNOME e fonte Adwaita Sans embarcada

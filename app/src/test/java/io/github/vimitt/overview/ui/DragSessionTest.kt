@@ -123,4 +123,32 @@ class DragSessionTest {
 
         assertNull(target)
     }
+
+    @Test
+    fun `maps overview drag using custom grid columns and rows`() {
+        val target = computeHomeDropTarget(
+            pointerInWindow = Offset(x = 390f, y = 590f),
+            gridBounds = gridBounds,
+            removeZoneBounds = null,
+            payload = DragPayload.FromOverview(sampleApp),
+            canPlace = { cellX, cellY, spanX, spanY, ignoreId ->
+                placementUseCase.canPlace(
+                    existingItems = emptyList(),
+                    cellX = cellX,
+                    cellY = cellY,
+                    spanX = spanX,
+                    spanY = spanY,
+                    ignoreItemId = ignoreId,
+                    columns = 6,
+                    rows = 6,
+                )
+            },
+            gridColumns = 6,
+            gridRows = 6,
+        )
+
+        assertEquals(5, target!!.cellX)
+        assertEquals(5, target.cellY)
+        assertTrue(target.isValid)
+    }
 }

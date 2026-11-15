@@ -61,4 +61,11 @@ class HomeGridPlacementUseCaseTest {
         assertTrue(useCase.canPlace(existing, cellX = 1, cellY = 0, spanX = 2, spanY = 2, ignoreItemId = "w1"))
         assertFalse(useCase.canPlace(existing, cellX = 1, cellY = 0, spanX = 2, spanY = 2))
     }
+
+    @Test
+    fun `respects overridden columns and rows bounds`() {
+        val existing = emptyList<HomeItem>()
+        assertTrue(useCase.canPlace(existing, cellX = 4, cellY = 5, spanX = 1, spanY = 1, columns = 5, rows = 6))
+        assertFalse(useCase.canPlace(existing, cellX = 3, cellY = 0, spanX = 1, spanY = 1, columns = 3, rows = 3))
+    }
 }
