@@ -58,17 +58,30 @@ sealed interface DragPayload {
     val spanX: Int
     val spanY: Int
     val ignoreItemId: String?
+    val draggedApp: AppInfo?
 
     data class FromOverview(val app: AppInfo) : DragPayload {
         override val spanX: Int = 1
         override val spanY: Int = 1
         override val ignoreItemId: String? = null
+        override val draggedApp: AppInfo = app
     }
 
     data class FromHome(val item: HomeWorkspaceItem) : DragPayload {
         override val spanX: Int = item.item.spanX
         override val spanY: Int = item.item.spanY
         override val ignoreItemId: String = item.item.id
+        override val draggedApp: AppInfo? = (item as? HomeWorkspaceItem.Shortcut)?.app
+    }
+
+    data class FromDock(
+        val app: AppInfo,
+        val sourceIndex: Int,
+    ) : DragPayload {
+        override val spanX: Int = 1
+        override val spanY: Int = 1
+        override val ignoreItemId: String? = null
+        override val draggedApp: AppInfo = app
     }
 }
 
@@ -97,6 +110,32 @@ data class HomeDropTarget(
 /**
  * Calcula a célula alvo ou zona de remoção correspondente à posição do dedo na janela.
  */
+/**
+ * Destino calculado sobre a barra da dock durante um drag & drop.
+ */
+data class DockDropTarget(
+    val targetIndex: Int,
+)
+
+/**
+ * Calcula em qual posição da dock um app arrastado cairia com base nas coordenadas na janela.
+ * Aceita apps vindos do overview, de atalhos da tela inicial ou da própria dock.
+ */
+fun computeDockDropTarget(
+    pointerInWindow: Offset,
+    dockBounds: Rect?,
+    itemCount: Int,
+    payload: DragPayload,
+): DockDropTarget? {
+    if (payload.draggedApp == null || dockBounds == null || dockBounds.width <= 0f) return null
+    if (!dockBounds.contains(pointerInWindow)) return null
+
+    val slots = itemCount.coerceAtLeast(1)
+    val relativeX = ((pointerInWindow.x - dockBounds.left) / dockBounds.width).coerceIn(0f, 0.9999f)
+    val targetIndex = (relativeX * slots).toInt().coerceIn(0, slots - 1)
+    return DockDropTarget(targetIndex = targetIndex)
+}
+
 fun computeHomeDropTarget(
     pointerInWindow: Offset,
     gridBounds: Rect?,
@@ -106,13 +145,14 @@ fun computeHomeDropTarget(
     gridColumns: Int = HomeGridSpec.COLUMNS,
     gridRows: Int = HomeGridSpec.ROWS,
 ): HomeDropTarget? {
-    if (payload is DragPayload.FromHome &&
+    if ((payload is DragPayload.FromHome || payload is DragPayload.FromDock) &&
         removeZoneBounds != null &&
         removeZoneBounds.contains(pointerInWindow)
     ) {
+        val homeItem = (payload as? DragPayload.FromHome)?.item?.item
         return HomeDropTarget(
-            cellX = payload.item.item.cellX,
-            cellY = payload.item.item.cellY,
+            cellX = homeItem?.cellX ?: 0,
+            cellY = homeItem?.cellY ?: 0,
             spanX = payload.spanX,
             spanY = payload.spanY,
             isValid = true,
@@ -233,6 +273,15 @@ fun DragGhostOverlay(
         ) {
             when (val payload = activeDrag.payload) {
                 is DragPayload.FromOverview -> {
+                    ShortcutDragGhost(
+                        app = payload.app,
+                        borderColor = borderColor,
+                        cardShape = shapes.large,
+                        fallbackShape = shapes.medium,
+                    )
+                }
+
+                is DragPayload.FromDock -> {
                     ShortcutDragGhost(
                         app = payload.app,
                         borderColor = borderColor,

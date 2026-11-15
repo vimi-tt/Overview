@@ -3,6 +3,8 @@ package io.github.vimitt.overview.ui.home
 import android.graphics.Rect
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,6 +69,7 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.GestureSettings
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.ui.ActiveDragState
+import io.github.vimitt.overview.ui.DockDropTarget
 import io.github.vimitt.overview.ui.DragPayload
 import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
@@ -98,6 +101,13 @@ fun HomeScreen(
     onItemDragEnd: () -> Unit,
     onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
+    dockDropTarget: DockDropTarget? = null,
+    onDockBoundsChanged: (ComposeRect?) -> Unit = {},
+    onStartDockDrag: (AppInfo, Int, Offset) -> Unit = { _, _, _ -> },
+    onDockDragMove: (Offset) -> Unit = {},
+    onDockDragEnd: () -> Unit = {},
+    onDockDragCancel: () -> Unit = {},
     gestureSettings: GestureSettings = GestureSettings(),
     onExecuteGesture: (LauncherGestureAction) -> Unit = {},
     onOverviewDragProgress: (Float) -> Unit = {},
@@ -117,10 +127,11 @@ fun HomeScreen(
     val isMoving = uiState.movingItemId != null
     val isDragInProgress = activeDrag != null
     val isDraggingOverGrid = activeDrag?.hasMovedPastSlop == true
-    val isDraggingFromHome = isDraggingOverGrid && activeDrag.payload is DragPayload.FromHome
+    val isDraggingRemovable = isDraggingOverGrid &&
+        (activeDrag.payload is DragPayload.FromHome || activeDrag.payload is DragPayload.FromDock)
 
-    LaunchedEffect(isDraggingFromHome) {
-        if (!isDraggingFromHome) {
+    LaunchedEffect(isDraggingRemovable) {
+        if (!isDraggingRemovable) {
             onRemoveZoneBoundsChanged(null)
         }
     }
@@ -227,9 +238,10 @@ fun HomeScreen(
                     style = uiState.clockStyle,
                     compact = hasWorkspaceItems,
                     backgroundAlpha = uiState.clockBackgroundAlpha,
+                    isVisible = isVisible,
                     modifier = Modifier
                         .graphicsLayer {
-                            alpha = if (isDraggingFromHome) 0f else 1f
+                            alpha = if (isDraggingRemovable) 0f else 1f
                         }
                         .padding(
                             top = if (hasWorkspaceItems) 8.dp else 44.dp,
@@ -282,20 +294,35 @@ fun HomeScreen(
                     DockSearchBarPill(
                         backgroundAlpha = uiState.dockBackgroundAlpha,
                         onClick = onOpenOverviewSearch,
+                        isVisible = isVisible,
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
+                val draggingFromDockIndex =
+                    (activeDrag?.payload as? DragPayload.FromDock)
+                        ?.takeIf { activeDrag.hasMovedPastSlop }
+                        ?.sourceIndex
                 DashBar(
                     apps = uiState.dashApps,
                     onAppClick = onAppClick,
                     backgroundAlpha = uiState.dockBackgroundAlpha,
                     showNotificationDots = uiState.showNotificationDots,
                     badgePackages = uiState.badgePackages,
+                    isVisible = isVisible,
+                    onAppDragStart = onStartDockDrag,
+                    onAppDragMove = onDockDragMove,
+                    onAppDragEnd = onDockDragEnd,
+                    onAppDragCancel = onDockDragCancel,
+                    draggingFromDockIndex = draggingFromDockIndex,
+                    dockDropHighlightIndex = dockDropTarget?.targetIndex,
+                    modifier = Modifier.onPlaced { coordinates ->
+                        onDockBoundsChanged(coordinates.boundsInWindow())
+                    },
                 )
             }
         }
 
-        if (isDraggingFromHome) {
+        if (isDraggingRemovable) {
             RemoveDropZonePill(
                 isActive = dropTarget?.isOverRemoveZone == true,
                 modifier = Modifier
@@ -615,9 +642,25 @@ private fun DockSearchBarPill(
     backgroundAlpha: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
+    val motion = OverviewTheme.motion
     val isExpressive = OverviewTheme.components.isExpressive
+    val expressiveMotionEnabled = isExpressive && motion.usesSprings && !motion.reducedMotion
+    val animateWhenVisible = expressiveMotionEnabled && isVisible
+
+    val entranceScale by animateFloatAsState(
+        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.94f,
+        animationSpec = if (animateWhenVisible) motion.expressiveSpec() else snap(),
+        label = "dock_search_scale",
+    )
+    val entranceAlpha by animateFloatAsState(
+        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
+        animationSpec = if (animateWhenVisible) motion.effectSpec(durationMillis = 140) else snap(),
+        label = "dock_search_alpha",
+    )
+
     val shape = OverviewTheme.shapes.pill
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
@@ -636,6 +679,17 @@ private fun DockSearchBarPill(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
+            .then(
+                if (expressiveMotionEnabled) {
+                    Modifier.graphicsLayer {
+                        scaleX = entranceScale
+                        scaleY = entranceScale
+                        alpha = entranceAlpha
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .then(
                 if (isExpressive) {
                     Modifier.shadow(

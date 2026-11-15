@@ -151,4 +151,65 @@ class DragSessionTest {
         assertEquals(5, target.cellY)
         assertTrue(target.isValid)
     }
+
+    @Test
+    fun `maps app drags onto corresponding dock slot`() {
+        val dockBounds = Rect(left = 50f, top = 700f, right = 450f, bottom = 780f) // largura 400 -> 5 slots de 80px
+
+        val targetSlot0 = computeDockDropTarget(
+            pointerInWindow = Offset(x = 80f, y = 740f),
+            dockBounds = dockBounds,
+            itemCount = 5,
+            payload = DragPayload.FromOverview(sampleApp),
+        )
+        val targetSlot3 = computeDockDropTarget(
+            pointerInWindow = Offset(x = 310f, y = 740f),
+            dockBounds = dockBounds,
+            itemCount = 5,
+            payload = DragPayload.FromDock(sampleApp, sourceIndex = 0),
+        )
+
+        assertEquals(DockDropTarget(targetIndex = 0), targetSlot0)
+        assertEquals(DockDropTarget(targetIndex = 3), targetSlot3)
+    }
+
+    @Test
+    fun `ignores widget drag over dock bounds`() {
+        val dockBounds = Rect(left = 50f, top = 700f, right = 450f, bottom = 780f)
+        val widgetItem = HomeItem.Widget(
+            id = "w1",
+            appWidgetId = 10,
+            providerPackage = "pkg.widget",
+            providerClass = "Provider",
+            cellX = 0,
+            cellY = 0,
+            spanX = 2,
+            spanY = 2,
+        )
+        val widgetPayload = DragPayload.FromHome(
+            HomeWorkspaceItem.Widget(item = widgetItem, providerInfo = null, label = "Clock"),
+        )
+
+        val target = computeDockDropTarget(
+            pointerInWindow = Offset(x = 200f, y = 740f),
+            dockBounds = dockBounds,
+            itemCount = 5,
+            payload = widgetPayload,
+        )
+
+        assertNull(target)
+    }
+
+    @Test
+    fun `dock drag triggers remove zone when dragged over remove pill`() {
+        val overRemove = computeHomeDropTarget(
+            pointerInWindow = Offset(x = 200f, y = 50f),
+            gridBounds = gridBounds,
+            removeZoneBounds = removeZoneBounds,
+            payload = DragPayload.FromDock(sampleApp, sourceIndex = 2),
+            canPlace = { _, _, _, _, _ -> true },
+        )
+
+        assertTrue(overRemove!!.isOverRemoveZone)
+    }
 }

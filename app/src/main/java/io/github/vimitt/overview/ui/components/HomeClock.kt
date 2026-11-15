@@ -7,6 +7,9 @@ import android.content.IntentFilter
 import android.graphics.Matrix
 import android.graphics.Path as AndroidPath
 import android.text.format.DateFormat
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,8 +28,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +45,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,6 +54,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
@@ -59,8 +69,37 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Informa se o ciclo de vida atual está ativo (`STARTED` ou superior).
+ * Evita manter receptores de tempo e animações ativos fora da tela.
+ */
+@Composable
+fun rememberIsLifecycleActive(): Boolean {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isStarted by remember(lifecycleOwner) {
+        mutableStateOf(
+            lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+        )
+    }
+    DisposableEffect(lifecycleOwner) {
+        isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> isStarted = true
+                Lifecycle.Event.ON_STOP -> isStarted = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    return isStarted
+}
+
+/**
  * Relógio configurável da tela inicial e da pré-visualização nas configurações.
- * Reage a `ACTION_TIME_TICK`, mudanças manuais de horário e fuso horário sem polling.
+ * Só registra `BroadcastReceiver` e executa animações Expressive quando `isVisible` é verdadeiro.
  */
 @Composable
 fun HomeClock(
@@ -69,12 +108,17 @@ fun HomeClock(
     modifier: Modifier = Modifier,
     useWallpaperColors: Boolean = true,
     backgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
+    isVisible: Boolean = true,
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
     var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    DisposableEffect(context) {
+    DisposableEffect(context, isVisible) {
+        if (!isVisible) {
+            return@DisposableEffect onDispose {}
+        }
+        currentTimeMillis = System.currentTimeMillis()
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 currentTimeMillis = System.currentTimeMillis()
@@ -138,7 +182,55 @@ fun HomeClock(
         null
     }
 
+    val motion = OverviewTheme.motion
     val isExpressive = OverviewTheme.components.isExpressive
+    val expressiveMotionEnabled = isExpressive && motion.usesSprings && !motion.reducedMotion
+    val animateWhileVisible = expressiveMotionEnabled && isVisible
+
+    val entranceScale by animateFloatAsState(
+        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.94f,
+        animationSpec = if (animateWhileVisible) motion.spatialSpec() else snap(),
+        label = "clock_entrance_scale",
+    )
+    val entranceAlpha by animateFloatAsState(
+        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
+        animationSpec = if (animateWhileVisible) motion.effectSpec(durationMillis = 140) else snap(),
+        label = "clock_entrance_alpha",
+    )
+
+    val minuteTickPulse = remember { Animatable(1f) }
+    val minuteKey = remember(now) { currentTimeMillis / 60_000L }
+    var lastAnimatedMinute by remember { mutableLongStateOf(minuteKey) }
+
+    LaunchedEffect(minuteKey, animateWhileVisible, style) {
+        if (!animateWhileVisible || style == HomeClockStyle.ANALOG) {
+            lastAnimatedMinute = minuteKey
+            if (minuteTickPulse.value != 1f) {
+                minuteTickPulse.snapTo(1f)
+            }
+            return@LaunchedEffect
+        }
+        if (minuteKey != lastAnimatedMinute) {
+            lastAnimatedMinute = minuteKey
+            minuteTickPulse.snapTo(1.045f)
+            minuteTickPulse.animateTo(
+                targetValue = 1f,
+                animationSpec = motion.expressiveSpec(),
+            )
+        }
+    }
+
+    val clockModifier = if (expressiveMotionEnabled) {
+        modifier.graphicsLayer {
+            val pulse = minuteTickPulse.value
+            scaleX = entranceScale * pulse
+            scaleY = entranceScale * pulse
+            alpha = entranceAlpha
+        }
+    } else {
+        modifier
+    }
+
     val clampedAlpha = backgroundAlpha.coerceIn(
         SettingsDefaults.MIN_CLOCK_ALPHA,
         SettingsDefaults.MAX_CLOCK_ALPHA,
@@ -185,7 +277,7 @@ fun HomeClock(
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
-            modifier = modifier,
+            modifier = clockModifier,
         )
 
         HomeClockStyle.STACKED -> StackedClock(
@@ -201,7 +293,7 @@ fun HomeClock(
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
-            modifier = modifier,
+            modifier = clockModifier,
         )
 
         HomeClockStyle.ANALOG -> AnalogClock(
@@ -209,6 +301,7 @@ fun HomeClock(
             dateText = shortDateText,
             compact = compact,
             isExpressive = isExpressive,
+            animateMotion = animateWhileVisible,
             handColor = cardPrimaryForeground,
             dateColor = secondaryForeground,
             accentColor = colors.accent,
@@ -224,7 +317,7 @@ fun HomeClock(
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
-            modifier = modifier,
+            modifier = clockModifier,
         )
 
         HomeClockStyle.SIDE_BY_SIDE -> SideBySideClock(
@@ -239,7 +332,7 @@ fun HomeClock(
             accentContainer = colors.accentContainer,
             onAccentContainer = colors.onAccentContainer,
             shadow = textShadow,
-            modifier = modifier,
+            modifier = clockModifier,
         )
 
         HomeClockStyle.PILL -> PillClock(
@@ -255,7 +348,7 @@ fun HomeClock(
             containerColor = cardFill,
             borderColor = cardBorder,
             shadowAlpha = clampedAlpha,
-            modifier = modifier,
+            modifier = clockModifier,
         )
 
         HomeClockStyle.FULL_PILL -> {
@@ -284,7 +377,7 @@ fun HomeClock(
                 containerColor = cardFill,
                 borderColor = cardBorder,
                 shadowAlpha = clampedAlpha,
-                modifier = modifier,
+                modifier = clockModifier,
             )
         }
     }
@@ -517,6 +610,7 @@ private fun AnalogClock(
     dateText: String,
     compact: Boolean,
     isExpressive: Boolean,
+    animateMotion: Boolean,
     handColor: Color,
     dateColor: Color,
     accentColor: Color,
@@ -543,6 +637,7 @@ private fun AnalogClock(
             AnalogDial(
                 dialSize = dialSize,
                 isExpressive = isExpressive,
+                animateMotion = animateMotion,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
                 primaryColor = handColor,
@@ -574,6 +669,7 @@ private fun AnalogClock(
             AnalogDial(
                 dialSize = dialSize,
                 isExpressive = isExpressive,
+                animateMotion = animateMotion,
                 hourAngleDeg = hourAngleDeg,
                 minuteAngleDeg = minuteAngleDeg,
                 primaryColor = handColor,
@@ -605,6 +701,7 @@ private fun AnalogClock(
 private fun AnalogDial(
     dialSize: Dp,
     isExpressive: Boolean,
+    animateMotion: Boolean,
     hourAngleDeg: Float,
     minuteAngleDeg: Float,
     primaryColor: Color,
@@ -612,6 +709,40 @@ private fun AnalogDial(
     dialFill: Color,
     dialBorder: Color,
 ) {
+    // Mantém ângulo contínuo para o ponteiro avançar suavemente de 59 -> 00 sem girar ao contrário.
+    var continuousMinuteAngle by remember { mutableFloatStateOf(minuteAngleDeg) }
+    var lastRawMinuteAngle by remember { mutableFloatStateOf(minuteAngleDeg) }
+    var continuousHourAngle by remember { mutableFloatStateOf(hourAngleDeg) }
+    var lastRawHourAngle by remember { mutableFloatStateOf(hourAngleDeg) }
+
+    if (minuteAngleDeg != lastRawMinuteAngle) {
+        var delta = minuteAngleDeg - lastRawMinuteAngle
+        if (delta < -180f) delta += 360f
+        if (delta > 180f) delta -= 360f
+        continuousMinuteAngle += delta
+        lastRawMinuteAngle = minuteAngleDeg
+    }
+    if (hourAngleDeg != lastRawHourAngle) {
+        var delta = hourAngleDeg - lastRawHourAngle
+        if (delta < -180f) delta += 360f
+        if (delta > 180f) delta -= 360f
+        continuousHourAngle += delta
+        lastRawHourAngle = hourAngleDeg
+    }
+
+    val motion = OverviewTheme.motion
+    val handSpec = if (animateMotion) motion.expressiveSpec<Float>() else snap()
+    val animatedMinuteAngle by animateFloatAsState(
+        targetValue = continuousMinuteAngle,
+        animationSpec = handSpec,
+        label = "analog_minute_angle",
+    )
+    val animatedHourAngle by animateFloatAsState(
+        targetValue = continuousHourAngle,
+        animationSpec = handSpec,
+        label = "analog_hour_angle",
+    )
+
     // Pré-aloca o mostrador recortado de 12 lóbulos fora do bloco Canvas para evitar alocações por frame
     val scallopPolygon = remember { OverviewPolygonFactory.clockScallopPolygon() }
     val scallopAndroidPath = remember { AndroidPath() }
@@ -684,7 +815,7 @@ private fun AnalogDial(
             )
         }
 
-        val hourRad = Math.toRadians(hourAngleDeg.toDouble() - 90.0)
+        val hourRad = Math.toRadians(animatedHourAngle.toDouble() - 90.0)
         val hourEnd = Offset(
             x = center.x + (cos(hourRad) * radius * 0.46f).toFloat(),
             y = center.y + (sin(hourRad) * radius * 0.46f).toFloat(),
@@ -697,7 +828,7 @@ private fun AnalogDial(
             cap = StrokeCap.Round,
         )
 
-        val minuteRad = Math.toRadians(minuteAngleDeg.toDouble() - 90.0)
+        val minuteRad = Math.toRadians(animatedMinuteAngle.toDouble() - 90.0)
         val minuteEnd = Offset(
             x = center.x + (cos(minuteRad) * radius * 0.68f).toFloat(),
             y = center.y + (sin(minuteRad) * radius * 0.68f).toFloat(),

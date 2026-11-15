@@ -66,6 +66,7 @@ import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
+import io.github.vimitt.overview.ui.components.rememberIsLifecycleActive
 import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
 import io.github.vimitt.overview.ui.home.HomeItemActionOverlay
 import io.github.vimitt.overview.ui.home.HomeScreen
@@ -124,6 +125,8 @@ fun LauncherRoot(
     canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
     onMoveHomeItemTo: (itemId: String, cellX: Int, cellY: Int) -> Unit,
     onDropAppFromOverviewAt: (app: AppInfo, cellX: Int, cellY: Int) -> Unit,
+    onDropAppOnDock: (app: AppInfo, targetIndex: Int) -> Unit,
+    onRemoveAppFromDock: (appKey: String) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onOpenWallpaperPicker: () -> Unit,
@@ -166,6 +169,7 @@ fun LauncherRoot(
 
     var activeDrag by remember { mutableStateOf<ActiveDragState?>(null) }
     var homeGridBounds by remember { mutableStateOf<ComposeRect?>(null) }
+    var dockBounds by remember { mutableStateOf<ComposeRect?>(null) }
     var removeZoneBounds by remember { mutableStateOf<ComposeRect?>(null) }
     var lastClosedByDrag by remember { mutableStateOf(false) }
 
@@ -193,6 +197,15 @@ fun LauncherRoot(
         }
     }
 
+    val currentDockTarget: DockDropTarget? = activeDrag?.takeIf { it.hasMovedPastSlop }?.let { drag ->
+        computeDockDropTarget(
+            pointerInWindow = drag.pointerInWindow,
+            dockBounds = dockBounds,
+            itemCount = homeUiState.dashApps.size,
+            payload = drag.payload,
+        )
+    }
+
     val currentDropTarget: HomeDropTarget? = activeDrag?.takeIf { it.hasMovedPastSlop }?.let { drag ->
         computeHomeDropTarget(
             pointerInWindow = drag.pointerInWindow,
@@ -204,7 +217,9 @@ fun LauncherRoot(
             gridRows = homeUiState.gridRows,
         )
     }
+    val effectiveDropTarget: HomeDropTarget? = if (currentDockTarget != null) null else currentDropTarget
 
+    val isLifecycleActive = rememberIsLifecycleActive()
     val anyModalFullScreen = isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen
     val overviewActive = isOverviewOpen && !anyModalFullScreen
     val isDraggingFromOverviewActive =
@@ -277,12 +292,18 @@ fun LauncherRoot(
         blurRadiusPx = windowBlurPx,
     )
 
+    val isHomeVisible = isLifecycleActive &&
+        !anyModalFullScreen &&
+        (!overviewActive || currentOverviewProgress < 0.95f)
+
     Box(modifier = modifier.fillMaxSize()) {
         HomeScreen(
             uiState = homeUiState,
             appWidgetController = appWidgetController,
             activeDrag = activeDrag,
-            dropTarget = currentDropTarget,
+            dropTarget = effectiveDropTarget,
+            isVisible = isHomeVisible,
+            dockDropTarget = currentDockTarget,
             gestureSettings = gestureSettings,
             onExecuteGesture = onExecuteGesture,
             onAppClick = { app, view, bounds ->
@@ -301,6 +322,7 @@ fun LauncherRoot(
             onPlaceMovingItemAt = onPlaceMovingItemAt,
             onCancelMovingItem = onCancelMovingItem,
             onGridBoundsChanged = { bounds -> homeGridBounds = bounds },
+            onDockBoundsChanged = { bounds -> dockBounds = bounds },
             onRemoveZoneBoundsChanged = { bounds -> removeZoneBounds = bounds },
             onStartItemDrag = { item, startPos ->
                 if (homeUiState.lockLayout) {
@@ -317,11 +339,15 @@ fun LauncherRoot(
             onItemDragMove = updateDragPosition,
             onItemDragEnd = {
                 val finished = activeDrag
-                val target = currentDropTarget
+                val target = effectiveDropTarget
+                val dockTarget = currentDockTarget
                 activeDrag = null
                 if (finished != null && finished.payload is DragPayload.FromHome) {
+                    val draggedShortcutApp = finished.payload.draggedApp
                     if (!finished.hasMovedPastSlop) {
                         onWorkspaceItemLongPress(finished.payload.item)
+                    } else if (dockTarget != null && draggedShortcutApp != null) {
+                        onDropAppOnDock(draggedShortcutApp, dockTarget.targetIndex)
                     } else if (target != null && target.isOverRemoveZone) {
                         onRemoveHomeItem(finished.payload.item.item.id)
                     } else if (target != null && target.isValid) {
@@ -334,6 +360,41 @@ fun LauncherRoot(
                 }
             },
             onItemDragCancel = {
+                activeDrag = null
+            },
+            onStartDockDrag = { app, index, startPos ->
+                if (homeUiState.lockLayout) {
+                    showLockedToast()
+                } else {
+                    activeDrag = ActiveDragState(
+                        payload = DragPayload.FromDock(app = app, sourceIndex = index),
+                        startInWindow = startPos,
+                        pointerInWindow = startPos,
+                        hasMovedPastSlop = false,
+                    )
+                }
+            },
+            onDockDragMove = updateDragPosition,
+            onDockDragEnd = {
+                val finished = activeDrag
+                val target = effectiveDropTarget
+                val dockTarget = currentDockTarget
+                activeDrag = null
+                if (finished != null && finished.payload is DragPayload.FromDock && finished.hasMovedPastSlop) {
+                    if (dockTarget != null) {
+                        onDropAppOnDock(finished.payload.app, dockTarget.targetIndex)
+                    } else if (target != null && target.isOverRemoveZone) {
+                        onRemoveAppFromDock(finished.payload.app.key)
+                    } else if (target != null && target.isValid) {
+                        onDropAppFromOverviewAt(
+                            finished.payload.app,
+                            target.cellX,
+                            target.cellY,
+                        )
+                    }
+                }
+            },
+            onDockDragCancel = {
                 activeDrag = null
             },
             modifier = Modifier.graphicsLayer {
@@ -479,20 +540,31 @@ fun LauncherRoot(
                     onAppDragMove = updateDragPosition,
                     onAppDragEnd = {
                         val finished = activeDrag
-                        val target = currentDropTarget
+                        val target = effectiveDropTarget
+                        val dockTarget = currentDockTarget
                         activeDrag = null
                         val wasDrag = finished?.hasMovedPastSlop == true
-                        if (wasDrag && finished.payload is DragPayload.FromOverview && target != null) {
-                            if (homeUiState.lockLayout) {
-                                showLockedToast()
-                            } else if (target.isValid) {
-                                onDropAppFromOverviewAt(
-                                    finished.payload.app,
-                                    target.cellX,
-                                    target.cellY,
-                                )
-                                lastClosedByDrag = true
-                                onCloseOverview()
+                        if (wasDrag && finished.payload is DragPayload.FromOverview) {
+                            if (dockTarget != null) {
+                                if (homeUiState.lockLayout) {
+                                    showLockedToast()
+                                } else {
+                                    onDropAppOnDock(finished.payload.app, dockTarget.targetIndex)
+                                    lastClosedByDrag = true
+                                    onCloseOverview()
+                                }
+                            } else if (target != null) {
+                                if (homeUiState.lockLayout) {
+                                    showLockedToast()
+                                } else if (target.isValid) {
+                                    onDropAppFromOverviewAt(
+                                        finished.payload.app,
+                                        target.cellX,
+                                        target.cellY,
+                                    )
+                                    lastClosedByDrag = true
+                                    onCloseOverview()
+                                }
                             }
                         }
                         wasDrag
@@ -602,7 +674,7 @@ fun LauncherRoot(
 
         DragGhostOverlay(
             activeDrag = activeDrag,
-            isOverRemoveZone = currentDropTarget?.isOverRemoveZone == true,
+            isOverRemoveZone = effectiveDropTarget?.isOverRemoveZone == true,
         )
     }
 }

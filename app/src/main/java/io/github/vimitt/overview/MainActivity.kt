@@ -233,6 +233,8 @@ class MainActivity : ComponentActivity() {
                             preferredCellY = cellY,
                         )
                     },
+                    onDropAppOnDock = homeViewModel::dropAppOnDock,
+                    onRemoveAppFromDock = homeViewModel::removeAppFromDock,
                     onOpenSettings = {
                         isHomeMenuOpen = false
                         isSettingsOpen = true

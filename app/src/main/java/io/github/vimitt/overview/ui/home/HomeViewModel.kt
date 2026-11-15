@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val appContext: Context,
     private val appsRepository: AppsRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     notificationBadgeRepository: NotificationBadgeRepository,
     private val homeWorkspaceRepository: HomeWorkspaceRepository,
     private val appWidgetController: AppWidgetController,
@@ -299,6 +299,48 @@ class HomeViewModel(
             if (removed is HomeItem.Widget) {
                 appWidgetController.deleteAppWidgetId(removed.appWidgetId)
             }
+        }
+    }
+
+    /**
+     * Reorganiza os apps da dock ou solta um app em uma posição específica.
+     */
+    fun dropAppOnDock(app: AppInfo, targetIndex: Int) {
+        val state = uiState.value
+        if (state.lockLayout) return
+        val maxIcons = state.dockSettings.iconCount.coerceAtLeast(1)
+        val currentKeys = state.dashApps.map { it.key }.toMutableList()
+        val existingIndex = currentKeys.indexOf(app.key)
+
+        if (existingIndex >= 0) {
+            val safeTarget = targetIndex.coerceIn(0, (currentKeys.size - 1).coerceAtLeast(0))
+            if (existingIndex == safeTarget) return
+            currentKeys.removeAt(existingIndex)
+            currentKeys.add(safeTarget.coerceIn(0, currentKeys.size), app.key)
+        } else if (currentKeys.size < maxIcons) {
+            currentKeys.add(targetIndex.coerceIn(0, currentKeys.size), app.key)
+        } else {
+            val replaceIndex = targetIndex.coerceIn(0, currentKeys.lastIndex)
+            currentKeys[replaceIndex] = app.key
+        }
+
+        viewModelScope.launch {
+            settingsRepository.setPinnedDashKeys(currentKeys)
+        }
+    }
+
+    /**
+     * Remove um app específico da dock mantendo os demais fixados em ordem.
+     */
+    fun removeAppFromDock(appKey: String) {
+        val state = uiState.value
+        if (state.lockLayout) return
+        val updatedKeys = state.dashApps
+            .map { it.key }
+            .filterNot { it == appKey }
+
+        viewModelScope.launch {
+            settingsRepository.setPinnedDashKeys(updatedKeys)
         }
     }
 

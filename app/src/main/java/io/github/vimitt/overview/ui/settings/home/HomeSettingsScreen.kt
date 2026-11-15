@@ -29,6 +29,7 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.ui.components.HomeClock
+import io.github.vimitt.overview.ui.components.rememberIsLifecycleActive
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
@@ -234,6 +235,7 @@ private fun HomeClockPreview(
                 compact = false,
                 useWallpaperColors = false,
                 backgroundAlpha = backgroundAlpha,
+                isVisible = rememberIsLifecycleActive() && showClock,
                 modifier = Modifier.alpha(if (showClock) 1f else 0.32f),
             )
         }
