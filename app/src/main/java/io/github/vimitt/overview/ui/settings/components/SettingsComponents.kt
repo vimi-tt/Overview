@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,6 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -60,7 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
-import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
+import io.github.vimitt.overview.ui.components.ExpressiveButtonGroup
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -132,7 +136,7 @@ fun SettingsTopBar(
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = OverviewTheme.typography.topBarTitle,
             color = colors.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -142,7 +146,8 @@ fun SettingsTopBar(
 
 /**
  * Contêiner agrupado de linhas estilo `AdwPreferencesGroup`, usando `surfaceContainer`
- * e cantos arredondados com separadores finos.
+ * e cantos arredondados com separadores finos. No estilo Expressive adiciona borda tonal
+ * sutil e cabeçalho com destaque tipográfico.
  */
 @Composable
 fun SettingsGroup(
@@ -151,14 +156,22 @@ fun SettingsGroup(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = OverviewTheme.colors
-    val shape = RoundedCornerShape(OverviewCornerRadius.SettingsGroup)
+    val shapes = OverviewTheme.shapes
+    val components = OverviewTheme.components
+    val typography = OverviewTheme.typography
+    val shape = shapes.settingsGroup
+    val borderColor = if (components.useTonalCardBorder) {
+        colors.accent.copy(alpha = 0.28f)
+    } else {
+        colors.hairlineBorder
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (!title.isNullOrBlank()) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onSurfaceMuted,
+                style = typography.sectionHeader,
+                color = if (components.isExpressive) colors.accent else colors.onSurfaceMuted,
                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
             )
         }
@@ -167,7 +180,7 @@ fun SettingsGroup(
                 .fillMaxWidth()
                 .clip(shape)
                 .background(colors.surfaceContainer)
-                .border(width = 1.dp, color = colors.hairlineBorder, shape = shape),
+                .border(width = 1.dp, color = borderColor, shape = shape),
             content = content,
         )
     }
@@ -197,6 +210,8 @@ fun SettingsRow(
     onClick: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
+    val components = OverviewTheme.components
+    val shapes = OverviewTheme.shapes
     val clickModifier = if (onClick != null) {
         Modifier.clickable(enabled = enabled, role = role, onClick = onClick)
     } else {
@@ -213,7 +228,17 @@ fun SettingsRow(
     ) {
         if (icon != null) {
             Box(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier
+                    .size(36.dp)
+                    .then(
+                        if (components.isExpressive) {
+                            Modifier
+                                .clip(shapes.small)
+                                .background(colors.accentContainer.copy(alpha = 0.55f))
+                        } else {
+                            Modifier
+                        },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 icon()
@@ -224,7 +249,7 @@ fun SettingsRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = OverviewTheme.typography.rowTitle,
                 color = if (enabled) colors.onSurface else colors.onSurfaceMuted,
             )
             if (!subtitle.isNullOrBlank()) {
@@ -289,6 +314,7 @@ fun SwitchRow(
     enabled: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
+    val useIconSwitch = OverviewTheme.components.useIconSwitch
     SettingsRow(
         title = title,
         subtitle = subtitle,
@@ -302,10 +328,33 @@ fun SwitchRow(
                 checked = checked,
                 onCheckedChange = null,
                 enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = colors.onAccent,
-                    checkedTrackColor = colors.accent,
-                ),
+                thumbContent = if (useIconSwitch) {
+                    {
+                        Icon(
+                            imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                        )
+                    }
+                } else {
+                    null
+                },
+                colors = if (useIconSwitch) {
+                    SwitchDefaults.colors(
+                        checkedThumbColor = colors.onAccent,
+                        checkedTrackColor = colors.accent,
+                        checkedIconColor = colors.accent,
+                        uncheckedThumbColor = colors.onSurfaceMuted,
+                        uncheckedTrackColor = colors.surfaceElevated,
+                        uncheckedBorderColor = colors.hairlineBorder,
+                        uncheckedIconColor = colors.surfaceElevated,
+                    )
+                } else {
+                    SwitchDefaults.colors(
+                        checkedThumbColor = colors.onAccent,
+                        checkedTrackColor = colors.accent,
+                    )
+                },
             )
         },
     )
@@ -340,7 +389,7 @@ fun SliderRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = OverviewTheme.typography.rowTitle,
                     color = if (enabled) colors.onSurface else colors.onSurfaceMuted,
                 )
                 if (!subtitle.isNullOrBlank()) {
@@ -377,6 +426,7 @@ fun SliderRow(
 
 /**
  * Seletor segmentado horizontal para poucas opções mutuamente exclusivas.
+ * No estilo Expressive utiliza botões segmentados do Material 3 ou grupo conectado.
  */
 @Composable
 fun <T> SegmentedRow(
@@ -385,9 +435,12 @@ fun <T> SegmentedRow(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     title: String? = null,
+    subtitle: String? = null,
+    useButtonGroup: Boolean = false,
 ) {
     val colors = OverviewTheme.colors
-    val containerShape = RoundedCornerShape(OverviewCornerRadius.Small)
+    val components = OverviewTheme.components
+    val containerShape = OverviewTheme.shapes.small
 
     Column(
         modifier = modifier
@@ -397,38 +450,91 @@ fun <T> SegmentedRow(
         if (!title.isNullOrBlank()) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = OverviewTheme.typography.rowTitle,
                 color = colors.onSurface,
             )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceMuted,
+                )
+            }
             Spacer(modifier = Modifier.height(10.dp))
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(containerShape)
-                .background(colors.surfaceElevated)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            for ((optionValue, label) in options) {
-                val isSelected = optionValue == selected
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 44.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) colors.accent else Color.Transparent)
-                        .clickable(role = Role.RadioButton) { onSelect(optionValue) }
-                        .padding(horizontal = 6.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
+
+        if (components.useExpressiveSegmented) {
+            if (useButtonGroup) {
+                ExpressiveButtonGroup(
+                    options = options,
+                    selected = selected,
+                    onSelect = onSelect,
+                )
+            } else {
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = if (isSelected) colors.onAccent else colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    options.forEachIndexed { index, (optionValue, label) ->
+                        val isSelected = optionValue == selected
+                        SegmentedButton(
+                            selected = isSelected,
+                            onClick = { onSelect(optionValue) },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = options.size,
+                            ),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = colors.accentContainer,
+                                activeContentColor = colors.onAccentContainer,
+                                activeBorderColor = colors.accent.copy(alpha = 0.55f),
+                                inactiveContainerColor = colors.surfaceElevated,
+                                inactiveContentColor = colors.onSurface,
+                                inactiveBorderColor = colors.hairlineBorder,
+                            ),
+                            modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(containerShape)
+                    .background(colors.surfaceElevated)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                for ((optionValue, label) in options) {
+                    val isSelected = optionValue == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) colors.accent else Color.Transparent)
+                            .clickable(role = Role.RadioButton) { onSelect(optionValue) }
+                            .padding(horizontal = 6.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (isSelected) colors.onAccent else colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -481,7 +587,7 @@ fun <T> SingleChoiceRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 48.dp)
-                                .clip(RoundedCornerShape(OverviewCornerRadius.Small))
+                                .clip(OverviewTheme.shapes.small)
                                 .clickable(role = Role.RadioButton) {
                                     onSelect(value)
                                     dialogOpen = false
@@ -547,7 +653,7 @@ fun ColorPickerRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = OverviewTheme.typography.rowTitle,
                     color = colors.onSurface,
                 )
                 if (!subtitle.isNullOrBlank()) {

@@ -97,6 +97,7 @@ import io.github.vimitt.overview.domain.model.SearchSettings
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.components.AppIconItem
+import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.ceil
@@ -1402,6 +1403,7 @@ private fun EmptyOverviewState(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
+    val components = OverviewTheme.components
     val message = if (isSearching) {
         stringResource(R.string.no_apps_found)
     } else {
@@ -1416,6 +1418,9 @@ private fun EmptyOverviewState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (!isSearching && components.useExpressiveLoading) {
+                ExpressiveLoadingIndicator(size = 48.dp)
+            }
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,

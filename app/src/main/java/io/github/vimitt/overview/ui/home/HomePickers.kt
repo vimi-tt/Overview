@@ -59,6 +59,7 @@ import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.ui.components.AppIconItem
+import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -213,11 +214,19 @@ fun HomeWidgetPickerScreen(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = stringResource(R.string.picker_widgets_loading),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.onSurfaceMuted,
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        if (OverviewTheme.components.useExpressiveLoading) {
+                            ExpressiveLoadingIndicator(size = 46.dp)
+                        }
+                        Text(
+                            text = stringResource(R.string.picker_widgets_loading),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.onSurfaceMuted,
+                        )
+                    }
                 }
             }
 
