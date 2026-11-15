@@ -43,16 +43,15 @@
     <string name="settings_hub_home">Tela inicial</string>
     <string name="settings_hub_dock">Dock</string>
     <string name="settings_hub_app_grid">Grade de apps</string>
+    <string name="settings_hub_overview">Overview</string>
     <string name="settings_hub_about">Sobre</string>
     <string name="settings_hub_future_header">Em breve</string>
-    <string name="settings_hub_future_overview">Overview (desfoque e animações)</string>
     <string name="settings_hub_future_search">Busca, Pastas e Gestos</string>
     <string name="settings_hub_future_subtitle">Planejado para próximas atualizações</string>
 
     <!-- Categoria: Aparência -->
     <string name="settings_section_theme">Tema e cores</string>
     <string name="settings_section_icons">Ícones e emblemas</string>
-    <string name="settings_section_effects">Efeitos visuais (temporário)</string>
     <string name="settings_theme_label">Tema</string>
     <string name="settings_theme_system">Automático</string>
     <string name="settings_theme_light">Claro</string>
@@ -73,9 +72,31 @@
     <string name="settings_notification_permission_body">Para exibir pontos de notificação nos ícones, conceda acesso ao serviço do Overview nas configurações do sistema.</string>
     <string name="settings_notification_permission_grant">Abrir configurações</string>
     <string name="settings_notification_permission_missing">Permissão de notificações não concedida</string>
-    <string name="settings_blur_label">Desfoque do Overview</string>
-    <string name="settings_blur_subtitle">Migrará para a categoria Overview nas próximas versões</string>
+
+    <!-- Categoria: Overview -->
+    <string name="settings_section_overview_blur">Desfoque e fundo</string>
+    <string name="settings_section_overview_motion">Animações e transições</string>
+    <string name="settings_blur_label">Intensidade do desfoque</string>
+    <string name="settings_blur_subtitle">Aplica blur com RenderEffect e papel de parede no fundo</string>
     <string name="settings_blur_off">Desativado</string>
+    <string name="settings_overview_blur_summary_on">Desfoque %1$d dp</string>
+    <string name="settings_overview_blur_summary_off">Sem desfoque</string>
+    <string name="settings_overview_scrim_label">Escurecimento do fundo</string>
+    <string name="settings_overview_scrim_subtitle">Controla o contraste do fundo atrás da grade de apps</string>
+    <string name="settings_overview_transition_label">Estilo de transição</string>
+    <string name="settings_overview_transition_gnome">GNOME Shell</string>
+    <string name="settings_overview_transition_slide">Deslizar</string>
+    <string name="settings_overview_transition_fade">Esmaecer</string>
+    <string name="settings_overview_speed_label">Velocidade das animações</string>
+    <string name="settings_overview_speed_fast">Rápida</string>
+    <string name="settings_overview_speed_normal">Padrão</string>
+    <string name="settings_overview_speed_relaxed">Suave</string>
+    <string name="settings_overview_depth_label">Efeito de profundidade</string>
+    <string name="settings_overview_depth_subtitle">Recua suavemente a tela inicial ao abrir o Overview</string>
+    <string name="settings_overview_launch_anim_label">Animação ao abrir aplicativos</string>
+    <string name="settings_overview_launch_anim_subtitle">Expande a janela do aplicativo a partir do ícone tocado</string>
+    <string name="settings_overview_reduced_motion_notice">Animações reduzidas ativas no sistema — as transições espaciais são substituídas por trocas instantâneas.</string>
+    <string name="settings_overview_preview_hint">Toque para alternar a pré-visualização</string>
 
     <!-- Categoria: Tela inicial -->
     <string name="settings_section_home_grid">Grade</string>

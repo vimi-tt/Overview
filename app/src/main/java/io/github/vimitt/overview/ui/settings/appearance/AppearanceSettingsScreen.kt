@@ -50,7 +50,6 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.IconPackInfo
 import io.github.vimitt.overview.data.NotificationBadgeRepository
 import io.github.vimitt.overview.domain.model.IconShape
-import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.ThemeMode
 import io.github.vimitt.overview.ui.settings.components.ColorPickerRow
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
@@ -59,12 +58,10 @@ import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
 import io.github.vimitt.overview.ui.settings.components.SettingsRow
 import io.github.vimitt.overview.ui.settings.components.SettingsScaffold
-import io.github.vimitt.overview.ui.settings.components.SliderRow
 import io.github.vimitt.overview.ui.settings.components.SwitchRow
 import io.github.vimitt.overview.ui.theme.AdwaitaPalette
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
-import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -76,7 +73,6 @@ fun AppearanceSettingsScreen(
     onIconShapeChange: (IconShape) -> Unit,
     onNotificationDotsToggle: (Boolean) -> Boolean,
     onRefreshNotificationAccess: () -> Unit,
-    onBlurRadiusChange: (Float) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -159,24 +155,6 @@ fun AppearanceSettingsScreen(
                             showNotificationAccessDialog = true
                         }
                     },
-                )
-            }
-        }
-
-        item(key = "group_effects_temp") {
-            SettingsGroup(title = stringResource(R.string.settings_section_effects)) {
-                val blurLabel = if (settings.overviewBlurRadiusDp < 1f) {
-                    stringResource(R.string.settings_blur_off)
-                } else {
-                    "${settings.overviewBlurRadiusDp.roundToInt()} dp"
-                }
-                SliderRow(
-                    title = stringResource(R.string.settings_blur_label),
-                    subtitle = stringResource(R.string.settings_blur_subtitle),
-                    value = settings.overviewBlurRadiusDp,
-                    valueRange = SettingsDefaults.MIN_BLUR_RADIUS_DP..SettingsDefaults.MAX_BLUR_RADIUS_DP,
-                    valueLabel = blurLabel,
-                    onValueChange = onBlurRadiusChange,
                 )
             }
         }

@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
@@ -102,12 +104,20 @@ fun OverviewScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     focusSearchTrigger: Int = 0,
+    scrimAlpha: Float = SettingsDefaults.DEFAULT_OVERVIEW_SCRIM_ALPHA,
+    animationDurationScale: Float = 1f,
+    onCloseDragProgress: (Float) -> Unit = {},
+    onCloseDragEnd: (shouldClose: Boolean) -> Unit = {},
 ) {
     val colors = OverviewTheme.colors
     val reducedMotion = OverviewTheme.reducedMotion
     val keyboardController = LocalSoftwareKeyboardController.current
     val rootView = LocalView.current
-    val swipeDownThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
+    val density = LocalDensity.current
+    val dragRangePx = with(density) { 180.dp.toPx() }
+    val dragTriggerPx = with(density) { 48.dp.toPx() }
+    val minFlingDistancePx = with(density) { 14.dp.toPx() }
+    val velocityTracker = remember { VelocityTracker() }
     val isSearching = searchQuery.isNotBlank()
     val searchFocusRequester = remember { FocusRequester() }
     var handledFocusTrigger by remember { mutableIntStateOf(0) }
@@ -124,7 +134,11 @@ fun OverviewScreen(
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (isDraggingToHome) 0f else 1f,
-        animationSpec = overviewTween(reducedMotion = reducedMotion, durationMillis = 140),
+        animationSpec = overviewTween(
+            reducedMotion = reducedMotion,
+            durationMillis = 140,
+            durationScale = animationDurationScale,
+        ),
         label = "overviewDragFade",
     )
 
@@ -174,30 +188,37 @@ fun OverviewScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.overviewScrim)
-                .pointerInput(isActive, isDraggingToHome, swipeDownThresholdPx) {
+                .background(colors.overviewScrim.copy(alpha = scrimAlpha.coerceIn(0f, 1f)))
+                .pointerInput(isActive, isDraggingToHome, dragRangePx, dragTriggerPx, minFlingDistancePx) {
                     if (!isActive || isDraggingToHome) return@pointerInput
                     var totalDragY = 0f
-                    var triggered = false
                     detectVerticalDragGestures(
                         onDragStart = {
                             totalDragY = 0f
-                            triggered = false
+                            velocityTracker.resetTracking()
                         },
                         onDragEnd = {
+                            val velocityY = velocityTracker.calculateVelocity().y
+                            val shouldClose = totalDragY >= dragTriggerPx ||
+                                (velocityY >= 550f && totalDragY >= minFlingDistancePx)
                             totalDragY = 0f
-                            triggered = false
+                            onCloseDragEnd(shouldClose)
+                            if (shouldClose) {
+                                keyboardController?.hide()
+                                onClose()
+                            }
                         },
                         onDragCancel = {
                             totalDragY = 0f
-                            triggered = false
+                            onCloseDragEnd(false)
                         },
-                        onVerticalDrag = { _, dragAmount ->
+                        onVerticalDrag = { change, dragAmount ->
+                            velocityTracker.addPosition(change.uptimeMillis, change.position)
                             totalDragY += dragAmount
-                            if (!triggered && totalDragY >= swipeDownThresholdPx) {
-                                triggered = true
-                                keyboardController?.hide()
-                                onClose()
+                            if (totalDragY > 0f) {
+                                onCloseDragProgress((totalDragY / dragRangePx).coerceIn(0f, 1f))
+                            } else {
+                                onCloseDragProgress(0f)
                             }
                         },
                     )

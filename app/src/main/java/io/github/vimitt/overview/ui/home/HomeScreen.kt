@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalContext
@@ -106,9 +107,15 @@ fun HomeScreen(
     onItemDragEnd: () -> Unit,
     onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    onOverviewDragProgress: (Float) -> Unit = {},
+    onOverviewDragEnd: (shouldOpen: Boolean) -> Unit = {},
 ) {
-    val swipeThresholdPx = with(LocalDensity.current) { 36.dp.toPx() }
+    val density = LocalDensity.current
+    val dragRangePx = with(density) { 180.dp.toPx() }
+    val dragTriggerPx = with(density) { 42.dp.toPx() }
+    val minFlingDistancePx = with(density) { 12.dp.toPx() }
     val haptic = LocalHapticFeedback.current
+    val velocityTracker = remember { VelocityTracker() }
     val hasWorkspaceItems = uiState.workspaceItems.isNotEmpty()
     val isMoving = uiState.movingItemId != null
     val isDragInProgress = activeDrag != null
@@ -118,6 +125,12 @@ fun HomeScreen(
     LaunchedEffect(isDraggingFromHome) {
         if (!isDraggingFromHome) {
             onRemoveZoneBoundsChanged(null)
+        }
+    }
+
+    LaunchedEffect(isMoving, isDragInProgress) {
+        if (isMoving || isDragInProgress) {
+            onOverviewDragEnd(false)
         }
     }
 
@@ -138,28 +151,35 @@ fun HomeScreen(
                         },
                     )
                 }
-                .pointerInput(swipeThresholdPx, isMoving, isDragInProgress) {
+                .pointerInput(dragRangePx, dragTriggerPx, minFlingDistancePx, isMoving, isDragInProgress) {
                     if (isMoving || isDragInProgress) return@pointerInput
                     var totalDragY = 0f
-                    var triggered = false
                     detectVerticalDragGestures(
                         onDragStart = {
                             totalDragY = 0f
-                            triggered = false
+                            velocityTracker.resetTracking()
                         },
                         onDragEnd = {
+                            val velocityY = velocityTracker.calculateVelocity().y
+                            val shouldOpen = totalDragY <= -dragTriggerPx ||
+                                (velocityY <= -550f && totalDragY <= -minFlingDistancePx)
                             totalDragY = 0f
-                            triggered = false
+                            onOverviewDragEnd(shouldOpen)
+                            if (shouldOpen) {
+                                onOpenOverview()
+                            }
                         },
                         onDragCancel = {
                             totalDragY = 0f
-                            triggered = false
+                            onOverviewDragEnd(false)
                         },
-                        onVerticalDrag = { _, dragAmount ->
+                        onVerticalDrag = { change, dragAmount ->
+                            velocityTracker.addPosition(change.uptimeMillis, change.position)
                             totalDragY += dragAmount
-                            if (!triggered && totalDragY <= -swipeThresholdPx) {
-                                triggered = true
-                                onOpenOverview()
+                            if (totalDragY < 0f) {
+                                onOverviewDragProgress((-totalDragY / dragRangePx).coerceIn(0f, 1f))
+                            } else {
+                                onOverviewDragProgress(0f)
                             }
                         },
                     )

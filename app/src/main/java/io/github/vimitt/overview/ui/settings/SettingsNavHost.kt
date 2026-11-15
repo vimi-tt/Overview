@@ -24,6 +24,8 @@ import io.github.vimitt.overview.ui.settings.dock.DockSettingsScreen
 import io.github.vimitt.overview.ui.settings.dock.DockSettingsViewModel
 import io.github.vimitt.overview.ui.settings.home.HomeSettingsScreen
 import io.github.vimitt.overview.ui.settings.home.HomeSettingsViewModel
+import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsScreen
+import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewTween
 
@@ -34,6 +36,7 @@ private object SettingsRoute {
     const val DOCK = "settings_dock"
     const val APP_GRID = "settings_app_grid"
     const val HIDDEN_APPS = "settings_hidden_apps"
+    const val OVERVIEW = "settings_overview"
     const val ABOUT = "settings_about"
 }
 
@@ -100,6 +103,7 @@ fun SettingsNavHost(
                 onOpenHome = { navController.navigate(SettingsRoute.HOME) },
                 onOpenDock = { navController.navigate(SettingsRoute.DOCK) },
                 onOpenAppGrid = { navController.navigate(SettingsRoute.APP_GRID) },
+                onOpenOverview = { navController.navigate(SettingsRoute.OVERVIEW) },
                 onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
                 onClose = onClose,
             )
@@ -124,7 +128,6 @@ fun SettingsNavHost(
                 onIconShapeChange = viewModel::onIconShapeChange,
                 onNotificationDotsToggle = viewModel::onNotificationDotsToggle,
                 onRefreshNotificationAccess = viewModel::refreshNotificationAccess,
-                onBlurRadiusChange = viewModel::onBlurRadiusChange,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -205,6 +208,24 @@ fun SettingsNavHost(
                 onToggleAppHidden = viewModel::onToggleAppHidden,
                 onSearchQueryChange = viewModel::onHiddenSearchQueryChange,
                 onClearSearchQuery = viewModel::onClearHiddenSearchQuery,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(SettingsRoute.OVERVIEW) {
+            val viewModel: OverviewSettingsViewModel = viewModel(
+                factory = OverviewSettingsViewModel.Factory(appContainer.settingsRepository),
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            OverviewSettingsScreen(
+                uiState = uiState,
+                onBlurRadiusChange = viewModel::onBlurRadiusChange,
+                onScrimAlphaChange = viewModel::onScrimAlphaChange,
+                onTransitionStyleChange = viewModel::onTransitionStyleChange,
+                onAnimationSpeedChange = viewModel::onAnimationSpeedChange,
+                onHomeDepthEffectChange = viewModel::onHomeDepthEffectChange,
+                onAppLaunchAnimationChange = viewModel::onAppLaunchAnimationChange,
                 onBack = { navController.popBackStack() },
             )
         }

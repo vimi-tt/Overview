@@ -19,6 +19,9 @@ import io.github.vimitt.overview.domain.model.DockSettings
 import io.github.vimitt.overview.domain.model.HomeSettings
 import io.github.vimitt.overview.domain.model.IconShape
 import io.github.vimitt.overview.domain.model.LauncherPreferences
+import io.github.vimitt.overview.domain.model.OverviewAnimationSpeed
+import io.github.vimitt.overview.domain.model.OverviewSettings
+import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -63,6 +66,10 @@ class SettingsRepository(
         .map { prefs -> mapAppGrid(prefs) }
         .distinctUntilChanged()
 
+    val overviewSettings: Flow<OverviewSettings> = rawData
+        .map { prefs -> mapOverview(prefs) }
+        .distinctUntilChanged()
+
     val preferences: Flow<LauncherPreferences> = rawData
         .map { prefs ->
             LauncherPreferences(
@@ -70,6 +77,7 @@ class SettingsRepository(
                 home = mapHome(prefs),
                 dock = mapDock(prefs),
                 appGrid = mapAppGrid(prefs),
+                overview = mapOverview(prefs),
             )
         }
         .distinctUntilChanged()
@@ -110,6 +118,10 @@ class SettingsRepository(
         }
     }
 
+    // endregion
+
+    // region Overview
+
     suspend fun setOverviewBlurRadius(radiusDp: Float) {
         val clamped = radiusDp.coerceIn(
             SettingsDefaults.MIN_BLUR_RADIUS_DP,
@@ -117,6 +129,40 @@ class SettingsRepository(
         )
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_BLUR_RADIUS] = clamped
+        }
+    }
+
+    suspend fun setOverviewScrimAlpha(alpha: Float) {
+        val clamped = alpha.coerceIn(
+            SettingsDefaults.MIN_OVERVIEW_SCRIM_ALPHA,
+            SettingsDefaults.MAX_OVERVIEW_SCRIM_ALPHA,
+        )
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_OVERVIEW_SCRIM_ALPHA] = clamped
+        }
+    }
+
+    suspend fun setOverviewTransitionStyle(style: OverviewTransitionStyle) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_OVERVIEW_TRANSITION_STYLE] = style.name
+        }
+    }
+
+    suspend fun setOverviewAnimationSpeed(speed: OverviewAnimationSpeed) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_OVERVIEW_ANIMATION_SPEED] = speed.name
+        }
+    }
+
+    suspend fun setOverviewHomeDepthEffect(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_OVERVIEW_HOME_DEPTH] = enabled
+        }
+    }
+
+    suspend fun setOverviewAppLaunchAnimation(enabled: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_OVERVIEW_APP_LAUNCH_ANIM] = enabled
         }
     }
 
@@ -287,16 +333,40 @@ class SettingsRepository(
 
         val notificationDots = prefs[KEY_NOTIFICATION_DOTS] ?: false
 
-        val blurRadiusDp = (prefs[KEY_BLUR_RADIUS] ?: SettingsDefaults.DEFAULT_BLUR_RADIUS_DP)
-            .coerceIn(SettingsDefaults.MIN_BLUR_RADIUS_DP, SettingsDefaults.MAX_BLUR_RADIUS_DP)
-
         return AppearanceSettings(
             themeMode = themeMode,
             accentColorArgb = accentColorArgb,
             iconPackPackage = iconPack,
             iconShape = iconShape,
             notificationDotsEnabled = notificationDots,
-            overviewBlurRadiusDp = blurRadiusDp,
+        )
+    }
+
+    private fun mapOverview(prefs: Preferences): OverviewSettings {
+        val blurRadiusDp = (prefs[KEY_BLUR_RADIUS] ?: SettingsDefaults.DEFAULT_BLUR_RADIUS_DP)
+            .coerceIn(SettingsDefaults.MIN_BLUR_RADIUS_DP, SettingsDefaults.MAX_BLUR_RADIUS_DP)
+
+        val scrimAlpha = (prefs[KEY_OVERVIEW_SCRIM_ALPHA] ?: SettingsDefaults.DEFAULT_OVERVIEW_SCRIM_ALPHA)
+            .coerceIn(SettingsDefaults.MIN_OVERVIEW_SCRIM_ALPHA, SettingsDefaults.MAX_OVERVIEW_SCRIM_ALPHA)
+
+        val transitionStyle = prefs[KEY_OVERVIEW_TRANSITION_STYLE]
+            ?.let { raw -> runCatching { OverviewTransitionStyle.valueOf(raw) }.getOrNull() }
+            ?: OverviewTransitionStyle.GNOME_SHELL
+
+        val animationSpeed = prefs[KEY_OVERVIEW_ANIMATION_SPEED]
+            ?.let { raw -> runCatching { OverviewAnimationSpeed.valueOf(raw) }.getOrNull() }
+            ?: OverviewAnimationSpeed.NORMAL
+
+        val homeDepthEffect = prefs[KEY_OVERVIEW_HOME_DEPTH] ?: true
+        val appLaunchAnimation = prefs[KEY_OVERVIEW_APP_LAUNCH_ANIM] ?: true
+
+        return OverviewSettings(
+            blurRadiusDp = blurRadiusDp,
+            scrimAlpha = scrimAlpha,
+            transitionStyle = transitionStyle,
+            animationSpeed = animationSpeed,
+            homeDepthEffect = homeDepthEffect,
+            appLaunchAnimation = appLaunchAnimation,
         )
     }
 
@@ -407,5 +477,12 @@ class SettingsRepository(
         val KEY_APP_SORT_ORDER = stringPreferencesKey("app_sort_order")
         val KEY_HIDDEN_APPS = stringSetPreferencesKey("hidden_app_keys")
         val KEY_SHOW_HIDDEN_IN_SEARCH = booleanPreferencesKey("show_hidden_in_search")
+
+        // Chaves de Overview
+        val KEY_OVERVIEW_SCRIM_ALPHA = floatPreferencesKey("overview_scrim_alpha")
+        val KEY_OVERVIEW_TRANSITION_STYLE = stringPreferencesKey("overview_transition_style")
+        val KEY_OVERVIEW_ANIMATION_SPEED = stringPreferencesKey("overview_animation_speed")
+        val KEY_OVERVIEW_HOME_DEPTH = booleanPreferencesKey("overview_home_depth_effect")
+        val KEY_OVERVIEW_APP_LAUNCH_ANIM = booleanPreferencesKey("overview_app_launch_anim")
     }
 }

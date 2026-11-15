@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.BuildConfig
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppSortOrder
+import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.domain.model.ThemeMode
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
@@ -31,6 +32,7 @@ fun SettingsHubScreen(
     onOpenHome: () -> Unit,
     onOpenDock: () -> Unit,
     onOpenAppGrid: () -> Unit,
+    onOpenOverview: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +83,18 @@ fun SettingsHubScreen(
     }
     val columnsText = stringResource(R.string.settings_app_grid_columns_format, prefs.appGrid.columns)
     val appGridSubtitle = "$columnsText · $sortLabel"
+
+    val blurText = if (prefs.overview.blurRadiusDp < 1f) {
+        stringResource(R.string.settings_overview_blur_summary_off)
+    } else {
+        stringResource(R.string.settings_overview_blur_summary_on, prefs.overview.blurRadiusDp.toInt())
+    }
+    val transitionText = when (prefs.overview.transitionStyle) {
+        OverviewTransitionStyle.GNOME_SHELL -> stringResource(R.string.settings_overview_transition_gnome)
+        OverviewTransitionStyle.SLIDE -> stringResource(R.string.settings_overview_transition_slide)
+        OverviewTransitionStyle.FADE -> stringResource(R.string.settings_overview_transition_fade)
+    }
+    val overviewSubtitle = "$blurText · $transitionText"
 
     val aboutSubtitle = "${BuildConfig.VERSION_NAME} · ${stringResource(R.string.settings_about_license_value)}"
 
@@ -146,6 +160,20 @@ fun SettingsHubScreen(
                     },
                     onClick = onOpenAppGrid,
                 )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_hub_overview),
+                    subtitle = overviewSubtitle,
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings_overview),
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onOpenOverview,
+                )
             }
         }
 
@@ -169,12 +197,6 @@ fun SettingsHubScreen(
 
         item(key = "categories_planned") {
             SettingsGroup(title = stringResource(R.string.settings_hub_future_header)) {
-                SettingsRow(
-                    title = stringResource(R.string.settings_hub_future_overview),
-                    subtitle = stringResource(R.string.settings_hub_future_subtitle),
-                    enabled = false,
-                )
-                SettingsDivider()
                 SettingsRow(
                     title = stringResource(R.string.settings_hub_future_search),
                     subtitle = stringResource(R.string.settings_hub_future_subtitle),

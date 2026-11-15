@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import kotlin.math.roundToInt
 
 /**
  * Indica se o usuário ativou animações reduzidas nas configurações do sistema.
@@ -78,8 +79,9 @@ fun <T> overviewSpring(
 fun <T> overviewTween(
     reducedMotion: Boolean,
     durationMillis: Int = 220,
+    durationScale: Float = 1f,
 ): FiniteAnimationSpec<T> = if (reducedMotion) {
     snap()
 } else {
-    tween(durationMillis = durationMillis)
+    tween(durationMillis = (durationMillis * durationScale).roundToInt().coerceAtLeast(1))
 }

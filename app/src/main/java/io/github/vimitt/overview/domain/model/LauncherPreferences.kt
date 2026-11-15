@@ -30,6 +30,24 @@ enum class AppSortOrder {
 }
 
 /**
+ * Estilo visual da transição entre a tela inicial e o Overview.
+ */
+enum class OverviewTransitionStyle {
+    GNOME_SHELL,
+    SLIDE,
+    FADE,
+}
+
+/**
+ * Multiplicador de duração aplicado às animações próprias do launcher.
+ */
+enum class OverviewAnimationSpeed(val durationScale: Float) {
+    FAST(0.65f),
+    NORMAL(1.0f),
+    RELAXED(1.45f),
+}
+
+/**
  * Valores padrão e limites validados centralizados para todas as configurações do Overview.
  */
 object SettingsDefaults {
@@ -62,10 +80,14 @@ object SettingsDefaults {
     const val DEFAULT_DOCK_ALPHA: Float = 0.85f
 
     const val DEFAULT_APP_GRID_COLUMNS: Int = 4
+
+    const val MIN_OVERVIEW_SCRIM_ALPHA: Float = 0.25f
+    const val MAX_OVERVIEW_SCRIM_ALPHA: Float = 0.95f
+    const val DEFAULT_OVERVIEW_SCRIM_ALPHA: Float = 0.70f
 }
 
 /**
- * Preferências da categoria Aparência (tema, destaque, ícones e desfoque temporário).
+ * Preferências da categoria Aparência (tema, destaque e ícones).
  */
 @Immutable
 data class AppearanceSettings(
@@ -74,8 +96,19 @@ data class AppearanceSettings(
     val iconPackPackage: String? = null,
     val iconShape: IconShape = IconShape.ROUNDED_SQUARE,
     val notificationDotsEnabled: Boolean = false,
-    // Mantido em Aparência temporariamente até a implementação da categoria Overview.
-    val overviewBlurRadiusDp: Float = SettingsDefaults.DEFAULT_BLUR_RADIUS_DP,
+)
+
+/**
+ * Preferências da categoria Overview (desfoque, fundo e animações).
+ */
+@Immutable
+data class OverviewSettings(
+    val blurRadiusDp: Float = SettingsDefaults.DEFAULT_BLUR_RADIUS_DP,
+    val scrimAlpha: Float = SettingsDefaults.DEFAULT_OVERVIEW_SCRIM_ALPHA,
+    val transitionStyle: OverviewTransitionStyle = OverviewTransitionStyle.GNOME_SHELL,
+    val animationSpeed: OverviewAnimationSpeed = OverviewAnimationSpeed.NORMAL,
+    val homeDepthEffect: Boolean = true,
+    val appLaunchAnimation: Boolean = true,
 )
 
 /**
@@ -124,10 +157,11 @@ data class LauncherPreferences(
     val home: HomeSettings = HomeSettings(),
     val dock: DockSettings = DockSettings(),
     val appGrid: AppGridSettings = AppGridSettings(),
+    val overview: OverviewSettings = OverviewSettings(),
 ) {
     val themeMode: ThemeMode get() = appearance.themeMode
     val accentColorArgb: Long get() = appearance.accentColorArgb
-    val overviewBlurRadiusDp: Float get() = appearance.overviewBlurRadiusDp
+    val overviewBlurRadiusDp: Float get() = overview.blurRadiusDp
     val showClock: Boolean get() = home.showClock
     val pinnedDashKeys: List<String> get() = dock.pinnedKeys
 

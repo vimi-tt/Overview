@@ -7,8 +7,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -42,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +66,8 @@ import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.di.AppContainer
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.OverviewSettings
+import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.ui.home.HomeAppPickerScreen
 import io.github.vimitt.overview.ui.home.HomeItemActionOverlay
 import io.github.vimitt.overview.ui.home.HomeScreen
@@ -78,6 +80,7 @@ import io.github.vimitt.overview.ui.settings.SettingsNavHost
 import io.github.vimitt.overview.ui.theme.OverviewCornerRadius
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.overviewTween
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -94,7 +97,7 @@ fun LauncherRoot(
     isAppPickerOpen: Boolean,
     isWidgetPickerOpen: Boolean,
     selectedHomeItem: HomeWorkspaceItem?,
-    blurRadiusDp: Float,
+    overviewSettings: OverviewSettings,
     appWidgetController: AppWidgetController,
     homeUiState: HomeUiState,
     searchQuery: String,
@@ -203,18 +206,69 @@ fun LauncherRoot(
     val overviewActive = isOverviewOpen && !anyModalFullScreen
     val isDraggingFromOverviewActive =
         activeDrag?.payload is DragPayload.FromOverview && activeDrag?.hasMovedPastSlop == true
-    val overviewContentVisible = overviewActive || (activeDrag?.payload is DragPayload.FromOverview)
-    val blurActive = overviewActive && !isDraggingFromOverviewActive
 
-    val blurProgress by animateFloatAsState(
-        targetValue = if (blurActive) 1f else 0f,
-        animationSpec = overviewTween(reducedMotion, durationMillis = 160),
-        label = "overviewBlurProgress",
-    )
+    val overviewProgress = remember { Animatable(if (isOverviewOpen) 1f else 0f) }
+    var interactiveDragFraction by remember { mutableStateOf<Float?>(null) }
 
-    val homeBlurPx = with(density) { (blurRadiusDp * blurProgress).dp.toPx() }
+    LaunchedEffect(anyModalFullScreen) {
+        if (anyModalFullScreen) {
+            interactiveDragFraction = null
+        }
+    }
+
+    LaunchedEffect(
+        overviewActive,
+        interactiveDragFraction,
+        isDraggingFromOverviewActive,
+        lastClosedByDrag,
+        overviewSettings.animationSpeed,
+        reducedMotion,
+    ) {
+        if (isDraggingFromOverviewActive) {
+            overviewProgress.snapTo(0f)
+            return@LaunchedEffect
+        }
+        val dragFraction = interactiveDragFraction
+        if (dragFraction != null) {
+            overviewProgress.snapTo(dragFraction)
+        } else if (overviewActive) {
+            overviewProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = overviewTween(
+                    reducedMotion = reducedMotion,
+                    durationMillis = 200,
+                    durationScale = overviewSettings.animationSpeed.durationScale,
+                ),
+            )
+        } else if (lastClosedByDrag) {
+            overviewProgress.snapTo(0f)
+        } else {
+            overviewProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = overviewTween(
+                    reducedMotion = reducedMotion,
+                    durationMillis = 160,
+                    durationScale = overviewSettings.animationSpeed.durationScale,
+                ),
+            )
+        }
+    }
+
+    val currentOverviewProgress = overviewProgress.value
+    val shouldComposeOverview = overviewActive ||
+        currentOverviewProgress > 0.005f ||
+        interactiveDragFraction != null ||
+        (activeDrag?.payload is DragPayload.FromOverview)
+
+    val blurFraction = if (isDraggingFromOverviewActive) 0f else currentOverviewProgress
+    val homeBlurPx = with(density) { (overviewSettings.blurRadiusDp * blurFraction).dp.toPx() }
     val windowBlurPx = with(density) {
-        if (blurActive) blurRadiusDp.dp.toPx().roundToInt().coerceAtMost(48) else 0
+        (overviewSettings.blurRadiusDp * blurFraction).dp.toPx().roundToInt().coerceIn(0, 48)
+    }
+    val homeScale = if (overviewSettings.homeDepthEffect && !reducedMotion && !isDraggingFromOverviewActive) {
+        1f - (0.055f * currentOverviewProgress)
+    } else {
+        1f
     }
 
     WindowBackgroundBlurEffect(
@@ -233,6 +287,12 @@ fun LauncherRoot(
             },
             onOpenOverview = onOpenOverview,
             onOpenOverviewSearch = onOpenOverviewSearch,
+            onOverviewDragProgress = { fraction ->
+                interactiveDragFraction = if (fraction > 0f) fraction else null
+            },
+            onOverviewDragEnd = {
+                interactiveDragFraction = null
+            },
             onLongPress = onHomeLongPress,
             canPlaceMovingItemAt = canPlaceMovingItemAt,
             onPlaceMovingItemAt = onPlaceMovingItemAt,
@@ -274,6 +334,8 @@ fun LauncherRoot(
                 activeDrag = null
             },
             modifier = Modifier.graphicsLayer {
+                scaleX = homeScale
+                scaleY = homeScale
                 renderEffect = if (homeBlurPx > 0.5f) {
                     BlurEffect(
                         radiusX = homeBlurPx,
@@ -286,12 +348,13 @@ fun LauncherRoot(
             },
         )
 
+        val modalDurationScale = overviewSettings.animationSpeed.durationScale
         val enterTransition = if (reducedMotion) {
             fadeIn(overviewTween(reducedMotion = true))
         } else {
-            fadeIn(overviewTween(reducedMotion = false, durationMillis = 180)) +
+            fadeIn(overviewTween(reducedMotion = false, durationMillis = 180, durationScale = modalDurationScale)) +
                 slideInVertically(
-                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 200),
+                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 200, durationScale = modalDurationScale),
                     initialOffsetY = { fullHeight -> fullHeight / 10 },
                 )
         }
@@ -299,72 +362,102 @@ fun LauncherRoot(
         val exitTransition = if (reducedMotion) {
             fadeOut(overviewTween(reducedMotion = true))
         } else {
-            fadeOut(overviewTween(reducedMotion = false, durationMillis = 140)) +
+            fadeOut(overviewTween(reducedMotion = false, durationMillis = 140, durationScale = modalDurationScale)) +
                 slideOutVertically(
-                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 140),
+                    animationSpec = overviewTween(reducedMotion = false, durationMillis = 140, durationScale = modalDurationScale),
                     targetOffsetY = { fullHeight -> fullHeight / 12 },
                 )
         }
 
-        AnimatedVisibility(
-            visible = overviewContentVisible,
-            enter = enterTransition,
-            exit = if (lastClosedByDrag) ExitTransition.None else exitTransition,
-        ) {
-            OverviewScreen(
-                isActive = overviewActive && !isDraggingFromOverviewActive,
-                isDraggingToHome = isDraggingFromOverviewActive,
-                searchQuery = searchQuery,
-                uiState = overviewUiState,
-                focusSearchTrigger = overviewFocusSearchTrigger,
-                onSearchQueryChange = onSearchQueryChange,
-                onClearSearch = onClearSearch,
-                onAppClick = { app, view, bounds ->
-                    onLaunchFromOverview(app, view, bounds, reducedMotion)
-                },
-                onStartAppDrag = { app, startPos ->
-                    activeDrag = ActiveDragState(
-                        payload = DragPayload.FromOverview(app),
-                        startInWindow = startPos,
-                        pointerInWindow = startPos,
-                        hasMovedPastSlop = false,
-                    )
-                },
-                onAppDragMove = updateDragPosition,
-                onAppDragEnd = {
-                    val finished = activeDrag
-                    val target = currentDropTarget
-                    activeDrag = null
-                    val wasDrag = finished?.hasMovedPastSlop == true
-                    if (wasDrag && finished.payload is DragPayload.FromOverview && target != null) {
+        if (shouldComposeOverview) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val p = if (isDraggingFromOverviewActive) 1f else currentOverviewProgress
+                        alpha = p
+                        if (!reducedMotion && !isDraggingFromOverviewActive) {
+                            when (overviewSettings.transitionStyle) {
+                                OverviewTransitionStyle.GNOME_SHELL -> {
+                                    val s = 0.94f + (0.06f * p)
+                                    scaleX = s
+                                    scaleY = s
+                                    translationY = (1f - p) * size.height * 0.06f
+                                }
+
+                                OverviewTransitionStyle.SLIDE -> {
+                                    translationY = (1f - p) * size.height * 0.14f
+                                }
+
+                                OverviewTransitionStyle.FADE -> Unit
+                            }
+                        }
+                    },
+            ) {
+                OverviewScreen(
+                    isActive = overviewActive && !isDraggingFromOverviewActive &&
+                        (interactiveDragFraction == null || isOverviewOpen),
+                    isDraggingToHome = isDraggingFromOverviewActive,
+                    searchQuery = searchQuery,
+                    uiState = overviewUiState,
+                    focusSearchTrigger = overviewFocusSearchTrigger,
+                    scrimAlpha = overviewSettings.scrimAlpha,
+                    animationDurationScale = overviewSettings.animationSpeed.durationScale,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onClearSearch = onClearSearch,
+                    onAppClick = { app, view, bounds ->
+                        onLaunchFromOverview(app, view, bounds, reducedMotion)
+                    },
+                    onStartAppDrag = { app, startPos ->
+                        activeDrag = ActiveDragState(
+                            payload = DragPayload.FromOverview(app),
+                            startInWindow = startPos,
+                            pointerInWindow = startPos,
+                            hasMovedPastSlop = false,
+                        )
+                    },
+                    onAppDragMove = updateDragPosition,
+                    onAppDragEnd = {
+                        val finished = activeDrag
+                        val target = currentDropTarget
+                        activeDrag = null
+                        val wasDrag = finished?.hasMovedPastSlop == true
+                        if (wasDrag && finished.payload is DragPayload.FromOverview && target != null) {
+                            if (homeUiState.lockLayout) {
+                                showLockedToast()
+                            } else if (target.isValid) {
+                                onDropAppFromOverviewAt(
+                                    finished.payload.app,
+                                    target.cellX,
+                                    target.cellY,
+                                )
+                                lastClosedByDrag = true
+                                onCloseOverview()
+                            }
+                        }
+                        wasDrag
+                    },
+                    onAppDragCancel = {
+                        activeDrag = null
+                    },
+                    onAddAppToHome = { app ->
                         if (homeUiState.lockLayout) {
                             showLockedToast()
-                        } else if (target.isValid) {
-                            onDropAppFromOverviewAt(
-                                finished.payload.app,
-                                target.cellX,
-                                target.cellY,
-                            )
-                            lastClosedByDrag = true
-                            onCloseOverview()
+                        } else {
+                            onAddAppFromOverview(app)
                         }
-                    }
-                    wasDrag
-                },
-                onAppDragCancel = {
-                    activeDrag = null
-                },
-                onAddAppToHome = { app ->
-                    if (homeUiState.lockLayout) {
-                        showLockedToast()
-                    } else {
-                        onAddAppFromOverview(app)
-                    }
-                },
-                onOpenAppInfo = onOpenAppInfo,
-                onClose = onCloseOverview,
-                onOpenSettings = onOpenSettings,
-            )
+                    },
+                    onOpenAppInfo = onOpenAppInfo,
+                    onClose = onCloseOverview,
+                    onCloseDragProgress = { closeFraction ->
+                        interactiveDragFraction = (1f - closeFraction).coerceIn(0f, 1f)
+                    },
+                    onCloseDragEnd = {
+                        interactiveDragFraction = null
+                    },
+                    onOpenSettings = onOpenSettings,
+                )
+            }
         }
 
         AnimatedVisibility(
@@ -571,11 +664,19 @@ private fun WindowBackgroundBlurEffect(
     blurRadiusPx: Int,
 ) {
     val activity = context.findActivity() ?: return
+    var lastAppliedBlur by remember(activity) { mutableIntStateOf(-1) }
 
     LaunchedEffect(activity, blurRadiusPx) {
         val windowManager = activity.getSystemService(WindowManager::class.java)
         val blurSupported = windowManager?.isCrossWindowBlurEnabled == true
-        activity.window.setBackgroundBlurRadius(if (blurSupported) blurRadiusPx else 0)
+        val targetBlur = if (blurSupported) blurRadiusPx else 0
+        val changedEnough = targetBlur == 0 && lastAppliedBlur != 0 ||
+            abs(targetBlur - lastAppliedBlur) >= 2 ||
+            (lastAppliedBlur == -1)
+        if (changedEnough) {
+            lastAppliedBlur = targetBlur
+            activity.window.setBackgroundBlurRadius(targetBlur)
+        }
     }
 
     DisposableEffect(activity) {

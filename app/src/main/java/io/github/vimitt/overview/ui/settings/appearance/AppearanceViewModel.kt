@@ -120,12 +120,6 @@ class AppearanceViewModel(
         }
     }
 
-    fun onBlurRadiusChange(radiusDp: Float) {
-        viewModelScope.launch {
-            settingsRepository.setOverviewBlurRadius(radiusDp)
-        }
-    }
-
     class Factory(
         private val settingsRepository: SettingsRepository,
         private val iconPackRepository: IconPackRepository,

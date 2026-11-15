@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
                     isAppPickerOpen = isAppPickerOpen,
                     isWidgetPickerOpen = isWidgetPickerOpen,
                     selectedHomeItem = selectedHomeItem,
-                    blurRadiusDp = preferences.overviewBlurRadiusDp,
+                    overviewSettings = preferences.overview,
                     appWidgetController = appContainer.appWidgetController,
                     homeUiState = homeUiState,
                     searchQuery = searchQuery,
@@ -235,10 +235,12 @@ class MainActivity : ComponentActivity() {
                     },
                     onOpenAppInfo = ::openAppInfo,
                     onLaunchFromHome = { app, view, bounds, reducedMotion ->
-                        homeViewModel.onAppClick(app, view, bounds, reducedMotion)
+                        val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
+                        homeViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
                     },
                     onLaunchFromOverview = { app, view, bounds, reducedMotion ->
-                        val launched = overviewViewModel.onAppClick(app, view, bounds, reducedMotion)
+                        val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
+                        val launched = overviewViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
                         if (launched) {
                             isOverviewOpen = false
                             overviewViewModel.onClearSearch()
