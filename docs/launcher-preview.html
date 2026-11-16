@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overview Launcher 1.0.0 — Interface Preview & Pure Screenshots</title>
+  <style>
+    @font-face {
+      font-family: "Adwaita Sans";
+      src: url("../app/src/main/res/font/adwaita_sans_regular.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Adwaita Sans";
+      src: url("../app/src/main/res/font/adwaita_sans_italic.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root {
+      --font-sans: "Adwaita Sans", system-ui, -apple-system, sans-serif;
+      --accent: #3584e4;
+      --accent-dark-variant: #62a0ea;
+      --accent-container: rgba(53, 132, 228, 0.22);
+      --on-accent-container: #d8e9ff;
+      --window-bg: #242424;
+      --surface: #303030;
+      --surface-elevated: #383838;
+      --search-fill: #3a3a3a;
+      --on-surface: #ffffff;
+      --on-surface-muted: #c0bfbc;
+      --hairline: rgba(255, 255, 255, 0.14);
+      --dash-bg: rgba(36, 36, 36, 0.82);
+      --overview-scrim: rgba(28, 28, 28, 0.73);
+      --wallpaper-fg: #ffffff;
+      --wallpaper-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+      --radius-card: 16px;
+      --radius-dash: 22px;
+      --radius-pill: 999px;
+      --tile-radius: 18px;
+    }
+
+    body[data-theme="light"] {
+      --accent: #3584e4;
+      --accent-container: rgba(53, 132, 228, 0.16);
+      --on-accent-container: #154d94;
+      --window-bg: #fafafa;
+      --surface: #ffffff;
+      --surface-elevated: #ebebeb;
+      --search-fill: #eaeaea;
+      --on-surface: #242424;
+      --on-surface-muted: #5e5c64;
+      --hairline: rgba(0, 0, 0, 0.12);
+      --dash-bg: rgba(250, 250, 250, 0.86);
+      --overview-scrim: rgba(250, 250, 250, 0.72);
+    }
+
+    body[data-style="expressive"] {
+      --radius-card: 24px;
+      --radius-dash: 999px;
+      --tile-radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: #14171c;
+      color: #f3f4f6;
+      min-height: 100vh;
+    }
+
+    body.capture-mode {
+      background: #000;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Gallery Chrome (hidden in capture-mode) */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 24px;
+      background: rgba(22, 25, 31, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toolbar-brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .toolbar-brand span {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .toolbar-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: #232730;
+      padding: 3px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .seg button {
+      border: none;
+      background: transparent;
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .seg button.active {
+      background: #3584e4;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 32px;
+      padding: 28px 32px 48px;
+      max-width: 1680px;
+      margin: 0 auto;
+      justify-items: center;
+    }
+
+    .gallery-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .gallery-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 412px;
+      max-width: 100%;
+      padding: 0 4px;
+    }
+
+    .gallery-meta h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .gallery-meta a {
+      font-size: 12px;
+      color: #62a0ea;
+      text-decoration: none;
+    }
+
+    /* Pure Viewport Canvas (412 x 915 mobile portrait) */
+    .phone-viewport {
+      width: 412px;
+      height: 915px;
+      position: relative;
+      overflow: hidden;
+      background-color: #1a2233;
+      background-image: url("screenshots/wallpaper.jpg");
+      background-size: cover;
+      background-position: center;
+      color: var(--on-surface);
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    body.capture-mode .toolbar {
+      display: none;
+    }
+
+    body.capture-mode .gallery {
+      display: block;
+      padding: 0;
+      margin: 0;
+      max-width: none;
+    }
+
+    body.capture-mode .gallery-meta {
+      display: none;
+    }
+
+    body.capture-mode .phone-viewport {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Android Status Bar */
+    .status-bar {
+      height: 36px;
+      padding: 10px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--wallpaper-fg);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .status-bar.on-surface {
+      color: var(--on-surface);
+      text-shadow: none;
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* Gesture Navigation Pill */
+    .nav-bar {
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .nav-pill {
+      width: 108px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .nav-bar.on-surface .nav-pill {
+      background: color-mix(in srgb, var(--on-surface) 38%, transparent);
+    }
+
+    /* Top Right Quick Settings Pill */
+    .qs-pill {
+      position: absolute;
+      top: 44px;
+      right: 16px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--dash-bg);
+      border: 1px solid var(--hairline);
+      backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--on-surface);
+      z-index: 10;
+    }
+
+    /* Home Screen */
+    .home-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px 8px;
+      min-height: 0;
+    }
+
+    .clock-hero {
+      margin-top: 56px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      color: var(--wallpaper-fg);
+      text-shadow: var(--wallpaper-shadow);
+    }
+
+    .clock-hero.compact {
+      margin-top: 26px;
+      margin-bottom: 10px;
+    }
+
+    .clock-time {
+      font-size: 66px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clock-hero.compact .clock-time {
+      font-size: 46px;
+    }
+
+    .clock-date-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .clock-date-chip {
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(36, 36, 36, 0.56);
+      border: 1px solid rgba(98, 160, 234, 0.34);
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      text-shadow: none;
+    }
+
+    .clock-weather-chip {
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(36, 36, 36, 0.56);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-shadow: none;
+    }
+
+    /* Home Workspace Grid */
+    .home-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 6px;
+      padding: 6px 0;
+    }
+
+    .cell-card {
+      background: rgba(42, 46, 54, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-card);
+      padding: 12px 14px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .cell-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #93c5fd;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 6px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: rgba(255, 255, 255, 0.94);
+    }
+
+    .task-dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      border: 1.8px solid rgba(255, 255, 255, 0.5);
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .task-dot.done {
+      background: #3584e4;
+      border-color: #3584e4;
+    }
+
+    .task-item.done span {
+      text-decoration: line-through;
+      color: rgba(255, 255, 255, 0.52);
+    }
+
+    .media-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 100%;
+    }
+
+    .media-art {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3584e4, #2190a4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .media-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .media-meta strong {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .media-meta span {
+      display: block;
+      font-size: 12px;
+      color: #c0bfbc;
+    }
+
+    .media-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .media-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .media-btn.play {
+      background: #3584e4;
+    }
+
+    /* App Tile */
+    .app-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      position: relative;
+    }
+
+    .app-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--tile-radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    }
+
+    .app-label {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--wallpaper-fg);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+      max-width: 82px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+
+    .notif-dot {
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #62a0ea;
+      border: 2px solid #242424;
+    }
+
+    /* Folder Icon Tile */
+    .folder-tile {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--tile-radius);
+      background: rgba(48, 52, 60, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(14px);
+      padding: 7px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .folder-mini {
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Page Indicator */
+    .page-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(48, 48, 48, 0.45);
+      margin: 2px auto 6px;
+    }
+
+    .page-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.42);
+    }
+
+    .page-dot.active {
+      width: 16px;
+      background: #3584e4;
+    }
+
+    /* Bottom Dock Stack */
+    .dock-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .overview-handle {
+      width: 44px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .dock-search-pill {
+      width: 100%;
+      height: 44px;
+      border-radius: 999px;
+      background: var(--dash-bg);
+      border: 1px solid var(--hairline);
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      font-size: 14px;
+      color: var(--on-surface-muted);
+    }
+
+    .dash-bar {
+      width: 100%;
+      border-radius: var(--radius-dash);
+      background: var(--dash-bg);
+      border: 1px solid var(--hairline);
+      backdrop-filter: blur(18px);
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+    }
+
+    .dash-bar .app-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    /* Overview Screen */
+    .overview-backdrop {
+      position: absolute;
+      inset: 0;
+      background: var(--overview-scrim);
+      backdrop-filter: blur(28px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .overview-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 18px 10px;
+      min-height: 0;
+    }
+
+    .search-bar {
+      height: 50px;
+      border-radius: 999px;
+      background: var(--search-fill);
+      border: 1px solid var(--hairline);
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 16px;
+      gap: 10px;
+      color: var(--on-surface-muted);
+      font-size: 15px;
+    }
+
+    .search-bar-spacer {
+      flex: 1;
+    }
+
+    .search-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--on-surface-muted);
+    }
+
+    .overview-grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px 8px;
+      align-content: start;
+      flex: 1;
+    }
+
+    .overview-grid .app-label {
+      color: var(--on-surface);
+      text-shadow: none;
+    }
+
+    .overview-grid .folder-tile {
+      background: var(--surface-elevated);
+      border-color: var(--hairline);
+    }
+
+    /* Quick Settings Overlay */
+    .qs-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.42);
+      padding: 46px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      z-index: 15;
+    }
+
+    .qs-card {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .qs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .qs-battery-pill {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--hairline);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+
+    .qs-circle-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .qs-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface-elevated);
+      border: 1px solid var(--hairline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--on-surface);
+    }
+
+    .qs-sliders {
+      background: var(--surface-elevated);
+      border: 1px solid var(--hairline);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .qs-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .qs-track {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--on-surface) 14%, transparent);
+      position: relative;
+    }
+
+    .qs-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent);
+      position: relative;
+    }
+
+    .qs-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      position: absolute;
+      right: -6px;
+      top: -5px;
+    }
+
+    .qs-tiles {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .qs-tile {
+      height: 60px;
+      border-radius: 16px;
+      padding: 0 12px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--hairline);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qs-tile.active {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .qs-tile-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .qs-tile-text strong {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .qs-tile-text span {
+      font-size: 11px;
+      opacity: 0.78;
+    }
+
+    /* Settings & About Screens */
+    .settings-screen {
+      position: absolute;
+      inset: 0;
+      background: var(--window-bg);
+      color: var(--on-surface);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .settings-topbar {
+      padding: 8px 18px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-topbar h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+    }
+
+    .settings-scroll {
+      flex: 1;
+      overflow: hidden;
+      padding: 4px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--on-surface-muted);
+      padding: 0 6px 6px;
+    }
+
+    .settings-group {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+    }
+
+    .settings-row-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .settings-row-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .settings-row-text strong {
+      display: block;
+      font-size: 14.5px;
+      font-weight: 500;
+    }
+
+    .settings-row-text span {
+      display: block;
+      font-size: 12px;
+      color: var(--on-surface-muted);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    .settings-divider {
+      height: 1px;
+      background: var(--hairline);
+      margin-left: 54px;
+    }
+
+    .settings-divider.no-inset {
+      margin-left: 16px;
+    }
+
+    .about-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 8px 16px 4px;
+      gap: 8px;
+    }
+
+    .about-app-badge {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #3584e4, #2190a4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(53, 132, 228, 0.35);
+    }
+
+    .about-hero h2 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .about-hero p {
+      font-size: 13px;
+      color: var(--on-surface-muted);
+    }
+  </style>
+</head>
+<body data-theme="dark" data-style="gnome">
+  <header class="toolbar">
+    <div class="toolbar-brand">
+      <div>
+        <h1>Overview Launcher 1.0.0 — Preview &amp; Prints Puros</h1>
+        <span>Adwaita Sans · GNOME / Expressive · 412×915</span>
+      </div>
+    </div>
+    <div class="toolbar-controls">
+      <div class="seg" id="theme-toggle">
+        <button data-val="dark" class="active">Escuro</button>
+        <button data-val="light">Claro</button>
+      </div>
+      <div class="seg" id="style-toggle">
+        <button data-val="gnome" class="active">GNOME</button>
+        <button data-val="expressive">Expressive</button>
+      </div>
+      <div class="seg" id="lang-toggle">
+        <button data-val="pt" class="active">PT-BR</button>
+        <button data-val="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="gallery" id="gallery"></main>
+
+  <script>
+    const TEXTS = {
+      pt: {
+        dateLong: "Segunda, 16 de novembro",
+        dateShort: "Seg, 16 nov",
+        city: "Florianópolis",
+        searchApps: "Pesquisar aplicativos…",
+        searchQuick: "Pesquisar apps…",
+        tasksTitle: "Tarefas de hoje",
+        task1: "Finalizar v1.0.0 do Overview",
+        task2: "Gerar papel de parede padrão",
+        task3: "Publicar release no GitHub",
+        task4: "Capturar prints da interface",
+        mediaTitle: "Midnight City",
+        mediaArtist: "Synthwave Radio",
+        folderProd: "Produtividade",
+        folderNet: "Internet",
+        folderMedia: "Mídia",
+        folderUtils: "Utilitários",
+        apps: {
+          phone: "Telefone", messages: "Mensagens", browser: "Navegador", camera: "Câmera", settings: "Config.",
+          notes: "Notas", tasks: "Tarefas", files: "Arquivos", calendar: "Agenda", gallery: "Galeria",
+          music: "Música", mail: "E-mail", maps: "Mapas", weather: "Clima", clock: "Relógio",
+          calc: "Calculadora", terminal: "Terminal", store: "Loja", contacts: "Contatos", recorder: "Gravador"
+        },
+        qs: {
+          charging: "87% · Carregando",
+          wifi: "Wi-Fi", wifiSub: "Casa 5 GHz",
+          internet: "Internet", internetSub: "Conectado",
+          bt: "Bluetooth", btSub: "Ativado",
+          torch: "Lanterna", torchSub: "Desativada",
+          dnd: "Não perturbe", dndSub: "Desativado",
+          rotate: "Rotação", rotateSub: "Automática",
+          dark: "Estilo escuro", darkSub: "Ativado", lightSub: "Desativado",
+          airplane: "Modo avião", airplaneSub: "Desativado"
+        },
+        settings: {
+          title: "Configurações",
+          appearance: "Aparência", appearanceSub: "GNOME · Azul · Escuro",
+          home: "Tela inicial", homeSub: "Grade 4×5",
+          dock: "Dock", dockSub: "5 aplicativos fixados",
+          grid: "Grade de aplicativos", gridSub: "4 colunas · Ordem A–Z",
+          overview: "Overview", overviewSub: "GNOME Shell · Blur 18 dp",
+          search: "Busca", searchSub: "Pesquisa web no DuckDuckGo",
+          folders: "Pastas", foldersSub: "2 pastas · Grade 2×2",
+          gestures: "Gestos", gesturesSub: "Sensibilidade média",
+          backupSec: "Backup e restauração",
+          export: "Exportar backup", exportSub: "Salva preferências, pastas e layout da tela inicial em JSON",
+          restore: "Restaurar backup", restoreSub: "Importa preferências e layout de um arquivo salvo",
+          about: "Sobre", aboutSub: "1.0.0 · GPL-3.0"
+        },
+        about: {
+          title: "Sobre",
+          tagline: "Launcher Android inspirado no GNOME / libadwaita",
+          secApp: "Aplicativo",
+          version: "Versão",
+          license: "Licença",
+          source: "Código-fonte no GitHub",
+          secNew: "Novidades da versão 1.0",
+          h1: "Tela inicial multipáginas e pastas",
+          h1Sub: "Navegue em até 5 páginas, arraste ícones pelas bordas e organize apps em pastas na Home",
+          h2: "Configurações rápidas GNOME e widgets",
+          h2Sub: "Painel próprio estilo Adwaita, clima com previsão, ferramentas de relógio, agenda, tarefas e notas",
+          h3: "Integração nativa ao Android",
+          h3Sub: "App Shortcuts, fixação de atalhos e widgets externos, desinstalação direta e Predictive Back",
+          h4: "Idiomas e backup em JSON",
+          h4Sub: "Tradução completa em português e inglês com exportação e restauração local"
+        }
+      },
+      en: {
+        dateLong: "Monday, November 16",
+        dateShort: "Mon, Nov 16",
+        city: "Florianópolis",
+        searchApps: "Search apps…",
+        searchQuick: "Search apps…",
+        tasksTitle: "Today's tasks",
+        task1: "Finalize Overview v1.0.0",
+        task2: "Generate default wallpaper",
+        task3: "Publish GitHub release",
+        task4: "Capture UI screenshots",
+        mediaTitle: "Midnight City",
+        mediaArtist: "Synthwave Radio",
+        folderProd: "Productivity",
+        folderNet: "Internet",
+        folderMedia: "Media",
+        folderUtils: "Utilities",
+        apps: {
+          phone: "Phone", messages: "Messages", browser: "Browser", camera: "Camera", settings: "Settings",
+          notes: "Notes", tasks: "Tasks", files: "Files", calendar: "Calendar", gallery: "Gallery",
+          music: "Music", mail: "Mail", maps: "Maps", weather: "Weather", clock: "Clock",
+          calc: "Calculator", terminal: "Terminal", store: "Store", contacts: "Contacts", recorder: "Recorder"
+        },
+        qs: {
+          charging: "87% · Charging",
+          wifi: "Wi-Fi", wifiSub: "Home 5 GHz",
+          internet: "Internet", internetSub: "Connected",
+          bt: "Bluetooth", btSub: "On",
+          torch: "Flashlight", torchSub: "Off",
+          dnd: "Do Not Disturb", dndSub: "Off",
+          rotate: "Auto-rotate", rotateSub: "On",
+          dark: "Dark style", darkSub: "On", lightSub: "Off",
+          airplane: "Airplane mode", airplaneSub: "Off"
+        },
+        settings: {
+          title: "Settings",
+          appearance: "Appearance", appearanceSub: "GNOME · Blue · Dark",
+          home: "Home screen", homeSub: "4×5 grid",
+          dock: "Dock", dockSub: "5 pinned apps",
+          grid: "App grid", gridSub: "4 columns · A–Z order",
+          overview: "Overview", overviewSub: "GNOME Shell · 18 dp blur",
+          search: "Search", searchSub: "Web search via DuckDuckGo",
+          folders: "Folders", foldersSub: "2 folders · 2×2 grid",
+          gestures: "Gestures", gesturesSub: "Medium sensitivity",
+          backupSec: "Backup & restore",
+          export: "Export backup", exportSub: "Save preferences, folders, and home layout to a JSON file",
+          restore: "Restore backup", restoreSub: "Import preferences and layout from a previously saved file",
+          about: "About", aboutSub: "1.0.0 · GPL-3.0"
+        },
+        about: {
+          title: "About",
+          tagline: "Android launcher inspired by GNOME / libadwaita",
+          secApp: "Application",
+          version: "Version",
+          license: "License",
+          source: "Source code on GitHub",
+          secNew: "What's new in 1.0",
+          h1: "Multi-page home screen & folders",
+          h1Sub: "Swipe across up to 5 pages, drag shortcuts across edges, and group apps directly on Home",
+          h2: "GNOME quick settings & widgets",
+          h2Sub: "Custom Adwaita quick settings panel, weather forecast, clock tools, calendar, tasks, and notes",
+          h3: "Native Android launcher integration",
+          h3Sub: "App Shortcuts, pinned shortcut & widget requests, direct uninstall, and Predictive Back",
+          h4: "Localization & JSON backup",
+          h4Sub: "Full English & Portuguese support plus export/restore of settings and layout"
+        }
+      }
+    };
+
+    const APP_DEFS = {
+      phone:    { bg: "#2ec27e", fg: "#fff", path: "M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1l-2.2 1.9z" },
+      messages: { bg: "#3584e4", fg: "#fff", path: "M20 4H4c-1.1 0-2 .9-2 2v15l4-4h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" },
+      browser:  { bg: "#2190a4", fg: "#fff", path: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5.9 6h-3.1a14 14 0 0 0-1.4-3.7A8 8 0 0 1 17.9 8zM12 4c.9 1.2 1.6 2.6 2 4h-4c.4-1.4 1.1-2.8 2-4zM4.3 14a8.2 8.2 0 0 1 0-4h3.4a16 16 0 0 0 0 4H4.3zm1.8 2h3.1c.4 1.3.9 2.6 1.4 3.7A8 8 0 0 1 6.1 16zm3.1-8H6.1a8 8 0 0 1 4.5-3.7A14 14 0 0 0 9.2 8zM12 20c-.9-1.2-1.6-2.6-2-4h4c-.4 1.4-1.1 2.8-2 4zm2.4-6H9.6a14 14 0 0 1 0-4h4.8a14 14 0 0 1 0 4zm-1 5.7c.5-1.1 1-2.4 1.4-3.7h3.1a8 8 0 0 1-4.5 3.7zm2.9-5.7a16 16 0 0 0 0-4h3.4a8.2 8.2 0 0 1 0 4h-3.4z" },
+      camera:   { bg: "#5e5c64", fg: "#fff", path: "M9.4 4L7.6 6H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-3.6l-1.8-2H9.4zM12 17a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" },
+      settings: { bg: "#6f8396", fg: "#fff", path: "M19.1 12.9c.1-.3.1-.6.1-.9s0-.6-.1-.9l2.1-1.6c.2-.1.2-.4.1-.6l-2-3.5c-.1-.2-.4-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6c-.6.2-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2-.1.5.1.6l2.1 1.6c0 .3-.1.6-.1.9s0 .6.1.9l-2.1 1.6c-.2.1-.2.4-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.2.4.5.4h4c.2 0 .4-.2.5-.4l.4-2.6c.6-.2 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2.1-.5-.1-.6l-2.1-1.6zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" },
+      notes:    { bg: "#e5a50a", fg: "#1c1c1c", path: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9l7-7V5c0-1.1-.9-2-2-2zm-5 16v-5h5l-5 5z" },
+      tasks:    { bg: "#3a944a", fg: "#fff", path: "M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" },
+      files:    { bg: "#1c71d8", fg: "#fff", path: "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" },
+      calendar: { bg: "#e01b24", fg: "#fff", path: "M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" },
+      gallery:  { bg: "#9141ac", fg: "#fff", path: "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z" },
+      music:    { bg: "#ed5b00", fg: "#fff", path: "M12 3v10.6a4 4 0 1 0 2 3.4V7h4V3h-6z" },
+      mail:     { bg: "#1a5fb4", fg: "#fff", path: "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" },
+      maps:     { bg: "#26a269", fg: "#fff", path: "M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" },
+      weather:  { bg: "#62a0ea", fg: "#fff", path: "M19.3 10a5.5 5.5 0 0 0-10.6-1.4A4.5 4.5 0 0 0 5.5 17H19a3.5 3.5 0 0 0 .3-7z" },
+      clock:    { bg: "#3d3846", fg: "#fff", path: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.4l3.5 2.1-.8 1.3L11 13V7h2v5.4z" },
+      calc:     { bg: "#c88800", fg: "#fff", path: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7 7h4v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-8h2v2h-2V7zm0 4h2v6h-2v-6z" },
+      terminal: { bg: "#241f31", fg: "#33d17a", path: "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM7.4 16l-1.4-1.4L8.6 12 6 9.4 7.4 8l4 4-4 4zM18 16h-6v-2h6v2z" },
+      store:    { bg: "#d56199", fg: "#fff", path: "M18 6h-2c0-2.2-1.8-4-4-4S8 3.8 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z" },
+      contacts: { bg: "#813d9c", fg: "#fff", path: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 4v2h16v-2c0-2-4-4-8-4z" },
+      recorder: { bg: "#c01c28", fg: "#fff", path: "M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11h-2z" }
+    };
+
+    function svgIcon(path, size = 24, color = "currentColor") {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}"><path d="${path}"/></svg>`;
+    }
+
+    function overviewLogoSvg(size = 44) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 108 108">
+        <path fill="#FFFFFF" d="M30,31C30,27.686 32.686,25 36,25H50C53.314,25 56,27.686 56,31V47C56,50.314 53.314,53 50,53H36C32.686,53 30,50.314 30,47V31Z"/>
+        <path fill="#DDEBFB" d="M61,31C61,27.686 63.686,25 67,25H72C75.314,25 78,27.686 78,31V47C78,50.314 75.314,53 72,53H67C63.686,53 61,50.314 61,47V31Z"/>
+        <path fill="#DDEBFB" d="M30,61C30,58.791 31.791,57 34,57H74C76.209,57 78,58.791 78,61V69C78,71.209 76.209,73 74,73H34C31.791,73 30,71.209 30,69V61Z"/>
+        <path fill="#FFFFFF" d="M36,79C36,77.895 36.895,77 38,77H70C71.105,77 72,77.895 72,79C72,80.105 71.105,81 70,81H38C36.895,81 36,80.105 36,79Z"/>
+      </svg>`;
+    }
+
+    function appTile(id, label, showLabel = true, badge = false, style = "") {
+      const a = APP_DEFS[id];
+      return `
+        <div class="app-tile" style="${style}">
+          <div class="app-icon" style="background:${a.bg};">
+            ${svgIcon(a.path, 26, a.fg)}
+            ${badge ? '<span class="notif-dot"></span>' : ''}
+          </div>
+          ${showLabel ? `<span class="app-label">${label}</span>` : ''}
+        </div>
+      `;
+    }
+
+    function folderTile(name, appIds, style = "") {
+      return `
+        <div class="app-tile" style="${style}">
+          <div class="folder-tile">
+            ${appIds.slice(0, 4).map(id => {
+              const a = APP_DEFS[id];
+              return `<div class="folder-mini" style="background:${a.bg};">${svgIcon(a.path, 11, a.fg)}</div>`;
+            }).join("")}
+          </div>
+          <span class="app-label">${name}</span>
+        </div>
+      `;
+    }
+
+    function statusBar(onSurface = false) {
+      return `
+        <div class="status-bar ${onSurface ? 'on-surface' : ''}">
+          <span>10:20</span>
+          <div class="status-icons">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-4.9-2.3l1.4 1.4C9.5 16.4 10.7 16 12 16s2.5.4 3.5 1.1l1.4-1.4C15.6 14.6 13.9 14 12 14s-3.6.6-4.9 1.7zm-2.8-2.8l1.4 1.4C7.3 13 9.5 12 12 12s4.7 1 6.3 2.3l1.4-1.4C17.7 11.1 15 10 12 10s-5.7 1.1-7.7 2.9z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V2L2 22z"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.7 4H14V2h-4v2H8.3C7.6 4 7 4.6 7 5.3v15.3c0 .8.6 1.4 1.3 1.4h7.3c.8 0 1.4-.6 1.4-1.3V5.3c0-.7-.6-1.3-1.3-1.3z"/></svg>
+          </div>
+        </div>
+      `;
+    }
+
+    function qsPill() {
+      return `
+        <div class="qs-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="17" height="10" rx="2"/><rect x="4" y="9" width="11" height="6" rx="1" fill="#3584e4" stroke="none"/><path d="M21 10v4" stroke-linecap="round"/></svg>
+          <span>87%</span>
+        </div>
+      `;
+    }
+
+    function dockBlock(t) {
+      return `
+        <div class="dock-stack">
+          <div class="overview-handle"></div>
+          <div class="dock-search-pill">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+            <span>${t.searchQuick}</span>
+          </div>
+          <div class="dash-bar">
+            ${appTile("phone", t.apps.phone, false)}
+            ${appTile("messages", t.apps.messages, false, true)}
+            ${appTile("browser", t.apps.browser, false)}
+            ${appTile("camera", t.apps.camera, false)}
+            ${appTile("settings", t.apps.settings, false)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderScreen(id, t, isDark) {
+      if (id === "home-clean") {
+        return `
+          ${statusBar(false)}
+          ${qsPill()}
+          <div class="home-body">
+            <div class="clock-hero">
+              <div class="clock-time">10:20</div>
+              <div class="clock-date-row">
+                <div class="clock-date-chip">${t.dateLong}</div>
+                <div class="clock-weather-chip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="#fbd38d"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" stroke="#fbd38d" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span>24° · ${t.city}</span>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1"></div>
+            ${dockBlock(t)}
+          </div>
+          <div class="nav-bar"><div class="nav-pill"></div></div>
+        `;
+      }
+
+      if (id === "home-widgets") {
+        return `
+          ${statusBar(false)}
+          ${qsPill()}
+          <div class="home-body">
+            <div class="clock-hero compact">
+              <div class="clock-time">10:20</div>
+              <div class="clock-date-row">
+                <div class="clock-date-chip">${t.dateShort}</div>
+                <div class="clock-weather-chip"><span>24°</span></div>
+              </div>
+            </div>
+            <div class="home-grid">
+              <div class="cell-card" style="grid-column: 1 / span 4; grid-row: 1 / span 2;">
+                <div class="cell-card-header">
+                  <span>${t.tasksTitle}</span>
+                  <span style="opacity:.75;">1 / 4</span>
+                </div>
+                <div class="task-list">
+                  <div class="task-item done"><span class="task-dot done">${svgIcon("M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z", 10, "#fff")}</span><span>${t.task1}</span></div>
+                  <div class="task-item"><span class="task-dot"></span><span>${t.task2}</span></div>
+                  <div class="task-item"><span class="task-dot"></span><span>${t.task3}</span></div>
+                  <div class="task-item"><span class="task-dot"></span><span>${t.task4}</span></div>
+                </div>
+              </div>
+              <div class="cell-card" style="grid-column: 1 / span 4; grid-row: 3 / span 1; padding: 10px 12px;">
+                <div class="media-row">
+                  <div class="media-art">${svgIcon(APP_DEFS.music.path, 22, "#fff")}</div>
+                  <div class="media-meta"><strong>${t.mediaTitle}</strong><span>${t.mediaArtist}</span></div>
+                  <div class="media-controls">
+                    <div class="media-btn">${svgIcon("M6 6h2v12H6zm3.5 6l8.5 6V6z", 14, "#fff")}</div>
+                    <div class="media-btn play">${svgIcon("M6 19h4V5H6v14zm8-14v14h4V5h-4z", 14, "#fff")}</div>
+                    <div class="media-btn">${svgIcon("M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z", 14, "#fff")}</div>
+                  </div>
+                </div>
+              </div>
+              ${folderTile(t.folderProd, ["notes", "tasks", "calendar", "files"], "grid-column:1; grid-row:4;")}
+              ${appTile("gallery", t.apps.gallery, true, false, "grid-column:2; grid-row:4;")}
+              ${appTile("maps", t.apps.maps, true, false, "grid-column:3; grid-row:4;")}
+              ${appTile("terminal", t.apps.terminal, true, false, "grid-column:4; grid-row:4;")}
+              ${appTile("mail", t.apps.mail, true, true, "grid-column:1; grid-row:5;")}
+              ${appTile("weather", t.apps.weather, true, false, "grid-column:2; grid-row:5;")}
+              ${appTile("notes", t.apps.notes, true, false, "grid-column:3; grid-row:5;")}
+              ${appTile("calc", t.apps.calc, true, false, "grid-column:4; grid-row:5;")}
+            </div>
+            <div class="page-dots">
+              <div class="page-dot active"></div>
+              <div class="page-dot"></div>
+              <div class="page-dot"></div>
+            </div>
+            ${dockBlock(t)}
+          </div>
+          <div class="nav-bar"><div class="nav-pill"></div></div>
+        `;
+      }
+
+      if (id === "overview") {
+        return `
+          <div class="overview-backdrop">
+            ${statusBar(!isDark)}
+            <div class="overview-content">
+              <div class="search-bar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+                <span>${t.searchApps}</span>
+                <div class="search-bar-spacer"></div>
+                <div class="search-icon-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg></div>
+                <div class="search-icon-btn">${svgIcon(APP_DEFS.settings.path, 18, "currentColor")}</div>
+              </div>
+              <div class="overview-grid">
+                ${folderTile(t.folderNet, ["browser", "mail", "messages", "maps"])}
+                ${folderTile(t.folderMedia, ["music", "gallery", "camera", "recorder"])}
+                ${folderTile(t.folderUtils, ["calc", "clock", "files", "terminal"])}
+                ${appTile("calendar", t.apps.calendar)}
+                ${appTile("camera", t.apps.camera)}
+                ${appTile("weather", t.apps.weather)}
+                ${appTile("contacts", t.apps.contacts)}
+                ${appTile("files", t.apps.files)}
+                ${appTile("gallery", t.apps.gallery)}
+                ${appTile("store", t.apps.store)}
+                ${appTile("maps", t.apps.maps)}
+                ${appTile("messages", t.apps.messages, true, true)}
+                ${appTile("music", t.apps.music)}
+                ${appTile("browser", t.apps.browser)}
+                ${appTile("notes", t.apps.notes)}
+                ${appTile("clock", t.apps.clock)}
+                ${appTile("calc", t.apps.calc)}
+                ${appTile("phone", t.apps.phone)}
+                ${appTile("settings", t.apps.settings)}
+                ${appTile("terminal", t.apps.terminal)}
+              </div>
+              <div class="page-dots">
+                <div class="page-dot active"></div>
+                <div class="page-dot"></div>
+              </div>
+            </div>
+            <div class="nav-bar ${!isDark ? 'on-surface' : ''}"><div class="nav-pill"></div></div>
+          </div>
+        `;
+      }
+
+      if (id === "quick-settings") {
+        return `
+          ${renderScreen("home-clean", t, isDark)}
+          <div class="qs-overlay">
+            <div class="qs-card">
+              <div class="qs-header">
+                <div class="qs-battery-pill">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="17" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="#3584e4" stroke="none"/><path d="M21 10v4" stroke-linecap="round"/></svg>
+                  <span>${t.qs.charging}</span>
+                </div>
+                <div class="qs-circle-group">
+                  <div class="qs-circle"><svg width="16" height="16" viewBox="0 0 24 24" fill="${isDark ? '#62a0ea' : 'currentColor'}"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></div>
+                  <div class="qs-circle">${svgIcon(APP_DEFS.settings.path, 16, "currentColor")}</div>
+                  <div class="qs-circle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg></div>
+                  <div class="qs-circle">${svgIcon("M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z", 16, "currentColor")}</div>
+                </div>
+              </div>
+              <div class="qs-sliders">
+                <div class="qs-slider-row">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#c0bfbc"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="#c0bfbc" stroke-width="2" stroke-linecap="round"/></svg>
+                  <div class="qs-track"><div class="qs-fill" style="width:68%;"><div class="qs-thumb"></div></div></div>
+                </div>
+                <div class="qs-slider-row">
+                  ${svgIcon("M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z", 18, "#c0bfbc")}
+                  <div class="qs-track"><div class="qs-fill" style="width:52%;"><div class="qs-thumb"></div></div></div>
+                </div>
+              </div>
+              <div class="qs-tiles">
+                <div class="qs-tile active">
+                  ${svgIcon("M12 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-4.9-2.3l1.4 1.4A5.5 5.5 0 0 1 12 16c1.3 0 2.5.4 3.5 1.1l1.4-1.4A7.5 7.5 0 0 0 12 14c-1.9 0-3.6.6-4.9 1.7zm-2.8-2.8l1.4 1.4A9.8 9.8 0 0 1 12 12c2.5 0 4.7 1 6.3 2.3l1.4-1.4A11.8 11.8 0 0 0 12 10c-3 0-5.7 1.1-7.7 2.9z", 18, "#fff")}
+                  <div class="qs-tile-text"><strong>${t.qs.wifi}</strong><span>${t.qs.wifiSub}</span></div>
+                </div>
+                <div class="qs-tile active">
+                  ${svgIcon(APP_DEFS.browser.path, 18, "#fff")}
+                  <div class="qs-tile-text"><strong>${t.qs.internet}</strong><span>${t.qs.internetSub}</span></div>
+                </div>
+                <div class="qs-tile active">
+                  ${svgIcon("M17.7 7.7L12 2h-1v7.6L6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l4.6-4.6V22h1l5.7-5.7-4.3-4.3 4.3-4.3zM13 5.8l1.9 1.9L13 9.6V5.8zm1.9 10.5L13 18.2v-3.8l1.9 1.9z", 18, "#fff")}
+                  <div class="qs-tile-text"><strong>${t.qs.bt}</strong><span>${t.qs.btSub}</span></div>
+                </div>
+                <div class="qs-tile">
+                  ${svgIcon("M6 2h12v4l-2 3v13H8V9L6 6V2z", 18, "currentColor")}
+                  <div class="qs-tile-text"><strong>${t.qs.torch}</strong><span>${t.qs.torchSub}</span></div>
+                </div>
+                <div class="qs-tile">
+                  ${svgIcon("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11H7v-2h10v2z", 18, "currentColor")}
+                  <div class="qs-tile-text"><strong>${t.qs.dnd}</strong><span>${t.qs.dndSub}</span></div>
+                </div>
+                <div class="qs-tile active">
+                  ${svgIcon("M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4a8 8 0 1 0 8-8z", 18, "#fff")}
+                  <div class="qs-tile-text"><strong>${t.qs.rotate}</strong><span>${t.qs.rotateSub}</span></div>
+                </div>
+                <div class="qs-tile ${isDark ? 'active' : ''}">
+                  ${svgIcon("M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z", 18, isDark ? "#fff" : "currentColor")}
+                  <div class="qs-tile-text"><strong>${t.qs.dark}</strong><span>${isDark ? t.qs.darkSub : t.qs.lightSub}</span></div>
+                </div>
+                <div class="qs-tile">
+                  ${svgIcon("M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z", 18, "currentColor")}
+                  <div class="qs-tile-text"><strong>${t.qs.airplane}</strong><span>${t.qs.airplaneSub}</span></div>
+                </div>
+              </div>
+              <div class="qs-sliders" style="padding:10px 12px;">
+                <div class="media-row">
+                  <div class="media-art" style="width:42px;height:42px;">${svgIcon(APP_DEFS.music.path, 20, "#fff")}</div>
+                  <div class="media-meta"><strong>${t.mediaTitle}</strong><span>${t.mediaArtist}</span></div>
+                  <div class="media-controls">
+                    <div class="media-btn">${svgIcon("M6 6h2v12H6zm3.5 6l8.5 6V6z", 13, "currentColor")}</div>
+                    <div class="media-btn play">${svgIcon("M6 19h4V5H6v14zm8-14v14h4V5h-4z", 13, "#fff")}</div>
+                    <div class="media-btn">${svgIcon("M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z", 13, "currentColor")}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (id === "settings") {
+        const s = t.settings;
+        const chev = svgIcon("M10 6L8.6 7.4 13.2 12l-4.6 4.6L10 18l6-6z", 18, "var(--on-surface-muted)");
+        const row = (iconPath, title, sub, divider = true) => `
+          <div class="settings-row">
+            <div class="settings-row-icon">${svgIcon(iconPath, 20, "currentColor")}</div>
+            <div class="settings-row-text"><strong>${title}</strong><span>${sub}</span></div>
+            ${chev}
+          </div>
+          ${divider ? '<div class="settings-divider"></div>' : ''}
+        `;
+        return `
+          <div class="settings-screen">
+            ${statusBar(true)}
+            <div class="settings-topbar">
+              ${svgIcon("M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z", 22, "var(--on-surface)")}
+              <h1>${s.title}</h1>
+            </div>
+            <div class="settings-scroll">
+              <div class="settings-group">
+                ${row("M12 3a9 9 0 0 0 0 18c.8 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c2.8 0 5-2.2 5-5 0-4.4-4-8-9-8z", s.appearance, s.appearanceSub)}
+                ${row("M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z", s.home, s.homeSub)}
+                ${row("M4 17h16v3H4v-3zm2-9h3v5H6V8zm5 0h3v5h-3V8zm5 0h3v5h-3V8z", s.dock, s.dockSub)}
+                ${row("M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4z", s.grid, s.gridSub)}
+                ${row("M3 5h8v6H3V5zm10 0h8v6h-8V5zM3 13h18v6H3v-6z", s.overview, s.overviewSub)}
+                ${row("M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z", s.search, s.searchSub)}
+                ${row(APP_DEFS.files.path, s.folders, s.foldersSub)}
+                ${row("M13 6v7.6l3.3-3.3 1.4 1.4L12 17.4 6.3 11.7l1.4-1.4L11 13.6V6h2z", s.gestures, s.gesturesSub, false)}
+              </div>
+              <div>
+                <div class="settings-section-title">${s.backupSec}</div>
+                <div class="settings-group">
+                  ${row("M18 16v2H6v-2H4v4h16v-4h-2zM11 4v8.2L8.4 9.6 7 11l5 5 5-5-1.4-1.4L13 12.2V4h-2z", s.export, s.exportSub)}
+                  ${row("M17.6 6.4A8 8 0 1 0 19.7 14h-2.1a6 6 0 1 1-1.4-6.2L13 11h7V4l-2.4 2.4z", s.restore, s.restoreSub, false)}
+                </div>
+              </div>
+              <div class="settings-group">
+                ${row("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z", s.about, s.aboutSub, false)}
+              </div>
+            </div>
+            <div class="nav-bar on-surface"><div class="nav-pill"></div></div>
+          </div>
+        `;
+      }
+
+      if (id === "about") {
+        const a = t.about;
+        return `
+          <div class="settings-screen">
+            ${statusBar(true)}
+            <div class="settings-topbar">
+              ${svgIcon("M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z", 22, "var(--on-surface)")}
+              <h1>${a.title}</h1>
+            </div>
+            <div class="settings-scroll">
+              <div class="about-hero">
+                <div class="about-app-badge">${overviewLogoSvg(50)}</div>
+                <h2>Overview</h2>
+                <p>${a.tagline}</p>
+              </div>
+              <div>
+                <div class="settings-section-title">${a.secApp}</div>
+                <div class="settings-group">
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.version}</strong><span>1.0.0 (3)</span></div></div>
+                  <div class="settings-divider no-inset"></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.license}</strong><span>GPL-3.0</span></div></div>
+                  <div class="settings-divider no-inset"></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.source}</strong><span>github.com/vimi-tt/Overview</span></div>${svgIcon("M10 6L8.6 7.4 13.2 12l-4.6 4.6L10 18l6-6z", 18, "var(--on-surface-muted)")}</div>
+                </div>
+              </div>
+              <div>
+                <div class="settings-section-title">${a.secNew}</div>
+                <div class="settings-group">
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.h1}</strong><span>${a.h1Sub}</span></div></div>
+                  <div class="settings-divider no-inset"></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.h2}</strong><span>${a.h2Sub}</span></div></div>
+                  <div class="settings-divider no-inset"></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.h3}</strong><span>${a.h3Sub}</span></div></div>
+                  <div class="settings-divider no-inset"></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.h4}</strong><span>${a.h4Sub}</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="nav-bar on-surface"><div class="nav-pill"></div></div>
+          </div>
+        `;
+      }
+      return "";
+    }
+
+    const SCREENS = [
+      { id: "home-clean", title: "01 · Home limpa" },
+      { id: "home-widgets", title: "02 · Home + Widgets + Pasta" },
+      { id: "overview", title: "03 · Overview + Pastas + Busca" },
+      { id: "quick-settings", title: "04 · Configurações Rápidas GNOME" },
+      { id: "settings", title: "05 · Central de Configurações" },
+      { id: "about", title: "06 · Sobre 1.0.0" }
+    ];
+
+    const params = new URLSearchParams(window.location.search);
+    const captureId = params.get("capture");
+    let state = {
+      theme: params.get("theme") || "dark",
+      style: params.get("style") || "gnome",
+      lang: params.get("lang") || "pt"
+    };
+
+    function mount() {
+      document.body.dataset.theme = state.theme;
+      document.body.dataset.style = state.style;
+      const t = TEXTS[state.lang] || TEXTS.pt;
+      const isDark = state.theme === "dark";
+      const gallery = document.getElementById("gallery");
+
+      if (captureId) {
+        document.body.classList.add("capture-mode");
+        gallery.innerHTML = `<div class="phone-viewport">${renderScreen(captureId, t, isDark)}</div>`;
+        return;
+      }
+
+      document.body.classList.remove("capture-mode");
+      gallery.innerHTML = SCREENS.map(s => `
+        <section class="gallery-card">
+          <div class="gallery-meta">
+            <h2>${s.title}</h2>
+            <a href="?capture=${s.id}&theme=${state.theme}&style=${state.style}&lang=${state.lang}" target="_blank">Abrir print puro ↗</a>
+          </div>
+          <div class="phone-viewport">${renderScreen(s.id, t, isDark)}</div>
+        </section>
+      `).join("");
+    }
+
+    function wireToggle(groupId, key) {
+      const el = document.getElementById(groupId);
+      el.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-val]");
+        if (!btn) return;
+        state[key] = btn.dataset.val;
+        el.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+        mount();
+      });
+    }
+
+    wireToggle("theme-toggle", "theme");
+    wireToggle("style-toggle", "style");
+    wireToggle("lang-toggle", "lang");
+    mount();
+  </script>
+</body>
+</html>

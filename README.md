@@ -11,7 +11,7 @@ Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos flui
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff?style=flat-square&logo=kotlin&logoColor=white)
 ![Licença](https://img.shields.io/badge/Licen%C3%A7a-GPL--3.0-orange?style=flat-square)
 
-[Recursos](#recursos) • [Capturas de tela](#capturas-de-tela) • [Compilar e instalar](#compilar-e-instalar) • [Arquitetura](#arquitetura) • [Roadmap](#roadmap)
+[Recursos](#recursos) • [Capturas de tela](#capturas-de-tela) • [Compilar e instalar](#compilar-e-instalar) • [Arquitetura](#arquitetura)
 
 </div>
 
@@ -52,6 +52,27 @@ Código-fonte oficial: **[github.com/vimi-tt/Overview](https://github.com/vimi-t
 - **Gestos configuráveis**: personalize ações para **deslizar para cima**, **deslizar para baixo**, **toque duplo** e **botão Início na Home** (Overview, busca, notificações, configurações rápidas, configurações do Overview, papel de parede, assistente ou câmera), com 3 níveis de sensibilidade.
 - **Aparência Adwaita**: tema Claro (`#fafafa`), Escuro (`#242424`) ou Automático, paleta de cores de destaque do GNOME, **pacotes de ícones** compatíveis com launchers, formato de ícone (*Círculo*, *Quadrado arredondado* ou *Quadrado*) e **pontos de notificação** via `NotificationListenerService`.
 - **Acessibilidade**: respeito nativo à preferência global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`), dígitos tabulares e alvos de toque mínimos de 48 dp.
+
+---
+
+## Capturas de tela
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-home-clean.png" width="240" alt="Tela inicial limpa" /><br /><sub><b>Tela inicial limpa</b></sub></td>
+    <td align="center"><img src="docs/screenshots/02-home-widgets.png" width="240" alt="Home com widgets e pastas" /><br /><sub><b>Widgets, pasta e multipáginas</b></sub></td>
+    <td align="center"><img src="docs/screenshots/03-overview.png" width="240" alt="Visão geral e busca" /><br /><sub><b>Overview, pastas e busca</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/04-quick-settings.png" width="240" alt="Configurações rápidas estilo GNOME" /><br /><sub><b>Configurações rápidas GNOME</b></sub></td>
+    <td align="center"><img src="docs/screenshots/05-settings.png" width="240" alt="Central de configurações" /><br /><sub><b>Configurações e backup JSON</b></sub></td>
+    <td align="center"><img src="docs/screenshots/06-about.png" width="240" alt="Tela Sobre 1.0.0" /><br /><sub><b>Sobre (1.0.0)</b></sub></td>
+  </tr>
+</table>
+</div>
+
+Prévia interativa da interface em [`docs/launcher-preview.html`](docs/launcher-preview.html) utilizando o papel de parede padrão em [`docs/screenshots/wallpaper.jpg`](docs/screenshots/wallpaper.jpg).
 
 ---
 
@@ -129,21 +150,6 @@ Para restaurar o launcher padrão anterior via `adb`:
 ```bash
 adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.overview
 ```
-
----
-
-## Roadmap
-
-- [x] Estrutura base Android 15 (`HOME` + `LAUNCHER` + `singleTask` + `onNewIntent`)
-- [x] Tema Adwaita claro/escuro/automático + suporte a animações reduzidas
-- [x] Tela inicial com papel de parede, 6 estilos de relógio com opacidade, grade configurável e widgets (`AppWidgetHost`)
-- [x] Dash configurável (3–6 apps, opacidade e barra de busca)
-- [x] Overview com blur `RenderEffect`, transições configuráveis, busca precisa por prefixo e atalho web
-- [x] Pastas de aplicativos fixadas no início da grade e gerenciamento completo
-- [x] Gestos configuráveis na Home e no botão Início com ajuste de sensibilidade
-- [x] Central de Configurações completa no estilo GNOME / libadwaita (`0.1.0-beta-1`)
-- [x] Pastas diretamente na tela inicial, painel próprio de configurações rápidas estilo GNOME e fonte Adwaita Sans embarcada
-- [x] Internacionalização completa (inglês padrão + português), tela inicial multipáginas, App Shortcuts, `PinItemRequest`, desinstalação direta, ícone monocromático, Predictive Back e backup/restauração JSON (`1.0.0`)
 
 ---
 
