@@ -53,11 +53,19 @@ class OpenMeteoWeatherClient(
         // Fallback enxuto caso campos horários/diários falhem temporariamente
         val minimalEndpoint =
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
-                "&current=temperature_2m,weather_code,is_day&timezone=auto"
-        runCatching {
+                "&current=temperature_2m,weather_code,is_day&timezone=UTC"
+        val minimalResult = runCatching {
             parseOpenMeteoForecastJson(json = httpGet(minimalEndpoint), location = location, nowMs = nowMs)
-        }.recoverCatching {
-            throw (primaryResult.exceptionOrNull() ?: it)
+        }
+        if (minimalResult.isSuccess) return@withContext minimalResult
+
+        // Fallback secundário (MET Norway public API, sem chave) caso Open-Meteo esteja bloqueado/429
+        val metEndpoint =
+            "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$lat&lon=$lon"
+        runCatching {
+            parseMetNorwayCompactJson(json = httpGet(metEndpoint), location = location, nowMs = nowMs)
+        }.recoverCatching { metErr ->
+            throw (primaryResult.exceptionOrNull() ?: minimalResult.exceptionOrNull() ?: metErr)
         }
     }
 
@@ -90,7 +98,7 @@ class OpenMeteoWeatherClient(
             connectTimeout = 10_000
             readTimeout = 10_000
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "OverviewLauncher/1.0")
+            setRequestProperty("User-Agent", "OverviewLauncher/1.0 (https://github.com/vimitt/Overview)")
         }
         return try {
             val code = connection.responseCode
@@ -237,6 +245,90 @@ class OpenMeteoWeatherClient(
                 .ifBlank { root.optString("locality").trim() }
                 .ifBlank { root.optString("principalSubdivision").trim() }
                 .ifBlank { null }
+        }
+
+        fun parseMetNorwayCompactJson(
+            json: String,
+            location: WeatherLocation,
+            nowMs: Long,
+        ): WeatherSnapshot {
+            val root = JSONObject(json)
+            val timeseries = root.getJSONObject("properties").getJSONArray("timeseries")
+            check(timeseries.length() > 0) { "Previsão vazia" }
+
+            val first = timeseries.getJSONObject(0)
+            val firstData = first.getJSONObject("data")
+            val instantDetails = firstData.getJSONObject("instant").getJSONObject("details")
+            val temperatureC = instantDetails.getDouble("air_temperature").takeIf { it.isFinite() }
+                ?: error("Temperatura ausente")
+            val windSpeedKmh = (instantDetails.optDouble("wind_speed", 0.0).takeIf { it.isFinite() } ?: 0.0) * 3.6
+            val firstSymbol = firstData.optJSONObject("next_1_hours")
+                ?.optJSONObject("summary")
+                ?.optString("symbol_code")
+                .orEmpty()
+            val (weatherCode, isDay) = mapMetSymbolToWmo(firstSymbol)
+
+            var minTemp = temperatureC
+            var maxTemp = temperatureC
+            val hourlyPoints = mutableListOf<HourlyWeatherPoint>()
+            val scanLimit = minOf(timeseries.length(), 24)
+            for (i in 0 until scanLimit) {
+                val entry = timeseries.optJSONObject(i) ?: continue
+                val data = entry.optJSONObject("data") ?: continue
+                val temp = data.optJSONObject("instant")
+                    ?.optJSONObject("details")
+                    ?.optDouble("air_temperature", temperatureC)
+                    ?.takeIf { it.isFinite() }
+                    ?: continue
+                if (temp < minTemp) minTemp = temp
+                if (temp > maxTemp) maxTemp = temp
+
+                if (i in 1..4) {
+                    val timeIso = entry.optString("time")
+                    val hourLabel = if (timeIso.length >= 16) timeIso.substring(11, 16) else "${i}h"
+                    val sym = data.optJSONObject("next_1_hours")
+                        ?.optJSONObject("summary")
+                        ?.optString("symbol_code")
+                        .orEmpty()
+                    val (wmo, _) = mapMetSymbolToWmo(sym.ifBlank { firstSymbol })
+                    hourlyPoints += HourlyWeatherPoint(
+                        timeIso = timeIso,
+                        hourLabel = hourLabel,
+                        temperatureC = temp,
+                        weatherCode = wmo,
+                    )
+                }
+            }
+
+            return WeatherSnapshot(
+                location = location,
+                temperatureC = temperatureC,
+                apparentTempC = temperatureC,
+                minTempC = minTemp,
+                maxTempC = maxTemp,
+                weatherCode = weatherCode,
+                isDay = isDay,
+                windSpeedKmh = windSpeedKmh,
+                hourlyForecast = hourlyPoints,
+                updatedAtMs = nowMs,
+            )
+        }
+
+        private fun mapMetSymbolToWmo(symbol: String): Pair<Int, Boolean> {
+            val lower = symbol.lowercase(Locale.US)
+            val isDay = !lower.endsWith("_night")
+            val wmo = when {
+                "thunder" in lower -> 95
+                "snow" in lower || "sleet" in lower -> 71
+                "heavyrain" in lower -> 65
+                "rain" in lower -> 61
+                "fog" in lower -> 45
+                "cloudy" in lower && "partly" !in lower -> 3
+                "partlycloudy" in lower || "fair" in lower -> 2
+                "clearsky" in lower -> 0
+                else -> 2
+            }
+            return wmo to isDay
         }
     }
 }

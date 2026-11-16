@@ -109,6 +109,7 @@ fun rememberIsLifecycleActive(): Boolean {
 private data class ClockWeatherMeta(
     val savedLocation: WeatherLocation? = null,
     val isLoading: Boolean = false,
+    val includeCityName: Boolean = false,
     val onRefreshWeatherClick: (() -> Unit)? = null,
 )
 
@@ -302,6 +303,7 @@ fun HomeClock(
         LocalClockWeatherMeta provides ClockWeatherMeta(
             savedLocation = effectiveSavedLocation,
             isLoading = isWeatherLoading,
+            includeCityName = !compact && style != HomeClockStyle.FULL_PILL && style != HomeClockStyle.PILL,
             onRefreshWeatherClick = onRefreshWeatherClick,
         ),
     ) {
@@ -510,7 +512,14 @@ private fun ClockWeatherBadge(
     }
 
     val badgeText = when {
-        weather != null -> "${weather.temperatureC.roundToInt()}°"
+        weather != null -> {
+            val temp = "${weather.temperatureC.roundToInt()}°"
+            if (weatherMeta.includeCityName && weather.location.name.isNotBlank()) {
+                "$temp · ${weather.location.name}"
+            } else {
+                temp
+            }
+        }
         savedLocation != null -> if (weatherMeta.isLoading) {
             "${savedLocation.name}…"
         } else {

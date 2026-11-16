@@ -218,7 +218,16 @@ class MainActivity : ComponentActivity() {
                         onAddQuickTask = homeViewModel::addQuickTask,
                         onToggleQuickTask = homeViewModel::toggleQuickTask,
                         onClearCompletedTasks = homeViewModel::clearCompletedTasks,
-                        onRefreshWeather = homeViewModel::refreshWeather,
+                        onRefreshWeather = { force ->
+                            homeViewModel.refreshWeather(
+                                force = force,
+                                onError = { err ->
+                                    if (force) {
+                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            )
+                        },
                         onSearchWeatherCities = homeViewModel::searchWeatherCities,
                         onSelectWeatherLocation = homeViewModel::selectWeatherLocation,
                         onUseDeviceWeatherLocation = ::fetchDeviceWeatherLocationOrOpenGps,

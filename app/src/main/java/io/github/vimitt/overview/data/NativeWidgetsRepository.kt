@@ -150,6 +150,8 @@ class NativeWidgetsRepository(
     suspend fun searchWeatherCities(query: String): Result<List<WeatherLocation>> =
         weatherClient.searchCities(query)
 
+    val currentWeatherError: String? get() = weatherError.value
+
     suspend fun setWeatherLocationAndRefresh(location: WeatherLocation): Boolean {
         context.nativeWidgetsDataStore.edit { prefs ->
             prefs[KEY_WEATHER_LOCATION] = encodeLocation(location)

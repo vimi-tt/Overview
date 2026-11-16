@@ -500,9 +500,18 @@ class HomeViewModel(
         }
     }
 
-    fun refreshWeather(force: Boolean = false) {
+    fun refreshWeather(
+        force: Boolean = false,
+        onError: ((String) -> Unit)? = null,
+    ) {
         viewModelScope.launch {
-            nativeWidgetsRepository.refreshWeather(force = force)
+            val ok = nativeWidgetsRepository.refreshWeather(force = force)
+            if (!ok && onError != null) {
+                val err = nativeWidgetsRepository.currentWeatherError
+                if (!err.isNullOrBlank()) {
+                    onError(err)
+                }
+            }
         }
     }
 
