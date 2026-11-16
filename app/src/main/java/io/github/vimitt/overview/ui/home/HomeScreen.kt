@@ -9,6 +9,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -57,6 +59,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInWindow
@@ -88,6 +91,32 @@ import io.github.vimitt.overview.ui.home.widgets.NativeWidgetHost
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetLiveEnvironment
 import io.github.vimitt.overview.ui.home.widgets.rememberNativeWidgetEnvironment
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+
+private class HomeGestureGuard {
+    var activeChildCount: Int = 0
+    var lastChildInteractionUptimeMs: Long = 0L
+
+    fun isChildActive(): Boolean {
+        return activeChildCount > 0 || (SystemClock.uptimeMillis() - lastChildInteractionUptimeMs) < 160L
+    }
+}
+
+private fun Modifier.suppressHomeBackgroundLongPress(guard: HomeGestureGuard): Modifier =
+    pointerInput(guard) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            guard.activeChildCount++
+            try {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.changes.none { it.pressed }) break
+                }
+            } finally {
+                guard.activeChildCount = (guard.activeChildCount - 1).coerceAtLeast(0)
+                guard.lastChildInteractionUptimeMs = SystemClock.uptimeMillis()
+            }
+        }
+    }
 
 /**
  * Tela inicial transparente sobre o papel de parede do sistema,
@@ -175,6 +204,7 @@ fun HomeScreen(
     val currentDragInProgress by rememberUpdatedState(isDragInProgress)
     val currentIsMoving by rememberUpdatedState(isMoving)
     val currentIsResizing by rememberUpdatedState(isResizing)
+    val gestureGuard = remember { HomeGestureGuard() }
 
     LaunchedEffect(isDraggingRemovable) {
         if (!isDraggingRemovable) {
@@ -195,22 +225,30 @@ fun HomeScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Fundo vazio recebe toque longo/duplo apenas fora de widgets, atalhos e dock.
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(onLongPress, doubleTapAction, isMoving, isResizing, isDragInProgress) {
                     if (isMoving || isDragInProgress) return@pointerInput
                     detectTapGestures(
                         onTap = if (isResizing) {
-                            { onCancelResizingItem() }
+                            {
+                                if (!gestureGuard.isChildActive()) {
+                                    onCancelResizingItem()
+                                }
+                            }
                         } else {
                             null
                         },
                         onLongPress = if (!isResizing) {
                             {
                                 val sinceDrag = SystemClock.uptimeMillis() - lastDragActiveEndUptimeMs
-                                if (!currentDragInProgress && !currentIsMoving && !currentIsResizing && sinceDrag > 400L) {
+                                if (!gestureGuard.isChildActive() &&
+                                    !currentDragInProgress &&
+                                    !currentIsMoving &&
+                                    !currentIsResizing &&
+                                    sinceDrag > 400L
+                                ) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onLongPress()
                                 }
@@ -220,19 +258,16 @@ fun HomeScreen(
                         },
                         onDoubleTap = if (!isResizing && doubleTapAction != LauncherGestureAction.NONE) {
                             {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onExecuteGesture(doubleTapAction)
+                                if (!gestureGuard.isChildActive()) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onExecuteGesture(doubleTapAction)
+                                }
                             }
                         } else {
                             null
                         },
                     )
-                },
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
+                }
                 .pointerInput(
                     dragRangePx,
                     dragTriggerPx,
@@ -373,6 +408,7 @@ fun HomeScreen(
                         onPlaceMovingItemAt = onPlaceMovingItemAt,
                         canPlaceItem = canPlaceDragItemAt,
                         onResizeWidgetBounds = onResizeWidgetBounds,
+                        gestureGuard = gestureGuard,
                         onStartItemDrag = onStartItemDrag,
                         onItemDragMove = onItemDragMove,
                         onItemDragEnd = onItemDragEnd,
@@ -413,9 +449,11 @@ fun HomeScreen(
                     onAppDragCancel = onDockDragCancel,
                     draggingFromDockIndex = draggingFromDockIndex,
                     dockDropHighlightIndex = dockDropTarget?.targetIndex,
-                    modifier = Modifier.onPlaced { coordinates ->
-                        onDockBoundsChanged(coordinates.boundsInWindow())
-                    },
+                    modifier = Modifier
+                        .suppressHomeBackgroundLongPress(gestureGuard)
+                        .onPlaced { coordinates ->
+                            onDockBoundsChanged(coordinates.boundsInWindow())
+                        },
                 )
             }
         }
@@ -460,6 +498,7 @@ private fun HomeWorkspaceGrid(
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
     canPlaceItem: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
     onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit,
+    gestureGuard: HomeGestureGuard,
     onStartItemDrag: (HomeWorkspaceItem, Offset) -> Unit,
     onItemDragMove: (Offset) -> Unit,
     onItemDragEnd: () -> Unit,
@@ -579,6 +618,7 @@ private fun HomeWorkspaceGrid(
                         .offset(x = cellWidth * displayCellX, y = cellHeight * displayCellY)
                         .size(width = itemWidth, height = itemHeight)
                         .padding(4.dp)
+                        .suppressHomeBackgroundLongPress(gestureGuard)
                         .graphicsLayer {
                             alpha = if (isDraggingThis) 0.25f else 1f
                         },
@@ -671,6 +711,7 @@ private fun HomeWorkspaceGrid(
                 onCommitBounds = { cellX, cellY, spanX, spanY ->
                     onResizeWidgetBounds(resizingItem.item.id, cellX, cellY, spanX, spanY)
                 },
+                modifier = Modifier.suppressHomeBackgroundLongPress(gestureGuard),
             )
         }
     }
