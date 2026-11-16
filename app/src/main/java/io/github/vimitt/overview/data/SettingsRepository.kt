@@ -2,6 +2,7 @@ package io.github.vimitt.overview.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -43,6 +44,7 @@ import io.github.vimitt.overview.domain.model.WebSearchEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -530,6 +532,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setShowQuickSettingsButton(show: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_SHOW_QUICK_SETTINGS] = show
+        }
+    }
+
     // endregion
 
     // region Dock
@@ -737,6 +745,7 @@ class SettingsRepository(
         } ?: HomeClockStyle.GNOME
         val clockBackgroundAlpha = (prefs[KEY_HOME_CLOCK_BG_ALPHA] ?: SettingsDefaults.DEFAULT_CLOCK_ALPHA)
             .coerceIn(SettingsDefaults.MIN_CLOCK_ALPHA, SettingsDefaults.MAX_CLOCK_ALPHA)
+        val showQuickSettingsButton = prefs[KEY_HOME_SHOW_QUICK_SETTINGS] ?: true
 
         return HomeSettings(
             gridColumns = columns,
@@ -750,6 +759,7 @@ class SettingsRepository(
             weatherProvider = weatherProvider,
             clockStyle = clockStyle,
             clockBackgroundAlpha = clockBackgroundAlpha,
+            showQuickSettingsButton = showQuickSettingsButton,
         )
     }
 
@@ -907,6 +917,106 @@ class SettingsRepository(
         }.getOrDefault(emptyList())
     }
 
+    /**
+     * Exporta todas as preferências do usuário em um JSON tipado para backup local.
+     */
+    suspend fun exportPreferencesJson(): JSONObject {
+        val prefs = context.overviewSettingsDataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }
+            .first()
+        return encodePreferencesMap(prefs.asMap())
+    }
+
+    /**
+     * Restaura as preferências tipadas a partir de um backup JSON, preservando `onboarding_completed`.
+     */
+    suspend fun importPreferencesJson(json: JSONObject) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            applyPreferencesJson(prefs, json)
+        }
+    }
+
+    internal fun encodePreferencesMap(map: Map<Preferences.Key<*>, Any>): JSONObject {
+        val entries = JSONObject()
+        for ((key, value) in map) {
+            val typed = JSONObject()
+            when (value) {
+                is Boolean -> {
+                    typed.put("type", "boolean")
+                    typed.put("value", value)
+                }
+                is Int -> {
+                    typed.put("type", "int")
+                    typed.put("value", value)
+                }
+                is Long -> {
+                    typed.put("type", "long")
+                    typed.put("value", value)
+                }
+                is Float -> {
+                    typed.put("type", "float")
+                    typed.put("value", value.toDouble())
+                }
+                is String -> {
+                    typed.put("type", "string")
+                    typed.put("value", value)
+                }
+                is Set<*> -> {
+                    val arr = JSONArray()
+                    value.filterIsInstance<String>().forEach { arr.put(it) }
+                    typed.put("type", "string_set")
+                    typed.put("value", arr)
+                }
+                else -> continue
+            }
+            entries.put(key.name, typed)
+        }
+        return JSONObject().put("entries", entries)
+    }
+
+    internal fun applyPreferencesJson(prefs: MutablePreferences, json: JSONObject) {
+        val entries = json.optJSONObject("entries") ?: return
+        val wasOnboarded = prefs[KEY_ONBOARDING_COMPLETED] == true
+        prefs.clear()
+        val keys = entries.keys()
+        while (keys.hasNext()) {
+            val name = keys.next()
+            val typed = entries.optJSONObject(name) ?: continue
+            when (typed.optString("type")) {
+                "boolean" -> if (typed.has("value")) {
+                    prefs[booleanPreferencesKey(name)] = typed.getBoolean("value")
+                }
+                "int" -> if (typed.has("value")) {
+                    prefs[intPreferencesKey(name)] = typed.getInt("value")
+                }
+                "long" -> if (typed.has("value")) {
+                    prefs[longPreferencesKey(name)] = typed.getLong("value")
+                }
+                "float" -> if (typed.has("value")) {
+                    prefs[floatPreferencesKey(name)] = typed.getDouble("value").toFloat()
+                }
+                "string" -> if (typed.has("value")) {
+                    prefs[stringPreferencesKey(name)] = typed.getString("value")
+                }
+                "string_set" -> {
+                    val arr = typed.optJSONArray("value") ?: continue
+                    val set = buildSet {
+                        for (i in 0 until arr.length()) {
+                            val item = arr.optString(i)
+                            if (item.isNotBlank()) add(item)
+                        }
+                    }
+                    prefs[stringSetPreferencesKey(name)] = set
+                }
+            }
+        }
+        if (wasOnboarded) {
+            prefs[KEY_ONBOARDING_COMPLETED] = true
+        }
+    }
+
     private companion object {
         // Chaves já existentes (compatibilidade garantida com overview_preferences)
         val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
@@ -941,6 +1051,7 @@ class SettingsRepository(
         val KEY_HOME_WEATHER_PROVIDER = stringPreferencesKey("home_weather_provider")
         val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
         val KEY_HOME_CLOCK_BG_ALPHA = floatPreferencesKey("home_clock_bg_alpha")
+        val KEY_HOME_SHOW_QUICK_SETTINGS = booleanPreferencesKey("home_show_quick_settings")
 
         // Chaves de Dock
         val KEY_DOCK_ICON_COUNT = intPreferencesKey("dock_icon_count")

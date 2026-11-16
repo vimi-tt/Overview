@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.BuildConfig
@@ -43,6 +46,8 @@ fun SettingsHubScreen(
     onOpenFolders: () -> Unit,
     onOpenGestures: () -> Unit,
     onOpenAbout: () -> Unit,
+    onExportBackup: () -> Unit = {},
+    onImportBackup: () -> Unit = {},
     onPreviewOnboarding: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -56,10 +61,9 @@ fun SettingsHubScreen(
     }
 
     val colorSourceLabel = when (prefs.appearance.colorSourceMode) {
-        ColorSourceMode.GNOME -> AdwaitaPalette.AccentPresets
-            .firstOrNull { it.second == prefs.appearance.accentColorArgb }
-            ?.first
-            ?: AdwaitaPalette.AccentPresets.first().first
+        ColorSourceMode.GNOME -> AdwaitaPalette.AccentPresetNameRes[prefs.appearance.accentColorArgb]
+            ?.let { stringResource(it) }
+            ?: stringResource(R.string.color_preset_blue)
 
         ColorSourceMode.DYNAMIC -> stringResource(R.string.settings_color_source_dynamic)
         ColorSourceMode.CUSTOM -> stringResource(R.string.settings_color_source_custom)
@@ -87,10 +91,11 @@ fun SettingsHubScreen(
     }
 
     val dockSubtitle = if (prefs.dock.pinnedKeys.isEmpty()) {
-        stringResource(R.string.settings_dock_summary_auto, prefs.dock.iconCount)
+        pluralStringResource(R.plurals.settings_dock_summary_auto, prefs.dock.iconCount, prefs.dock.iconCount)
     } else {
-        stringResource(
-            R.string.settings_dock_summary_pinned,
+        pluralStringResource(
+            R.plurals.settings_dock_summary_pinned,
+            prefs.dock.iconCount,
             prefs.dock.iconCount,
             prefs.dock.pinnedKeys.size,
         )
@@ -101,7 +106,11 @@ fun SettingsHubScreen(
         AppSortOrder.ALPHABETICAL_DESC -> stringResource(R.string.settings_sort_alpha_desc)
         AppSortOrder.RECENTLY_INSTALLED -> stringResource(R.string.settings_sort_recent)
     }
-    val columnsText = stringResource(R.string.settings_app_grid_columns_format, prefs.appGrid.columns)
+    val columnsText = pluralStringResource(
+        R.plurals.settings_app_grid_columns_count,
+        prefs.appGrid.columns,
+        prefs.appGrid.columns,
+    )
     val layoutLabel = when (prefs.appGrid.layoutMode) {
         AppGridLayoutMode.PAGED -> stringResource(R.string.settings_app_grid_layout_paged)
         AppGridLayoutMode.CONTINUOUS -> stringResource(R.string.settings_app_grid_layout_continuous)
@@ -136,11 +145,12 @@ fun SettingsHubScreen(
         FolderPreviewStyle.GRID_2X2 -> stringResource(R.string.settings_folders_preview_grid)
         FolderPreviewStyle.STACKED -> stringResource(R.string.settings_folders_preview_stacked)
     }
-    val foldersSubtitle = when (prefs.folders.folders.size) {
-        0 -> stringResource(R.string.settings_folders_summary_none, folderStyleText)
-        1 -> stringResource(R.string.settings_folders_summary_one, folderStyleText)
-        else -> stringResource(
-            R.string.settings_folders_summary_many,
+    val foldersSubtitle = if (prefs.folders.folders.isEmpty()) {
+        stringResource(R.string.settings_folders_summary_none, folderStyleText)
+    } else {
+        pluralStringResource(
+            R.plurals.settings_folders_summary,
+            prefs.folders.folders.size,
             prefs.folders.folders.size,
             folderStyleText,
         )
@@ -271,6 +281,38 @@ fun SettingsHubScreen(
                         )
                     },
                     onClick = onOpenGestures,
+                )
+            }
+        }
+
+        item(key = "categories_backup") {
+            SettingsGroup(title = stringResource(R.string.settings_section_backup)) {
+                NavigationRow(
+                    title = stringResource(R.string.settings_backup_export),
+                    subtitle = stringResource(R.string.settings_backup_export_subtitle),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onExportBackup,
+                )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_backup_import),
+                    subtitle = stringResource(R.string.settings_backup_import_subtitle),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    onClick = onImportBackup,
                 )
             }
         }

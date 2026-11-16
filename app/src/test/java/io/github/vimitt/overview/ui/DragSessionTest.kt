@@ -212,4 +212,77 @@ class DragSessionTest {
 
         assertTrue(overRemove!!.isOverRemoveZone)
     }
+
+    @Test
+    fun `app drag over shortcut or folder proposes folder merge target`() {
+        val shortcutTarget = computeHomeDropTarget(
+            pointerInWindow = Offset(x = 150f, y = 250f), // coluna 1, linha 1
+            gridBounds = gridBounds,
+            removeZoneBounds = null,
+            payload = DragPayload.FromOverview(sampleApp),
+            canPlace = { _, _, _, _, _ -> false },
+            findFolderMergeTarget = { cellX, cellY, _ ->
+                if (cellX == 1 && cellY == 1) {
+                    HomeFolderMergeTarget(targetItemId = "s1", isCreatingFolder = true)
+                } else {
+                    null
+                }
+            },
+        )
+        assertTrue(shortcutTarget!!.isValid)
+        assertEquals("s1", shortcutTarget.mergeFolderTargetId)
+        assertTrue(shortcutTarget.isCreatingFolder)
+
+        val folderTarget = computeHomeDropTarget(
+            pointerInWindow = Offset(x = 250f, y = 250f), // coluna 2, linha 1
+            gridBounds = gridBounds,
+            removeZoneBounds = null,
+            payload = DragPayload.FromDock(sampleApp, sourceIndex = 0),
+            canPlace = { _, _, _, _, _ -> false },
+            findFolderMergeTarget = { cellX, cellY, _ ->
+                if (cellX == 2 && cellY == 1) {
+                    HomeFolderMergeTarget(targetItemId = "f1", isCreatingFolder = false)
+                } else {
+                    null
+                }
+            },
+        )
+        assertTrue(folderTarget!!.isValid)
+        assertEquals("f1", folderTarget.mergeFolderTargetId)
+        assertFalse(folderTarget.isCreatingFolder)
+    }
+
+    @Test
+    fun `folder drag does not merge into another folder or shortcut`() {
+        val folderItem = HomeItem.Folder(
+            id = "f1",
+            name = "Trabalho",
+            appKeys = listOf("pkg.a/Main/0", "pkg.b/Main/0"),
+            cellX = 0,
+            cellY = 0,
+        )
+        val folderPayload = DragPayload.FromHome(
+            HomeWorkspaceItem.Folder(item = folderItem, apps = listOf(sampleApp), hasBadge = false),
+        )
+        val occupied = listOf(
+            folderItem,
+            HomeItem.AppShortcut("s2", "pkg.c", "Main", 0, cellX = 1, cellY = 1),
+        )
+
+        val target = computeHomeDropTarget(
+            pointerInWindow = Offset(x = 150f, y = 250f), // coluna 1, linha 1 (ocupada por s2)
+            gridBounds = gridBounds,
+            removeZoneBounds = null,
+            payload = folderPayload,
+            canPlace = { cellX, cellY, spanX, spanY, ignoreId ->
+                placementUseCase.canPlace(occupied, cellX, cellY, spanX, spanY, ignoreId)
+            },
+            findFolderMergeTarget = { _, _, _ ->
+                HomeFolderMergeTarget(targetItemId = "s2", isCreatingFolder = true)
+            },
+        )
+
+        assertFalse(target!!.isValid)
+        assertNull(target.mergeFolderTargetId)
+    }
 }

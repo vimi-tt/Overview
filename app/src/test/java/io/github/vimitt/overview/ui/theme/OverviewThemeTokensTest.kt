@@ -107,4 +107,43 @@ class OverviewThemeTokensTest {
         assertTrue(expressive.topBarTitle.fontSize > normal.topBarTitle.fontSize)
         assertTrue((expressive.topBarTitle.fontWeight?.weight ?: 0) > (normal.topBarTitle.fontWeight?.weight ?: 0))
     }
+
+    @Test
+    fun `embedded adwaita sans font family is applied across all typography tokens`() {
+        for (style in VisualStyle.entries) {
+            for (weightMode in TypographyWeightMode.entries) {
+                val tokens = overviewTypographyTokens(style, weightMode)
+                val t = tokens.typography
+                assertEquals(OverviewFontFamily, t.displayLarge.fontFamily)
+                assertEquals(OverviewFontFamily, t.displayMedium.fontFamily)
+                assertEquals(OverviewFontFamily, t.displaySmall.fontFamily)
+                assertEquals(OverviewFontFamily, t.headlineLarge.fontFamily)
+                assertEquals(OverviewFontFamily, t.headlineMedium.fontFamily)
+                assertEquals(OverviewFontFamily, t.headlineSmall.fontFamily)
+                assertEquals(OverviewFontFamily, t.titleLarge.fontFamily)
+                assertEquals(OverviewFontFamily, t.titleMedium.fontFamily)
+                assertEquals(OverviewFontFamily, t.titleSmall.fontFamily)
+                assertEquals(OverviewFontFamily, t.bodyLarge.fontFamily)
+                assertEquals(OverviewFontFamily, t.bodyMedium.fontFamily)
+                assertEquals(OverviewFontFamily, t.bodySmall.fontFamily)
+                assertEquals(OverviewFontFamily, t.labelLarge.fontFamily)
+                assertEquals(OverviewFontFamily, t.labelMedium.fontFamily)
+                assertEquals(OverviewFontFamily, t.labelSmall.fontFamily)
+                assertEquals(OverviewFontFamily, tokens.sectionHeader.fontFamily)
+                assertEquals(OverviewFontFamily, tokens.rowTitle.fontFamily)
+                assertEquals(OverviewFontFamily, tokens.topBarTitle.fontFamily)
+            }
+        }
+    }
+
+    @Test
+    fun `every accent color preset has a localized string resource`() {
+        val allPresets = AdwaitaPalette.AccentPresets + AdwaitaPalette.CustomAccentPresets
+        for ((name, argb) in allPresets) {
+            assertTrue(
+                "Missing AccentPresetNameRes entry for $name ($argb)",
+                AdwaitaPalette.AccentPresetNameRes.containsKey(argb),
+            )
+        }
+    }
 }

@@ -3,14 +3,19 @@ package io.github.vimitt.overview.ui.home
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Rect
+import android.os.Process
+import android.os.UserHandle
 import android.view.View
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.data.AppsRepository
 import io.github.vimitt.overview.data.DefaultDashPackageProvider
 import io.github.vimitt.overview.data.HomeWorkspaceRepository
+import io.github.vimitt.overview.data.LauncherShortcutHelper
 import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.NativeWidgetsRepository
 import io.github.vimitt.overview.data.NotificationBadgeRepository
@@ -24,6 +29,7 @@ import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
+import io.github.vimitt.overview.ui.HomeFolderMergeTarget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +37,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.Collator
 
 /**
  * ViewModel responsável pela tela inicial, Dash de favoritos, widgets nativos e grade de atalhos/widgets.
@@ -54,6 +61,38 @@ class HomeViewModel(
 
     private val movingItemId = MutableStateFlow<String?>(null)
     private val resizingItemId = MutableStateFlow<String?>(null)
+    private val pinnedShortcutIcons = MutableStateFlow<Map<String, ImageBitmap>>(emptyMap())
+
+    private data class HomeUiAuxState(
+        val movingId: String?,
+        val resizingId: String?,
+        val badgePackages: Set<String>,
+        val shortcutIcons: Map<String, ImageBitmap>,
+    )
+
+    init {
+        viewModelScope.launch {
+            homeWorkspaceRepository.items.collect { items ->
+                val pinnedItems = items.filterIsInstance<HomeItem.PinnedShortcut>()
+                if (pinnedItems.isEmpty()) return@collect
+                val apps = appsRepository.apps.first()
+                for (pinned in pinnedItems) {
+                    val cacheKey = pinnedCacheKey(pinned.packageName, pinned.shortcutId, pinned.userHandleHash)
+                    if (pinnedShortcutIcons.value.containsKey(cacheKey)) continue
+                    val user = resolveUserHandle(apps, pinned.userHandleHash)
+                    val icon = LauncherShortcutHelper.loadPinnedShortcutIcon(
+                        context = appContext,
+                        packageName = pinned.packageName,
+                        shortcutId = pinned.shortcutId,
+                        userHandle = user,
+                    )
+                    if (icon != null) {
+                        pinnedShortcutIcons.value = pinnedShortcutIcons.value + (cacheKey to icon)
+                    }
+                }
+            }
+        }
+    }
 
     val uiState: StateFlow<HomeUiState> = combine(
         appsRepository.apps,
@@ -64,9 +103,14 @@ class HomeViewModel(
             movingItemId,
             resizingItemId,
             notificationBadgeRepository.activeBadgePackages,
-            ::Triple,
+            pinnedShortcutIcons,
+            ::HomeUiAuxState,
         ),
-    ) { apps, preferences, rawItems, nativeWidgets, (movingId, resizingId, badgePackages) ->
+    ) { apps, preferences, rawItems, nativeWidgets, aux ->
+        val movingId = aux.movingId
+        val resizingId = aux.resizingId
+        val badgePackages = aux.badgePackages
+        val shortcutIcons = aux.shortcutIcons
         val dashApps = resolveDefaultDashAppsUseCase(
             apps = apps,
             pinnedKeys = preferences.pinnedDashKeys,
@@ -77,6 +121,9 @@ class HomeViewModel(
         val appsByKey = apps.associateBy { it.key }
         val appsByPkgAndClass = apps.associateBy { "${it.packageName}/${it.activityName}" }
         val pm = appContext.packageManager
+        val collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
+        val folderSettings = preferences.folders
+        val showDots = preferences.appearance.notificationDotsEnabled
 
         val resolvedWorkspace = rawItems.mapNotNull { item ->
             when (item) {
@@ -85,6 +132,34 @@ class HomeViewModel(
                         ?: appsByPkgAndClass["${item.packageName}/${item.activityName}"]
                         ?: return@mapNotNull null
                     HomeWorkspaceItem.Shortcut(item = item, app = app)
+                }
+
+                is HomeItem.PinnedShortcut -> {
+                    val cacheKey = pinnedCacheKey(item.packageName, item.shortcutId, item.userHandleHash)
+                    val fallbackAppIcon = apps.firstOrNull { it.packageName == item.packageName }?.icon
+                    HomeWorkspaceItem.PinnedShortcut(
+                        item = item,
+                        icon = shortcutIcons[cacheKey] ?: fallbackAppIcon,
+                        userHandle = resolveUserHandle(apps, item.userHandleHash),
+                    )
+                }
+
+                is HomeItem.Folder -> {
+                    val resolvedApps = item.appKeys.mapNotNull { key ->
+                        appsByKey[key] ?: appsByPkgAndClass[key.substringBeforeLast('/')]
+                    }
+                    if (resolvedApps.isEmpty()) return@mapNotNull null
+                    val ordered = if (folderSettings.sortAppsInside) {
+                        resolvedApps.sortedWith { a, b -> collator.compare(a.label, b.label) }
+                    } else {
+                        resolvedApps
+                    }
+                    val hasBadge = showDots && ordered.any { it.packageName in badgePackages }
+                    HomeWorkspaceItem.Folder(
+                        item = item,
+                        apps = ordered,
+                        hasBadge = hasBadge,
+                    )
                 }
 
                 is HomeItem.Widget -> {
@@ -157,7 +232,8 @@ class HomeViewModel(
             resizingItemId = activeResizingId,
             homeSettings = preferences.home,
             dockSettings = preferences.dock,
-            showNotificationDots = preferences.appearance.notificationDotsEnabled,
+            folderSettings = folderSettings,
+            showNotificationDots = showDots,
             badgePackages = badgePackages,
         )
     }.stateIn(
@@ -184,6 +260,7 @@ class HomeViewModel(
         app: AppInfo,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
         onResult: (Boolean) -> Unit = {},
     ) {
         val currentState = uiState.value
@@ -196,10 +273,196 @@ class HomeViewModel(
                 app = app,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
                 columns = currentState.gridColumns,
                 rows = currentState.gridRows,
             )
             onResult(added)
+        }
+    }
+
+    fun addPinnedShortcutToHome(
+        packageName: String,
+        shortcutId: String,
+        label: String,
+        userHandle: UserHandle? = null,
+        icon: ImageBitmap? = null,
+        preferredPage: Int = 0,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) {
+            onResult(false)
+            return
+        }
+        val userHash = userHandle?.hashCode() ?: 0
+        if (icon != null) {
+            val cacheKey = pinnedCacheKey(packageName, shortcutId, userHash)
+            pinnedShortcutIcons.value = pinnedShortcutIcons.value + (cacheKey to icon)
+        }
+        viewModelScope.launch {
+            val added = homeWorkspaceRepository.addPinnedShortcut(
+                packageName = packageName,
+                shortcutId = shortcutId,
+                label = label,
+                userHandleHash = userHash,
+                preferredPage = preferredPage,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
+            )
+            onResult(added)
+        }
+    }
+
+    fun findFolderMergeTargetAt(
+        cellX: Int,
+        cellY: Int,
+        page: Int = 0,
+        ignoreItemId: String? = null,
+    ): HomeFolderMergeTarget? {
+        val state = uiState.value
+        if (state.lockLayout) return null
+        val target = state.workspaceItems.firstOrNull { ws ->
+            ws.item.id != ignoreItemId &&
+                ws.item.page == page &&
+                ws.item.cellX == cellX &&
+                ws.item.cellY == cellY &&
+                (ws is HomeWorkspaceItem.Folder || ws is HomeWorkspaceItem.Shortcut)
+        } ?: return null
+
+        return HomeFolderMergeTarget(
+            targetItemId = target.item.id,
+            isCreatingFolder = target is HomeWorkspaceItem.Shortcut,
+        )
+    }
+
+    fun addFolderToHome(
+        name: String,
+        appKeys: List<String>,
+        preferredPage: Int = 0,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        val state = uiState.value
+        if (state.lockLayout) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val added = homeWorkspaceRepository.addFolder(
+                name = name,
+                appKeys = appKeys,
+                preferredPage = preferredPage,
+                columns = state.gridColumns,
+                rows = state.gridRows,
+            )
+            onResult(added)
+        }
+    }
+
+    fun mergeShortcutsIntoFolder(
+        sourceShortcutId: String?,
+        targetShortcutId: String,
+        appKeyToAdd: String,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        if (uiState.value.lockLayout) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val created = homeWorkspaceRepository.createFolderFromShortcuts(
+                sourceShortcutId = sourceShortcutId,
+                targetShortcutId = targetShortcutId,
+                appKeyToAdd = appKeyToAdd,
+                defaultName = appContext.getString(R.string.home_folder_default_name),
+            )
+            onResult(created)
+        }
+    }
+
+    fun addAppToHomeFolder(
+        folderId: String,
+        appKey: String,
+        sourceShortcutId: String? = null,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        if (uiState.value.lockLayout) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val updated = homeWorkspaceRepository.addAppToFolder(
+                folderId = folderId,
+                appKey = appKey,
+                sourceShortcutId = sourceShortcutId,
+            )
+            onResult(updated)
+        }
+    }
+
+    fun removeAppFromHomeFolder(folderId: String, appKey: String) {
+        if (uiState.value.lockLayout) return
+        viewModelScope.launch {
+            homeWorkspaceRepository.removeAppFromFolder(folderId = folderId, appKey = appKey)
+        }
+    }
+
+    fun moveAppFromFolderToHome(
+        folderId: String,
+        app: AppInfo,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        val state = uiState.value
+        if (state.lockLayout) {
+            onResult(false)
+            return
+        }
+        val folderItem = state.workspaceItems
+            .filterIsInstance<HomeWorkspaceItem.Folder>()
+            .firstOrNull { it.item.id == folderId }
+            ?: run {
+                onResult(false)
+                return
+            }
+
+        val itemsWithoutEmptyFolder = if (folderItem.item.appKeys.size <= 1) {
+            state.workspaceItems.map { it.item }.filterNot { it.id == folderId }
+        } else {
+            state.workspaceItems.map { it.item }
+        }
+        val folderPage = folderItem.item.page
+        val hasSlot = homeGridPlacementUseCase.findAvailableSlot(
+            existingItems = itemsWithoutEmptyFolder,
+            desiredSpanX = 1,
+            desiredSpanY = 1,
+            preferredPage = folderPage,
+            allowNextPageFallback = true,
+            columns = state.gridColumns,
+            rows = state.gridRows,
+        ) != null
+        if (!hasSlot) {
+            onResult(false)
+            return
+        }
+
+        viewModelScope.launch {
+            homeWorkspaceRepository.removeAppFromFolder(folderId = folderId, appKey = app.key)
+            val added = homeWorkspaceRepository.addAppShortcut(
+                app = app,
+                preferredCellX = if (folderItem.item.appKeys.size <= 1) folderItem.item.cellX else null,
+                preferredCellY = if (folderItem.item.appKeys.size <= 1) folderItem.item.cellY else null,
+                preferredPage = folderPage,
+                columns = state.gridColumns,
+                rows = state.gridRows,
+            )
+            onResult(added)
+        }
+    }
+
+    fun updateHomeFolder(folderId: String, name: String, appKeys: List<String>) {
+        if (uiState.value.lockLayout) return
+        viewModelScope.launch {
+            homeWorkspaceRepository.updateFolder(folderId = folderId, name = name, appKeys = appKeys)
         }
     }
 
@@ -208,6 +471,7 @@ class HomeViewModel(
         cellY: Int,
         spanX: Int,
         spanY: Int,
+        page: Int = 0,
         ignoreItemId: String? = null,
     ): Boolean {
         val currentState = uiState.value
@@ -219,13 +483,14 @@ class HomeViewModel(
             cellY = cellY,
             spanX = spanX,
             spanY = spanY,
+            page = page,
             ignoreItemId = ignoreItemId,
             columns = currentState.gridColumns,
             rows = currentState.gridRows,
         )
     }
 
-    fun moveItemTo(itemId: String, cellX: Int, cellY: Int) {
+    fun moveItemTo(itemId: String, cellX: Int, cellY: Int, page: Int? = null) {
         val currentState = uiState.value
         if (currentState.lockLayout) return
         viewModelScope.launch {
@@ -233,6 +498,7 @@ class HomeViewModel(
                 id = itemId,
                 newCellX = cellX,
                 newCellY = cellY,
+                newPage = page,
                 columns = currentState.gridColumns,
                 rows = currentState.gridRows,
             )
@@ -247,6 +513,7 @@ class HomeViewModel(
         provider: ComponentName,
         spanX: Int,
         spanY: Int,
+        preferredPage: Int = 0,
         onResult: (Boolean) -> Unit = {},
     ) {
         val currentState = uiState.value
@@ -261,6 +528,7 @@ class HomeViewModel(
                 provider = provider,
                 desiredSpanX = spanX,
                 desiredSpanY = spanY,
+                preferredPage = preferredPage,
                 columns = currentState.gridColumns,
                 rows = currentState.gridRows,
             )
@@ -291,7 +559,7 @@ class HomeViewModel(
         resizingItemId.value = null
     }
 
-    fun placeMovingItemAt(cellX: Int, cellY: Int) {
+    fun placeMovingItemAt(cellX: Int, cellY: Int, page: Int = 0) {
         val currentState = uiState.value
         if (currentState.lockLayout) return
         val targetId = movingItemId.value ?: return
@@ -300,6 +568,7 @@ class HomeViewModel(
                 id = targetId,
                 newCellX = cellX,
                 newCellY = cellY,
+                newPage = page,
                 columns = currentState.gridColumns,
                 rows = currentState.gridRows,
             )
@@ -309,7 +578,7 @@ class HomeViewModel(
         }
     }
 
-    fun canPlaceMovingItemAt(cellX: Int, cellY: Int): Boolean {
+    fun canPlaceMovingItemAt(cellX: Int, cellY: Int, page: Int = 0): Boolean {
         val currentState = uiState.value
         if (currentState.lockLayout) return false
         val targetId = movingItemId.value ?: return false
@@ -321,6 +590,7 @@ class HomeViewModel(
             cellY = cellY,
             spanX = moving.spanX,
             spanY = moving.spanY,
+            page = page,
             ignoreItemId = targetId,
             columns = currentState.gridColumns,
             rows = currentState.gridRows,
@@ -453,6 +723,7 @@ class HomeViewModel(
         widgetType: NativeWidgetType,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
         onResult: (Boolean) -> Unit = {},
     ) {
         val state = uiState.value
@@ -465,6 +736,7 @@ class HomeViewModel(
                 widgetType = widgetType,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
                 columns = state.gridColumns,
                 rows = state.gridRows,
             )
@@ -634,6 +906,17 @@ class HomeViewModel(
                 defaultDashPackageProvider = defaultDashPackageProvider,
                 resolveDefaultDashAppsUseCase = resolveDefaultDashAppsUseCase,
             ) as T
+        }
+    }
+
+    private companion object {
+        fun pinnedCacheKey(packageName: String, shortcutId: String, userHandleHash: Int): String =
+            "$packageName/$shortcutId/$userHandleHash"
+
+        fun resolveUserHandle(apps: List<AppInfo>, userHandleHash: Int): UserHandle {
+            if (userHandleHash == 0) return Process.myUserHandle()
+            return apps.firstOrNull { (it.userHandle?.hashCode() ?: 0) == userHandleHash }?.userHandle
+                ?: Process.myUserHandle()
         }
     }
 }

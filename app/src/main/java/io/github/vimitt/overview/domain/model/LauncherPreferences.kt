@@ -153,6 +153,7 @@ enum class LauncherGestureAction {
     NONE,
     OPEN_OVERVIEW,
     OPEN_OVERVIEW_SEARCH,
+    OPEN_QUICK_SETTINGS,
     EXPAND_NOTIFICATIONS,
     EXPAND_QUICK_SETTINGS,
     OPEN_SETTINGS,
@@ -295,6 +296,7 @@ data class HomeSettings(
     val weatherProvider: WeatherProvider = WeatherProvider.AUTO,
     val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
     val clockBackgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
+    val showQuickSettingsButton: Boolean = true,
 )
 
 /**

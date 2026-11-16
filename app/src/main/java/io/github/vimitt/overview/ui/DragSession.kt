@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -105,6 +106,17 @@ data class HomeDropTarget(
     val spanY: Int,
     val isValid: Boolean,
     val isOverRemoveZone: Boolean,
+    val mergeFolderTargetId: String? = null,
+    val isCreatingFolder: Boolean = false,
+    val page: Int = 0,
+)
+
+/**
+ * Alvo de criação ou inserção em pasta ao soltar um aplicativo sobre outro item da tela inicial.
+ */
+data class HomeFolderMergeTarget(
+    val targetItemId: String,
+    val isCreatingFolder: Boolean,
 )
 
 /**
@@ -144,6 +156,7 @@ fun computeHomeDropTarget(
     canPlace: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
     gridColumns: Int = HomeGridSpec.COLUMNS,
     gridRows: Int = HomeGridSpec.ROWS,
+    findFolderMergeTarget: ((cellX: Int, cellY: Int, ignoreItemId: String?) -> HomeFolderMergeTarget?)? = null,
 ): HomeDropTarget? {
     if ((payload is DragPayload.FromHome || payload is DragPayload.FromDock) &&
         removeZoneBounds != null &&
@@ -190,6 +203,25 @@ fun computeHomeDropTarget(
     val targetCellY = floor(rawRow - (payload.spanY - 1) / 2f)
         .toInt()
         .coerceIn(0, (safeRows - payload.spanY).coerceAtLeast(0))
+
+    val mergeTarget = if (payload.draggedApp != null && findFolderMergeTarget != null) {
+        findFolderMergeTarget(targetCellX, targetCellY, payload.ignoreItemId)
+    } else {
+        null
+    }
+
+    if (mergeTarget != null) {
+        return HomeDropTarget(
+            cellX = targetCellX,
+            cellY = targetCellY,
+            spanX = 1,
+            spanY = 1,
+            isValid = true,
+            isOverRemoveZone = false,
+            mergeFolderTargetId = mergeTarget.targetItemId,
+            isCreatingFolder = mergeTarget.isCreatingFolder,
+        )
+    }
 
     val isValid = canPlace(
         targetCellX,
@@ -274,7 +306,8 @@ fun DragGhostOverlay(
             when (val payload = activeDrag.payload) {
                 is DragPayload.FromOverview -> {
                     ShortcutDragGhost(
-                        app = payload.app,
+                        label = payload.app.label,
+                        icon = payload.app.icon,
                         borderColor = borderColor,
                         cardShape = shapes.large,
                         fallbackShape = shapes.medium,
@@ -283,7 +316,8 @@ fun DragGhostOverlay(
 
                 is DragPayload.FromDock -> {
                     ShortcutDragGhost(
-                        app = payload.app,
+                        label = payload.app.label,
+                        icon = payload.app.icon,
                         borderColor = borderColor,
                         cardShape = shapes.large,
                         fallbackShape = shapes.medium,
@@ -294,10 +328,30 @@ fun DragGhostOverlay(
                     when (val item = payload.item) {
                         is HomeWorkspaceItem.Shortcut -> {
                             ShortcutDragGhost(
-                                app = item.app,
+                                label = item.app.label,
+                                icon = item.app.icon,
                                 borderColor = borderColor,
                                 cardShape = shapes.large,
                                 fallbackShape = shapes.medium,
+                            )
+                        }
+
+                        is HomeWorkspaceItem.PinnedShortcut -> {
+                            ShortcutDragGhost(
+                                label = item.item.label,
+                                icon = item.icon,
+                                borderColor = borderColor,
+                                cardShape = shapes.large,
+                                fallbackShape = shapes.medium,
+                            )
+                        }
+
+                        is HomeWorkspaceItem.Folder -> {
+                            FolderDragGhost(
+                                label = item.item.name,
+                                previewApps = item.apps,
+                                borderColor = borderColor,
+                                cardShape = shapes.large,
                             )
                         }
 
@@ -329,7 +383,8 @@ fun DragGhostOverlay(
 
 @Composable
 private fun ShortcutDragGhost(
-    app: AppInfo,
+    label: String,
+    icon: ImageBitmap?,
     borderColor: Color,
     cardShape: androidx.compose.ui.graphics.Shape,
     fallbackShape: androidx.compose.ui.graphics.Shape,
@@ -345,11 +400,10 @@ private fun ShortcutDragGhost(
             .border(1.5.dp, borderColor, cardShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        val bitmap = app.icon
-        if (bitmap != null) {
+        if (icon != null) {
             Image(
-                bitmap = bitmap,
-                contentDescription = app.label,
+                bitmap = icon,
+                contentDescription = label,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(58.dp),
             )
@@ -363,14 +417,14 @@ private fun ShortcutDragGhost(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Home,
-                    contentDescription = app.label,
+                    contentDescription = label,
                     tint = colors.onSurfaceMuted,
                 )
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = app.label,
+            text = label,
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurface,
             maxLines = 1,
@@ -427,6 +481,67 @@ private fun WidgetDragGhost(
             text = "${spanX}×${spanY}",
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceMuted,
+        )
+    }
+}
+
+@Composable
+private fun FolderDragGhost(
+    label: String,
+    previewApps: List<AppInfo>,
+    borderColor: Color,
+    cardShape: androidx.compose.ui.graphics.Shape,
+) {
+    val colors = OverviewTheme.colors
+    val miniApps = previewApps.take(4)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .shadow(12.dp, cardShape)
+            .clip(cardShape)
+            .background(colors.surfaceElevated.copy(alpha = 0.94f))
+            .border(1.5.dp, borderColor, cardShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .clip(OverviewTheme.shapes.medium)
+                .background(colors.surfaceContainer)
+                .padding(5.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                for (r in 0..1) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        for (c in 0..1) {
+                            val mini = miniApps.getOrNull(r * 2 + c)
+                            if (mini?.icon != null) {
+                                Image(
+                                    bitmap = mini.icon,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.size(22.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 88.dp),
         )
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,7 +64,11 @@ fun DockSettingsScreen(
                     value = settings.iconCount.toFloat(),
                     valueRange = SettingsDefaults.MIN_DOCK_ICONS.toFloat()..SettingsDefaults.MAX_DOCK_ICONS.toFloat(),
                     steps = SettingsDefaults.MAX_DOCK_ICONS - SettingsDefaults.MIN_DOCK_ICONS - 1,
-                    valueLabel = stringResource(R.string.settings_dock_icons_format, settings.iconCount),
+                    valueLabel = pluralStringResource(
+                        R.plurals.settings_dock_icons_count,
+                        settings.iconCount,
+                        settings.iconCount,
+                    ),
                     onValueChange = { value ->
                         onIconCountChange(value.roundToInt())
                     },
@@ -95,7 +100,11 @@ fun DockSettingsScreen(
                 }
                 SettingsRow(
                     title = badgeText,
-                    subtitle = stringResource(R.string.settings_dash_subtitle, settings.iconCount),
+                    subtitle = pluralStringResource(
+                        R.plurals.settings_dash_subtitle,
+                        settings.iconCount,
+                        settings.iconCount,
+                    ),
                     trailingContent = if (!uiState.isUsingAutoDock) {
                         {
                             TextButton(onClick = onResetToAuto) {

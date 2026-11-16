@@ -68,4 +68,89 @@ class HomeGridPlacementUseCaseTest {
         assertTrue(useCase.canPlace(existing, cellX = 4, cellY = 5, spanX = 1, spanY = 1, columns = 5, rows = 6))
         assertFalse(useCase.canPlace(existing, cellX = 3, cellY = 0, spanX = 1, spanY = 1, columns = 3, rows = 3))
     }
+
+    @Test
+    fun `home folder occupies single cell and can move ignoring its own id`() {
+        val folder = HomeItem.Folder(
+            id = "folder_1",
+            name = "Utilitários",
+            appKeys = listOf("pkg.a/Main/0", "pkg.b/Main/0"),
+            cellX = 0,
+            cellY = 0,
+        )
+        val existing = listOf(folder)
+
+        assertFalse(useCase.canPlace(existing, cellX = 0, cellY = 0, spanX = 1, spanY = 1))
+        assertTrue(useCase.canPlace(existing, cellX = 0, cellY = 0, spanX = 1, spanY = 1, ignoreItemId = "folder_1"))
+        assertEquals(GridPlacement(1, 0, 1, 1), useCase.findAvailableSlot(existing, desiredSpanX = 1, desiredSpanY = 1))
+    }
+
+    @Test
+    fun `pinned shortcut occupies its own cell on its page only`() {
+        val pinned = HomeItem.PinnedShortcut(
+            id = "pinned_1",
+            packageName = "pkg.mail",
+            shortcutId = "compose",
+            label = "Compose",
+            userHandleHash = 0,
+            cellX = 1,
+            cellY = 2,
+            page = 0,
+        )
+        val existing = listOf(pinned)
+
+        assertFalse(useCase.canPlace(existing, cellX = 1, cellY = 2, spanX = 1, spanY = 1, page = 0))
+        assertTrue(useCase.canPlace(existing, cellX = 1, cellY = 2, spanX = 1, spanY = 1, page = 1))
+    }
+
+    @Test
+    fun `falls back to next page when preferred page is full`() {
+        val existing = listOf(
+            HomeItem.Widget("w1", 1, "pkg", "Cls", cellX = 0, cellY = 0, spanX = 4, spanY = 5, page = 0),
+        )
+
+        val noFallback = useCase.findAvailableSlot(
+            existingItems = existing,
+            desiredSpanX = 1,
+            desiredSpanY = 1,
+            preferredPage = 0,
+            allowNextPageFallback = false,
+        )
+        assertNull(noFallback)
+
+        val withFallback = useCase.findAvailableSlot(
+            existingItems = existing,
+            desiredSpanX = 1,
+            desiredSpanY = 1,
+            preferredPage = 0,
+            allowNextPageFallback = true,
+        )
+        assertEquals(GridPlacement(cellX = 0, cellY = 0, spanX = 1, spanY = 1, page = 1), withFallback)
+    }
+
+    @Test
+    fun `returns null when all MAX_PAGES pages are full`() {
+        val fullAllPages = (0 until io.github.vimitt.overview.domain.model.HomeGridSpec.MAX_PAGES).map { page ->
+            HomeItem.Widget(
+                id = "w_$page",
+                appWidgetId = page,
+                providerPackage = "pkg",
+                providerClass = "Cls",
+                cellX = 0,
+                cellY = 0,
+                spanX = 4,
+                spanY = 5,
+                page = page,
+            )
+        }
+
+        val slot = useCase.findAvailableSlot(
+            existingItems = fullAllPages,
+            desiredSpanX = 1,
+            desiredSpanY = 1,
+            preferredPage = io.github.vimitt.overview.domain.model.HomeGridSpec.MAX_PAGES + 2,
+            allowNextPageFallback = true,
+        )
+        assertNull(slot)
+    }
 }

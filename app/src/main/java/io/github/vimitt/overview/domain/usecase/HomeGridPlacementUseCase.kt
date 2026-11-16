@@ -11,6 +11,7 @@ data class GridPlacement(
     val cellY: Int,
     val spanX: Int,
     val spanY: Int,
+    val page: Int = 0,
 )
 
 /**
@@ -22,8 +23,8 @@ class HomeGridPlacementUseCase(
 ) {
     /**
      * Encontra a primeira posição livre capaz de acomodar um item de tamanho [desiredSpanX] x [desiredSpanY].
-     * Se não houver espaço exato para um widget grande, reduz o tamanho progressivamente até `1x1`
-     * se necessário.
+     * Tenta primeiro [preferredPage]; caso esteja cheia e [allowNextPageFallback] seja verdadeiro,
+     * procura nas demais páginas até [HomeGridSpec.MAX_PAGES].
      */
     fun findAvailableSlot(
         existingItems: List<HomeItem>,
@@ -31,15 +32,18 @@ class HomeGridPlacementUseCase(
         desiredSpanY: Int,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
+        allowNextPageFallback: Boolean = false,
         columns: Int = this.columns,
         rows: Int = this.rows,
     ): GridPlacement? {
         val clampedX = desiredSpanX.coerceIn(1, columns)
         val clampedY = desiredSpanY.coerceIn(1, rows)
+        val safePreferredPage = preferredPage.coerceIn(0, HomeGridSpec.MAX_PAGES - 1)
 
         if (preferredCellX != null && preferredCellY != null) {
-            if (canPlace(existingItems, preferredCellX, preferredCellY, clampedX, clampedY, columns = columns, rows = rows)) {
-                return GridPlacement(preferredCellX, preferredCellY, clampedX, clampedY)
+            if (canPlace(existingItems, preferredCellX, preferredCellY, clampedX, clampedY, page = safePreferredPage, columns = columns, rows = rows)) {
+                return GridPlacement(preferredCellX, preferredCellY, clampedX, clampedY, page = safePreferredPage)
             }
         }
 
@@ -57,11 +61,24 @@ class HomeGridPlacementUseCase(
             }
         }
 
-        for ((sx, sy) in candidateSpans) {
-            for (y in 0..(rows - sy)) {
-                for (x in 0..(columns - sx)) {
-                    if (canPlace(existingItems, x, y, sx, sy, columns = columns, rows = rows)) {
-                        return GridPlacement(x, y, sx, sy)
+        val candidatePages = if (allowNextPageFallback) {
+            buildList {
+                add(safePreferredPage)
+                for (p in 0 until HomeGridSpec.MAX_PAGES) {
+                    if (p != safePreferredPage) add(p)
+                }
+            }
+        } else {
+            listOf(safePreferredPage)
+        }
+
+        for (targetPage in candidatePages) {
+            for ((sx, sy) in candidateSpans) {
+                for (y in 0..(rows - sy)) {
+                    for (x in 0..(columns - sx)) {
+                        if (canPlace(existingItems, x, y, sx, sy, page = targetPage, columns = columns, rows = rows)) {
+                            return GridPlacement(x, y, sx, sy, page = targetPage)
+                        }
                     }
                 }
             }
@@ -70,8 +87,8 @@ class HomeGridPlacementUseCase(
     }
 
     /**
-     * Verifica se um retângulo [cellX], [cellY], [spanX] x [spanY] cabe na grade sem colisões,
-     * ignorando opcionalmente [ignoreItemId].
+     * Verifica se um retângulo [cellX], [cellY], [spanX] x [spanY] cabe na grade sem colisões
+     * na página [page], ignorando opcionalmente [ignoreItemId].
      */
     fun canPlace(
         existingItems: List<HomeItem>,
@@ -80,9 +97,11 @@ class HomeGridPlacementUseCase(
         spanX: Int,
         spanY: Int,
         ignoreItemId: String? = null,
+        page: Int = 0,
         columns: Int = this.columns,
         rows: Int = this.rows,
     ): Boolean {
+        if (page < 0 || page >= HomeGridSpec.MAX_PAGES) return false
         if (cellX < 0 || cellY < 0 || spanX < 1 || spanY < 1) return false
         if (cellX + spanX > columns || cellY + spanY > rows) return false
 
@@ -90,7 +109,7 @@ class HomeGridPlacementUseCase(
         val bottom = cellY + spanY
 
         for (item in existingItems) {
-            if (item.id == ignoreItemId) continue
+            if (item.id == ignoreItemId || item.page != page) continue
             val itemRight = item.cellX + item.spanX
             val itemBottom = item.cellY + item.spanY
             val overlaps = cellX < itemRight &&

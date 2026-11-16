@@ -787,7 +787,7 @@ private fun OnboardingThemeStep(
                                 color = colors.onSurface,
                             )
                             Text(
-                                text = "seg., 16 de nov · 24°",
+                                text = stringResource(R.string.onboarding_theme_preview_sample_meta),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceMuted,
                             )

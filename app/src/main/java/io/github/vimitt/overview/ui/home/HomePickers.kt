@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
@@ -51,17 +52,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.AppShortcutItem
+import io.github.vimitt.overview.data.LauncherShortcutHelper
 import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.ui.components.AppIconItem
+import io.github.vimitt.overview.ui.components.AppShortcutsPopupSection
 import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
@@ -403,7 +409,11 @@ private fun WidgetAppGroupCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "${group.widgets.size} widget(s)",
+                    text = pluralStringResource(
+                        R.plurals.picker_widgets_count,
+                        group.widgets.size,
+                        group.widgets.size,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceMuted,
                 )
@@ -475,14 +485,30 @@ fun HomeItemActionOverlay(
     onResizeWidget: (deltaX: Int, deltaY: Int) -> Unit,
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
+    onOpenFolder: (() -> Unit)? = null,
+    onEditFolder: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
     val isExpressive = OverviewTheme.components.isExpressive
+    val context = LocalContext.current
 
     val title = when (workspaceItem) {
         is HomeWorkspaceItem.Shortcut -> workspaceItem.app.label
+        is HomeWorkspaceItem.PinnedShortcut -> workspaceItem.item.label
+        is HomeWorkspaceItem.Folder -> workspaceItem.item.name
         is HomeWorkspaceItem.Widget -> workspaceItem.label
         is HomeWorkspaceItem.NativeWidget -> workspaceItem.label
+    }
+    val appShortcuts by produceState<List<AppShortcutItem>>(
+        initialValue = emptyList(),
+        key1 = (workspaceItem as? HomeWorkspaceItem.Shortcut)?.app?.key,
+    ) {
+        val shortcutApp = (workspaceItem as? HomeWorkspaceItem.Shortcut)?.app
+        value = if (shortcutApp != null) {
+            LauncherShortcutHelper.queryAppShortcuts(context, shortcutApp)
+        } else {
+            emptyList()
+        }
     }
 
     OverviewPopupSurface(
@@ -505,6 +531,25 @@ fun HomeItemActionOverlay(
             ),
         )
 
+        if (workspaceItem is HomeWorkspaceItem.Folder) {
+            if (onOpenFolder != null) {
+                OverviewPopupDivider()
+                OverviewPopupActionRow(
+                    painter = painterResource(R.drawable.ic_settings_folders),
+                    label = stringResource(R.string.home_folder_action_open),
+                    onClick = onOpenFolder,
+                )
+            }
+            if (onEditFolder != null) {
+                OverviewPopupDivider()
+                OverviewPopupActionRow(
+                    icon = Icons.Filled.Edit,
+                    label = stringResource(R.string.home_folder_action_edit),
+                    onClick = onEditFolder,
+                )
+            }
+        }
+
         if (workspaceItem is HomeWorkspaceItem.Widget || workspaceItem is HomeWorkspaceItem.NativeWidget) {
             val minX = (workspaceItem as? HomeWorkspaceItem.NativeWidget)?.item?.widgetType?.minSpanX ?: 1
             val minY = (workspaceItem as? HomeWorkspaceItem.NativeWidget)?.item?.widgetType?.minSpanY ?: 1
@@ -524,6 +569,16 @@ fun HomeItemActionOverlay(
                 max = HomeGridSpec.ROWS,
                 onDecrement = { onResizeWidget(0, -1) },
                 onIncrement = { onResizeWidget(0, 1) },
+            )
+        }
+
+        if (appShortcuts.isNotEmpty()) {
+            AppShortcutsPopupSection(
+                shortcuts = appShortcuts,
+                onShortcutClick = { shortcut ->
+                    onDismiss()
+                    LauncherShortcutHelper.launchShortcut(context, shortcut.shortcutInfo)
+                },
             )
         }
 

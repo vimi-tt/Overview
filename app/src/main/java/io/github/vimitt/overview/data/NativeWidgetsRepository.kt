@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.ClockToolMode
 import io.github.vimitt.overview.domain.model.HourlyWeatherPoint
 import io.github.vimitt.overview.domain.model.NativeWidgetsState
@@ -213,7 +214,7 @@ class NativeWidgetsRepository(
                 },
                 onFailure = { error ->
                     lastAutoFailureMs = now
-                    weatherError.value = error.localizedMessage ?: "Falha ao atualizar clima"
+                    weatherError.value = error.localizedMessage ?: context.getString(R.string.weather_refresh_failed)
                     false
                 },
             )

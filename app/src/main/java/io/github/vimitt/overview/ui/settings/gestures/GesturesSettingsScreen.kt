@@ -31,6 +31,7 @@ fun GesturesSettingsScreen(
         LauncherGestureAction.NONE to stringResource(R.string.settings_gesture_action_none),
         LauncherGestureAction.OPEN_OVERVIEW to stringResource(R.string.settings_gesture_action_overview),
         LauncherGestureAction.OPEN_OVERVIEW_SEARCH to stringResource(R.string.settings_gesture_action_overview_search),
+        LauncherGestureAction.OPEN_QUICK_SETTINGS to stringResource(R.string.settings_gesture_action_gnome_quick_settings),
         LauncherGestureAction.EXPAND_NOTIFICATIONS to stringResource(R.string.settings_gesture_action_notifications),
         LauncherGestureAction.EXPAND_QUICK_SETTINGS to stringResource(R.string.settings_gesture_action_quick_settings),
         LauncherGestureAction.OPEN_SETTINGS to stringResource(R.string.settings_gesture_action_settings),
@@ -73,6 +74,7 @@ fun GesturesSettingsScreen(
                         it.first == LauncherGestureAction.NONE ||
                             it.first == LauncherGestureAction.OPEN_OVERVIEW ||
                             it.first == LauncherGestureAction.OPEN_OVERVIEW_SEARCH ||
+                            it.first == LauncherGestureAction.OPEN_QUICK_SETTINGS ||
                             it.first == LauncherGestureAction.EXPAND_NOTIFICATIONS ||
                             it.first == LauncherGestureAction.OPEN_ASSISTANT ||
                             it.first == LauncherGestureAction.OPEN_CAMERA
@@ -110,6 +112,7 @@ fun gestureActionLabel(action: LauncherGestureAction): String {
         LauncherGestureAction.NONE -> stringResource(R.string.settings_gesture_action_none)
         LauncherGestureAction.OPEN_OVERVIEW -> stringResource(R.string.settings_gesture_action_overview)
         LauncherGestureAction.OPEN_OVERVIEW_SEARCH -> stringResource(R.string.settings_gesture_action_overview_search)
+        LauncherGestureAction.OPEN_QUICK_SETTINGS -> stringResource(R.string.settings_gesture_action_gnome_quick_settings)
         LauncherGestureAction.EXPAND_NOTIFICATIONS -> stringResource(R.string.settings_gesture_action_notifications)
         LauncherGestureAction.EXPAND_QUICK_SETTINGS -> stringResource(R.string.settings_gesture_action_quick_settings)
         LauncherGestureAction.OPEN_SETTINGS -> stringResource(R.string.settings_gesture_action_settings)

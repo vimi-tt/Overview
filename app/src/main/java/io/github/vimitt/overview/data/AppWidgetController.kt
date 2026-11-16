@@ -200,7 +200,7 @@ class AppWidgetController(
         }.getOrNull()
     }
 
-    private fun computeDefaultSpan(info: AppWidgetProviderInfo): Pair<Int, Int> {
+    fun computeDefaultSpan(info: AppWidgetProviderInfo): Pair<Int, Int> {
         val rawX = if (info.targetCellWidth > 0) {
             info.targetCellWidth
         } else {

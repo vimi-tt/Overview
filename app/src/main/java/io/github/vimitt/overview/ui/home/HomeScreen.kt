@@ -1,6 +1,11 @@
 package io.github.vimitt.overview.ui.home
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Rect
+import android.os.BatteryManager
 import android.os.SystemClock
 import android.view.View
 import androidx.activity.compose.BackHandler
@@ -30,6 +35,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -41,11 +48,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,9 +75,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -76,7 +89,9 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.FolderSettings
 import io.github.vimitt.overview.domain.model.GestureSettings
+import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.ui.ActiveDragState
@@ -85,13 +100,17 @@ import io.github.vimitt.overview.ui.DragPayload
 import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
+import io.github.vimitt.overview.ui.components.FolderIconTile
 import io.github.vimitt.overview.ui.components.HomeClock
+import io.github.vimitt.overview.ui.components.HomeQuickSettingsPill
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetDialogsOverlay
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetHost
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetLiveEnvironment
 import io.github.vimitt.overview.ui.home.widgets.rememberNativeWidgetEnvironment
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private class HomeGestureGuard {
     var activeChildCount: Int = 0
@@ -130,13 +149,16 @@ fun HomeScreen(
     activeDrag: ActiveDragState?,
     dropTarget: HomeDropTarget?,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onPinnedShortcutClick: (HomeWorkspaceItem.PinnedShortcut, Rect?) -> Unit = { _, _ -> },
+    onFolderClick: (HomeWorkspaceItem.Folder) -> Unit = {},
+    onOpenQuickSettings: (() -> Unit)? = null,
     onOpenOverview: () -> Unit,
     onOpenOverviewSearch: () -> Unit,
     onLongPress: () -> Unit,
-    canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
-    onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    canPlaceMovingItemAt: (cellX: Int, cellY: Int, page: Int) -> Boolean,
+    onPlaceMovingItemAt: (cellX: Int, cellY: Int, page: Int) -> Unit,
     onCancelMovingItem: () -> Unit,
-    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean = { _, _, _, _, _ -> false },
+    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, page: Int, ignoreItemId: String?) -> Boolean = { _, _, _, _, _, _ -> false },
     onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit = { _, _, _, _, _ -> },
     onStartMovingResizedItem: (String) -> Unit = {},
     onRemoveResizedItem: (String) -> Unit = {},
@@ -148,6 +170,8 @@ fun HomeScreen(
     onItemDragEnd: () -> Unit,
     onItemDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    currentPage: Int = 0,
+    onCurrentPageChanged: (Int) -> Unit = {},
     isVisible: Boolean = true,
     dockDropTarget: DockDropTarget? = null,
     onDockBoundsChanged: (ComposeRect?) -> Unit = {},
@@ -354,6 +378,8 @@ fun HomeScreen(
                     is HomeWorkspaceItem.Widget -> resizingItem.label
                     is HomeWorkspaceItem.NativeWidget -> resizingItem.label
                     is HomeWorkspaceItem.Shortcut -> resizingItem.app.label
+                    is HomeWorkspaceItem.PinnedShortcut -> resizingItem.item.label
+                    is HomeWorkspaceItem.Folder -> resizingItem.item.name
                 }
                 ResizeModeBanner(
                     title = label,
@@ -386,47 +412,128 @@ fun HomeScreen(
                 )
             }
 
+            val displayedPageCount = if (isDraggingOverGrid || isMoving) {
+                (uiState.pageCount + 1).coerceIn(1, HomeGridSpec.MAX_PAGES)
+            } else {
+                uiState.pageCount.coerceIn(1, HomeGridSpec.MAX_PAGES)
+            }
+            val pagerState = rememberPagerState(
+                initialPage = currentPage.coerceIn(0, displayedPageCount - 1),
+                pageCount = { displayedPageCount },
+            )
+            val pagerScope = rememberCoroutineScope()
+            var localGridBounds by remember { mutableStateOf<ComposeRect?>(null) }
+
+            LaunchedEffect(pagerState.currentPage, displayedPageCount) {
+                onCurrentPageChanged(pagerState.currentPage.coerceIn(0, displayedPageCount - 1))
+            }
+
+            LaunchedEffect(currentPage, displayedPageCount) {
+                val safeTarget = currentPage.coerceIn(0, displayedPageCount - 1)
+                if (safeTarget != pagerState.currentPage && !pagerState.isScrollInProgress) {
+                    pagerState.animateScrollToPage(safeTarget)
+                }
+            }
+
+            val edgeZonePx = with(density) { 40.dp.toPx() }
+            val dragEdgeDelta = remember(isDraggingOverGrid, activeDrag?.pointerInWindow, localGridBounds, pagerState.currentPage, displayedPageCount) {
+                val bounds = localGridBounds
+                val pointer = activeDrag?.pointerInWindow
+                if (!isDraggingOverGrid || bounds == null || pointer == null) {
+                    0
+                } else if (pointer.x <= bounds.left + edgeZonePx && pagerState.currentPage > 0) {
+                    -1
+                } else if (pointer.x >= bounds.right - edgeZonePx && pagerState.currentPage < displayedPageCount - 1) {
+                    1
+                } else {
+                    0
+                }
+            }
+            LaunchedEffect(isDraggingOverGrid, dragEdgeDelta, pagerState.currentPage) {
+                if (isDraggingOverGrid && dragEdgeDelta != 0) {
+                    delay(550L)
+                    val targetPage = (pagerState.currentPage + dragEdgeDelta)
+                        .coerceIn(0, displayedPageCount - 1)
+                    if (targetPage != pagerState.currentPage) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        pagerState.animateScrollToPage(targetPage)
+                    }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .onPlaced { coordinates ->
-                        onGridBoundsChanged(coordinates.boundsInWindow())
+                        val bounds = coordinates.boundsInWindow()
+                        localGridBounds = bounds
+                        onGridBoundsChanged(bounds)
                     },
             ) {
                 if (hasWorkspaceItems || isMoving || isDraggingOverGrid) {
-                    HomeWorkspaceGrid(
-                        items = uiState.workspaceItems,
-                        frequentApps = uiState.frequentApps,
-                        nativeWidgetsState = uiState.nativeWidgets,
-                        nativeEnvironment = nativeEnvironment,
-                        nativeWidgetActions = nativeWidgetActions,
-                        isVisible = isVisible,
-                        gridColumns = uiState.gridColumns,
-                        gridRows = uiState.gridRows,
-                        iconScale = uiState.iconScale,
-                        showLabels = uiState.showLabels,
-                        labelScale = uiState.labelScale,
-                        showNotificationDots = uiState.showNotificationDots,
-                        badgePackages = uiState.badgePackages,
-                        movingItemId = uiState.movingItemId,
-                        resizingItem = resizingItem,
-                        activeDrag = activeDrag,
-                        dropTarget = dropTarget,
-                        appWidgetController = appWidgetController,
-                        onAppClick = onAppClick,
-                        canPlaceMovingItemAt = canPlaceMovingItemAt,
-                        onPlaceMovingItemAt = onPlaceMovingItemAt,
-                        canPlaceItem = canPlaceDragItemAt,
-                        onResizeWidgetBounds = onResizeWidgetBounds,
-                        gestureGuard = gestureGuard,
-                        onStartItemDrag = onStartItemDrag,
-                        onItemDragMove = onItemDragMove,
-                        onItemDragEnd = onItemDragEnd,
-                        onItemDragCancel = onItemDragCancel,
+                    HorizontalPager(
+                        state = pagerState,
+                        userScrollEnabled = !isDraggingOverGrid && !isResizing,
+                        beyondViewportPageCount = 1,
                         modifier = Modifier.fillMaxSize(),
-                    )
+                    ) { page ->
+                        val pageItems = remember(uiState.workspaceItems, page) {
+                            uiState.workspaceItems.filter { it.item.page == page }
+                        }
+                        HomeWorkspaceGrid(
+                            items = pageItems,
+                            frequentApps = uiState.frequentApps,
+                            nativeWidgetsState = uiState.nativeWidgets,
+                            nativeEnvironment = nativeEnvironment,
+                            nativeWidgetActions = nativeWidgetActions,
+                            isVisible = isVisible && pagerState.currentPage == page,
+                            gridColumns = uiState.gridColumns,
+                            gridRows = uiState.gridRows,
+                            iconScale = uiState.iconScale,
+                            showLabels = uiState.showLabels,
+                            labelScale = uiState.labelScale,
+                            folderSettings = uiState.folderSettings,
+                            showNotificationDots = uiState.showNotificationDots,
+                            badgePackages = uiState.badgePackages,
+                            movingItemId = uiState.movingItemId,
+                            resizingItem = resizingItem?.takeIf { it.item.page == page },
+                            activeDrag = activeDrag,
+                            dropTarget = dropTarget?.takeIf { it.page == page },
+                            appWidgetController = appWidgetController,
+                            onAppClick = onAppClick,
+                            onPinnedShortcutClick = onPinnedShortcutClick,
+                            onFolderClick = onFolderClick,
+                            canPlaceMovingItemAt = { cellX, cellY ->
+                                canPlaceMovingItemAt(cellX, cellY, page)
+                            },
+                            onPlaceMovingItemAt = { cellX, cellY ->
+                                onPlaceMovingItemAt(cellX, cellY, page)
+                            },
+                            canPlaceItem = { cellX, cellY, spanX, spanY, ignoreId ->
+                                canPlaceDragItemAt(cellX, cellY, spanX, spanY, page, ignoreId)
+                            },
+                            onResizeWidgetBounds = onResizeWidgetBounds,
+                            gestureGuard = gestureGuard,
+                            onStartItemDrag = onStartItemDrag,
+                            onItemDragMove = onItemDragMove,
+                            onItemDragEnd = onItemDragEnd,
+                            onItemDragCancel = onItemDragCancel,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
+            }
+
+            if (displayedPageCount > 1 && (hasWorkspaceItems || isMoving || isDraggingOverGrid)) {
+                HomePageIndicator(
+                    pageCount = displayedPageCount,
+                    currentPage = pagerState.currentPage,
+                    onSelectPage = { page ->
+                        pagerScope.launch { pagerState.animateScrollToPage(page) }
+                    },
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                )
             }
 
             Column(
@@ -469,6 +576,63 @@ fun HomeScreen(
             }
         }
 
+        if (uiState.homeSettings.showQuickSettingsButton &&
+            onOpenQuickSettings != null &&
+            !isDraggingRemovable &&
+            !isMoving &&
+            !isResizing
+        ) {
+            val context = LocalContext.current
+            var batteryLevel by remember { mutableIntStateOf(0) }
+            var batteryCharging by remember { mutableStateOf(false) }
+
+            DisposableEffect(context, isVisible) {
+                if (!isVisible) {
+                    return@DisposableEffect onDispose {}
+                }
+                fun updateFromBatteryIntent(intent: Intent?) {
+                    val raw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                    val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+                    if (raw >= 0 && scale > 0) {
+                        batteryLevel = ((raw * 100f) / scale).toInt().coerceIn(0, 100)
+                    }
+                    val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+                    batteryCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL
+                }
+                updateFromBatteryIntent(
+                    context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)),
+                )
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(ctx: Context?, intent: Intent?) {
+                        updateFromBatteryIntent(intent)
+                    }
+                }
+                runCatching {
+                    ContextCompat.registerReceiver(
+                        context,
+                        receiver,
+                        IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+                        ContextCompat.RECEIVER_NOT_EXPORTED,
+                    )
+                }
+                onDispose {
+                    runCatching { context.unregisterReceiver(receiver) }
+                }
+            }
+
+            HomeQuickSettingsPill(
+                batteryLevel = batteryLevel,
+                isCharging = batteryCharging,
+                onClick = onOpenQuickSettings,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 8.dp, end = 16.dp)
+                    .suppressHomeBackgroundLongPress(gestureGuard),
+            )
+        }
+
         if (isDraggingRemovable) {
             RemoveDropZonePill(
                 isActive = dropTarget?.isOverRemoveZone == true,
@@ -505,6 +669,7 @@ private fun HomeWorkspaceGrid(
     iconScale: Float,
     showLabels: Boolean,
     labelScale: Float,
+    folderSettings: FolderSettings,
     showNotificationDots: Boolean,
     badgePackages: Set<String>,
     movingItemId: String?,
@@ -513,6 +678,8 @@ private fun HomeWorkspaceGrid(
     dropTarget: HomeDropTarget?,
     appWidgetController: AppWidgetController,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
+    onPinnedShortcutClick: (HomeWorkspaceItem.PinnedShortcut, Rect?) -> Unit,
+    onFolderClick: (HomeWorkspaceItem.Folder) -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
     canPlaceItem: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
@@ -563,6 +730,7 @@ private fun HomeWorkspaceGrid(
             }
 
             if (dropTarget != null && !dropTarget.isOverRemoveZone) {
+                val isMergeTarget = dropTarget.mergeFolderTargetId != null
                 val targetColor = if (dropTarget.isValid) {
                     colors.accent
                 } else {
@@ -579,10 +747,20 @@ private fun HomeWorkspaceGrid(
                             width = cellWidth * dropTarget.spanX,
                             height = cellHeight * dropTarget.spanY,
                         )
-                        .padding(4.dp)
+                        .padding(if (isMergeTarget) 2.dp else 4.dp)
                         .clip(targetShape)
-                        .background(targetColor.copy(alpha = 0.24f))
-                        .border(width = 2.dp, color = targetColor, shape = targetShape),
+                        .background(
+                            if (isMergeTarget) {
+                                colors.accentContainer.copy(alpha = 0.42f)
+                            } else {
+                                targetColor.copy(alpha = 0.24f)
+                            },
+                        )
+                        .border(
+                            width = if (isMergeTarget) 2.5.dp else 2.dp,
+                            color = targetColor,
+                            shape = targetShape,
+                        ),
                 )
             }
         } else if (movingItemId != null) {
@@ -661,6 +839,63 @@ private fun HomeWorkspaceGrid(
                                 labelShadow = labelShadow,
                                 showNotificationDot = showNotificationDots &&
                                     workspaceItem.app.packageName in badgePackages,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        is HomeWorkspaceItem.PinnedShortcut -> {
+                            val displayApp = remember(workspaceItem) {
+                                AppInfo(
+                                    packageName = workspaceItem.item.packageName,
+                                    activityName = workspaceItem.item.shortcutId,
+                                    label = workspaceItem.item.label,
+                                    icon = workspaceItem.icon,
+                                    userHandle = workspaceItem.userHandle,
+                                )
+                            }
+                            AppIconItem(
+                                app = displayApp,
+                                onClick = { _, _, bounds ->
+                                    onPinnedShortcutClick(workspaceItem, bounds)
+                                },
+                                onDragStart = { _, windowPos ->
+                                    onStartItemDrag(workspaceItem, windowPos)
+                                },
+                                onDragMove = onItemDragMove,
+                                onDragEnd = onItemDragEnd,
+                                onDragCancel = onItemDragCancel,
+                                iconSize = shortcutIconSize,
+                                showLabel = showLabels,
+                                labelFontScale = labelScale,
+                                labelColor = colors.wallpaperForeground,
+                                labelShadow = labelShadow,
+                                showNotificationDot = false,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        is HomeWorkspaceItem.Folder -> {
+                            val isDropTarget = isDraggingOverGrid &&
+                                dropTarget?.mergeFolderTargetId == workspaceItem.item.id
+                            FolderIconTile(
+                                folderId = workspaceItem.item.id,
+                                label = workspaceItem.item.name,
+                                apps = workspaceItem.apps,
+                                hasBadge = workspaceItem.hasBadge,
+                                previewStyle = folderSettings.previewStyle,
+                                iconSize = shortcutIconSize,
+                                showLabel = showLabels,
+                                labelFontScale = labelScale,
+                                labelColor = colors.wallpaperForeground,
+                                labelShadow = labelShadow,
+                                isDropHighlight = isDropTarget,
+                                onClick = { onFolderClick(workspaceItem) },
+                                onDragStart = { windowPos ->
+                                    onStartItemDrag(workspaceItem, windowPos)
+                                },
+                                onDragMove = onItemDragMove,
+                                onDragEnd = onItemDragEnd,
+                                onDragCancel = onItemDragCancel,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -1031,6 +1266,41 @@ private fun DockSearchBarPill(
                 text = stringResource(R.string.search_apps_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceMuted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomePageIndicator(
+    pageCount: Int,
+    currentPage: Int,
+    onSelectPage: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(colors.surfaceElevated.copy(alpha = 0.45f))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for (index in 0 until pageCount) {
+            val isSelected = index == currentPage
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .size(width = if (isSelected) 16.dp else 6.dp, height = 6.dp)
+                    .background(
+                        if (isSelected) {
+                            colors.accent
+                        } else {
+                            colors.wallpaperForeground.copy(alpha = 0.45f)
+                        },
+                    )
+                    .clickable { onSelectPage(index) },
             )
         }
     }

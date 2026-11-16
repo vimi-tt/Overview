@@ -13,6 +13,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
@@ -66,6 +68,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -75,6 +79,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.toPath
+import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.AppShortcutItem
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.PI
 import kotlin.math.sin
@@ -628,6 +634,7 @@ fun OverviewPopupActionRow(
     onClick: () -> Unit,
     icon: ImageVector? = null,
     painter: Painter? = null,
+    bitmap: ImageBitmap? = null,
     tint: Color = OverviewTheme.colors.accent,
     destructive: Boolean = false,
 ) {
@@ -652,8 +659,15 @@ fun OverviewPopupActionRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null || painter != null) {
-            if (isExpressive) {
+        if (bitmap != null || icon != null || painter != null) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(if (isExpressive) 36.dp else 24.dp),
+                )
+            } else if (isExpressive) {
                 val badgeBg = if (destructive) {
                     POPUP_DESTRUCTIVE_COLOR.copy(alpha = 0.16f)
                 } else if (effectiveTint == colors.accent) {
@@ -714,6 +728,32 @@ fun OverviewPopupActionRow(
             color = textColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * Seção de atalhos de aplicativo (App Shortcuts) reutilizada nos menus contextuais da Home e Overview.
+ */
+@Composable
+fun AppShortcutsPopupSection(
+    shortcuts: List<AppShortcutItem>,
+    onShortcutClick: (AppShortcutItem) -> Unit,
+) {
+    if (shortcuts.isEmpty()) return
+    val colors = OverviewTheme.colors
+    OverviewPopupDivider()
+    Text(
+        text = stringResource(R.string.app_shortcuts_header),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.onSurfaceMuted,
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 2.dp),
+    )
+    shortcuts.forEach { shortcut ->
+        OverviewPopupActionRow(
+            label = shortcut.label,
+            bitmap = shortcut.icon,
+            onClick = { onShortcutClick(shortcut) },
         )
     }
 }

@@ -189,10 +189,14 @@ fun AppearanceSettingsScreen(
                 when (settings.colorSourceMode) {
                     ColorSourceMode.GNOME -> {
                         SettingsDivider()
+                        val localizedPresets = AdwaitaPalette.AccentPresets.map { (fallback, argb) ->
+                            val label = AdwaitaPalette.AccentPresetNameRes[argb]?.let { stringResource(it) } ?: fallback
+                            label to argb
+                        }
                         ColorPickerRow(
                             title = stringResource(R.string.settings_accent_label),
                             subtitle = stringResource(R.string.settings_accent_subtitle),
-                            presets = AdwaitaPalette.AccentPresets,
+                            presets = localizedPresets,
                             selectedArgb = settings.accentColorArgb,
                             onSelect = onAccentColorChange,
                         )
@@ -200,10 +204,14 @@ fun AppearanceSettingsScreen(
 
                     ColorSourceMode.CUSTOM -> {
                         SettingsDivider()
+                        val localizedCustomPresets = AdwaitaPalette.CustomAccentPresets.map { (fallback, argb) ->
+                            val label = AdwaitaPalette.AccentPresetNameRes[argb]?.let { stringResource(it) } ?: fallback
+                            label to argb
+                        }
                         ColorPickerRow(
                             title = stringResource(R.string.settings_custom_accent_label),
                             subtitle = formatHexColor(settings.customAccentColorArgb),
-                            presets = AdwaitaPalette.CustomAccentPresets,
+                            presets = localizedCustomPresets,
                             selectedArgb = settings.customAccentColorArgb,
                             onSelect = onCustomAccentColorChange,
                         )

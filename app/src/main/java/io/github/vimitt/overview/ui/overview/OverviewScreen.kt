@@ -51,6 +51,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -66,6 +67,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -95,6 +97,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.AppShortcutItem
+import io.github.vimitt.overview.data.LauncherShortcutHelper
 import io.github.vimitt.overview.domain.model.AppFolder
 import io.github.vimitt.overview.domain.model.AppGridLayoutMode
 import io.github.vimitt.overview.domain.model.AppInfo
@@ -105,7 +109,10 @@ import io.github.vimitt.overview.domain.model.SearchSettings
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import io.github.vimitt.overview.ui.components.AppIconItem
+import io.github.vimitt.overview.ui.components.AppShortcutsPopupSection
 import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
+import io.github.vimitt.overview.ui.components.FolderIconTile
+import io.github.vimitt.overview.ui.components.FolderPopupOverlay
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
@@ -142,6 +149,7 @@ fun OverviewScreen(
     scrimAlpha: Float = SettingsDefaults.DEFAULT_OVERVIEW_SCRIM_ALPHA,
     animationDurationScale: Float = 1f,
     closeSensitivity: GestureSensitivity = GestureSensitivity.MEDIUM,
+    onOpenQuickSettings: (() -> Unit)? = null,
     onMoveAppToFolder: (appKey: String, folderId: String) -> Unit = { _, _ -> },
     onCreateFolderWithApp: (name: String, appKey: String) -> Unit = { _, _ -> },
     onRemoveAppFromFolder: (appKey: String, folderId: String) -> Unit = { _, _ -> },
@@ -416,6 +424,14 @@ fun OverviewScreen(
                     keyboardController?.hide()
                     onOpenSettings()
                 },
+                onOpenQuickSettings = if (onOpenQuickSettings != null) {
+                    {
+                        keyboardController?.hide()
+                        onOpenQuickSettings()
+                    }
+                } else {
+                    null
+                },
                 onSubmit = {
                     if (uiState.apps.size == 1) {
                         keyboardController?.hide()
@@ -534,7 +550,8 @@ fun OverviewScreen(
         val currentFolder = openFolderEntry
         if (currentFolder != null && isActive) {
             FolderPopupOverlay(
-                entry = currentFolder,
+                folderName = currentFolder.folder.name,
+                apps = currentFolder.apps,
                 folderSettings = uiState.folderSettings,
                 iconSize = remember(uiState.iconScale) { (54f * uiState.iconScale).dp },
                 showNotificationDots = uiState.showNotificationDots,
@@ -580,6 +597,21 @@ fun OverviewScreen(
                 onOpenAppInfo = {
                     actionTargetApp = null
                     onOpenAppInfo(selectedApp)
+                },
+                onLaunchShortcut = { shortcut ->
+                    actionTargetApp = null
+                    openFolderId = null
+                    if (LauncherShortcutHelper.launchShortcut(context, shortcut.shortcutInfo)) {
+                        onClose()
+                    }
+                },
+                onUninstall = {
+                    actionTargetApp = null
+                    LauncherShortcutHelper.uninstallApp(
+                        context = context,
+                        packageName = selectedApp.packageName,
+                        userHandle = selectedApp.userHandle,
+                    )
                 },
                 onDismiss = { actionTargetApp = null },
             )
@@ -921,269 +953,16 @@ private fun OverviewGridEntryCell(
             val openThisFolder = remember(entry.folder.id, onFolderClick) {
                 { onFolderClick(entry.folder.id) }
             }
-            FolderIconItem(
-                entry = entry,
+            FolderIconTile(
+                folderId = entry.folder.id,
+                label = entry.label,
+                apps = entry.apps,
+                hasBadge = entry.hasBadge,
                 previewStyle = folderPreviewStyle,
                 iconSize = iconSize,
                 onClick = openThisFolder,
                 modifier = modifier,
             )
-        }
-    }
-}
-
-@Composable
-private fun FolderIconItem(
-    entry: OverviewGridEntry.Folder,
-    previewStyle: FolderPreviewStyle,
-    iconSize: Dp,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val tileShape = shapes.large
-    val previewApps = remember(entry.apps) { entry.apps.take(4) }
-
-    Column(
-        modifier = modifier
-            .clip(shapes.medium)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top,
-    ) {
-        Box(
-            modifier = Modifier.size(iconSize),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(tileShape)
-                    .background(colors.surfaceElevated.copy(alpha = 0.85f))
-                    .border(1.dp, colors.hairlineBorder, tileShape)
-                    .padding(6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                when (previewStyle) {
-                    FolderPreviewStyle.GRID_2X2 -> {
-                        val miniSize = (iconSize - 16.dp) / 2f
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            for (r in 0..1) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    for (c in 0..1) {
-                                        val miniApp = previewApps.getOrNull(r * 2 + c)
-                                        if (miniApp?.icon != null) {
-                                            Image(
-                                                bitmap = miniApp.icon,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(miniSize)
-                                                    .clip(RoundedCornerShape(4.dp)),
-                                                contentScale = ContentScale.Fit,
-                                            )
-                                        } else {
-                                            Spacer(modifier = Modifier.size(miniSize))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    FolderPreviewStyle.STACKED -> {
-                        val stackApps = previewApps.take(3).reversed()
-                        val miniSize = iconSize * 0.56f
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            stackApps.forEachIndexed { idx, miniApp ->
-                                val shift = (idx - (stackApps.size - 1) / 2f) * 5f
-                                val bitmap = miniApp.icon
-                                if (bitmap != null) {
-                                    Image(
-                                        bitmap = bitmap,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .offset(x = shift.dp, y = (-shift * 0.6f).dp)
-                                            .size(miniSize)
-                                            .clip(RoundedCornerShape(6.dp)),
-                                        contentScale = ContentScale.Fit,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (entry.hasBadge) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(colors.surface)
-                        .padding(1.5.dp)
-                        .clip(CircleShape)
-                        .background(colors.accent),
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = entry.label,
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurface,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun FolderPopupOverlay(
-    entry: OverviewGridEntry.Folder,
-    folderSettings: FolderSettings,
-    iconSize: Dp,
-    showNotificationDots: Boolean,
-    badgePackages: Set<String>,
-    onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val colors = OverviewTheme.colors
-    val isExpressive = OverviewTheme.components.isExpressive
-    val columns = folderSettings.folderColumns.coerceIn(
-        SettingsDefaults.MIN_FOLDER_COLUMNS,
-        SettingsDefaults.MAX_FOLDER_COLUMNS,
-    )
-    val rows = remember(entry.apps, columns) { entry.apps.chunked(columns) }
-
-    OverviewPopupSurface(
-        onDismiss = onDismiss,
-        bottomSheet = false,
-        scrimMaxAlpha = 0.42f,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (isExpressive) {
-                        Modifier.background(
-                            lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.24f),
-                        )
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(
-                    start = 20.dp,
-                    end = 10.dp,
-                    top = if (isExpressive) 14.dp else 10.dp,
-                    bottom = if (isExpressive) 14.dp else 10.dp,
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.folder.name,
-                    style = if (isExpressive) {
-                        OverviewTheme.typography.sectionHeader
-                    } else {
-                        MaterialTheme.typography.titleMedium
-                    },
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = if (entry.apps.size == 1) {
-                        stringResource(R.string.settings_folders_app_count_one)
-                    } else {
-                        stringResource(R.string.settings_folders_app_count_many, entry.apps.size)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isExpressive) colors.onAccentContainer.copy(alpha = 0.85f) else colors.onSurfaceMuted,
-                )
-            }
-            IconButton(onClick = onDismiss) {
-                if (isExpressive) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(colors.accentContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.settings_close_dialog),
-                            tint = colors.onAccentContainer,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.settings_close_dialog),
-                        tint = colors.onSurfaceMuted,
-                    )
-                }
-            }
-        }
-
-        OverviewPopupDivider()
-
-        if (entry.apps.isEmpty()) {
-            Text(
-                text = stringResource(R.string.overview_folder_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceMuted,
-                modifier = Modifier.padding(24.dp),
-            )
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 380.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                rows.forEach { rowApps ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        rowApps.forEach { app ->
-                            key(app.key) {
-                                AppIconItem(
-                                    app = app,
-                                    onClick = onAppClick,
-                                    onLongClick = onAppLongClick,
-                                    iconSize = iconSize,
-                                    showLabel = true,
-                                    showNotificationDot = showNotificationDots &&
-                                        app.packageName in badgePackages,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                        repeat(columns - rowApps.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -1196,10 +975,19 @@ private fun OverviewAppActionOverlay(
     onMoveToFolder: () -> Unit,
     onRemoveFromFolder: (() -> Unit)?,
     onOpenAppInfo: () -> Unit,
+    onLaunchShortcut: (AppShortcutItem) -> Unit,
+    onUninstall: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
     val isExpressive = OverviewTheme.components.isExpressive
+    val context = LocalContext.current
+    val canUninstall = remember(context, app.packageName) {
+        LauncherShortcutHelper.canUninstallApp(context, app.packageName)
+    }
+    val shortcuts by produceState<List<AppShortcutItem>>(emptyList(), app.key) {
+        value = LauncherShortcutHelper.queryAppShortcuts(context, app)
+    }
 
     OverviewPopupSurface(
         onDismiss = onDismiss,
@@ -1232,6 +1020,10 @@ private fun OverviewAppActionOverlay(
                 )
             }
         }
+        AppShortcutsPopupSection(
+            shortcuts = shortcuts,
+            onShortcutClick = onLaunchShortcut,
+        )
         OverviewPopupDivider()
         OverviewPopupActionRow(
             icon = Icons.Filled.Add,
@@ -1261,6 +1053,15 @@ private fun OverviewAppActionOverlay(
             tint = colors.onSurfaceMuted,
             onClick = onOpenAppInfo,
         )
+        if (canUninstall) {
+            OverviewPopupDivider()
+            OverviewPopupActionRow(
+                icon = Icons.Filled.Delete,
+                label = stringResource(R.string.overview_action_uninstall),
+                destructive = true,
+                onClick = onUninstall,
+            )
+        }
     }
 }
 

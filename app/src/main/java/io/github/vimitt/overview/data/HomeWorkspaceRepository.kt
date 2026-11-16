@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.NativeWidgetType
@@ -48,6 +49,7 @@ class HomeWorkspaceRepository(
         app: AppInfo,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
         columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
         rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
@@ -60,6 +62,8 @@ class HomeWorkspaceRepository(
                 desiredSpanY = 1,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
+                allowNextPageFallback = preferredCellX == null || preferredCellY == null,
                 columns = columns,
                 rows = rows,
             ) ?: return@edit
@@ -71,6 +75,50 @@ class HomeWorkspaceRepository(
                 userHandleHash = app.userHandle?.hashCode() ?: 0,
                 cellX = slot.cellX,
                 cellY = slot.cellY,
+                page = slot.page,
+            )
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+            added = true
+        }
+        return added
+    }
+
+    suspend fun addPinnedShortcut(
+        packageName: String,
+        shortcutId: String,
+        label: String,
+        userHandleHash: Int = 0,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
+        preferredPage: Int = 0,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
+    ): Boolean {
+        if (packageName.isBlank() || shortcutId.isBlank()) return false
+        var added = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val slot = placementUseCase.findAvailableSlot(
+                existingItems = current,
+                desiredSpanX = 1,
+                desiredSpanY = 1,
+                preferredCellX = preferredCellX,
+                preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
+                allowNextPageFallback = preferredCellX == null || preferredCellY == null,
+                columns = columns,
+                rows = rows,
+            ) ?: return@edit
+
+            current += HomeItem.PinnedShortcut(
+                id = "pinned_${UUID.randomUUID()}",
+                packageName = packageName,
+                shortcutId = shortcutId,
+                label = label.ifBlank { shortcutId },
+                userHandleHash = userHandleHash,
+                cellX = slot.cellX,
+                cellY = slot.cellY,
+                page = slot.page,
             )
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             added = true
@@ -85,6 +133,7 @@ class HomeWorkspaceRepository(
         desiredSpanY: Int,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
         columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
         rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
@@ -97,6 +146,8 @@ class HomeWorkspaceRepository(
                 desiredSpanY = desiredSpanY,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
+                allowNextPageFallback = preferredCellX == null || preferredCellY == null,
                 columns = columns,
                 rows = rows,
             ) ?: return@edit
@@ -110,6 +161,7 @@ class HomeWorkspaceRepository(
                 cellY = slot.cellY,
                 spanX = slot.spanX,
                 spanY = slot.spanY,
+                page = slot.page,
             )
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             added = true
@@ -121,6 +173,7 @@ class HomeWorkspaceRepository(
         widgetType: NativeWidgetType,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = 0,
         columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
         rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
@@ -133,6 +186,8 @@ class HomeWorkspaceRepository(
                 desiredSpanY = widgetType.defaultSpanY,
                 preferredCellX = preferredCellX,
                 preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
+                allowNextPageFallback = preferredCellX == null || preferredCellY == null,
                 columns = columns,
                 rows = rows,
             ) ?: return@edit
@@ -144,6 +199,7 @@ class HomeWorkspaceRepository(
                 cellY = slot.cellY,
                 spanX = slot.spanX,
                 spanY = slot.spanY,
+                page = slot.page,
             )
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             added = true
@@ -151,10 +207,143 @@ class HomeWorkspaceRepository(
         return added
     }
 
+    suspend fun addFolder(
+        name: String,
+        appKeys: List<String>,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
+        preferredPage: Int = 0,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
+    ): Boolean {
+        val cleanName = name.trim().ifBlank { return false }
+        val distinctKeys = appKeys.filter { it.isNotBlank() }.distinct()
+        if (distinctKeys.isEmpty()) return false
+
+        var added = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val slot = placementUseCase.findAvailableSlot(
+                existingItems = current,
+                desiredSpanX = 1,
+                desiredSpanY = 1,
+                preferredCellX = preferredCellX,
+                preferredCellY = preferredCellY,
+                preferredPage = preferredPage,
+                allowNextPageFallback = preferredCellX == null || preferredCellY == null,
+                columns = columns,
+                rows = rows,
+            ) ?: return@edit
+
+            current += HomeItem.Folder(
+                id = "folder_${UUID.randomUUID()}",
+                name = cleanName,
+                appKeys = distinctKeys,
+                cellX = slot.cellX,
+                cellY = slot.cellY,
+                page = slot.page,
+            )
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+            added = true
+        }
+        return added
+    }
+
+    suspend fun createFolderFromShortcuts(
+        sourceShortcutId: String?,
+        targetShortcutId: String,
+        appKeyToAdd: String,
+        defaultName: String,
+    ): Boolean {
+        if (sourceShortcutId == targetShortcutId || appKeyToAdd.isBlank()) return false
+        var created = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val targetIndex = current.indexOfFirst { it.id == targetShortcutId }
+            val target = current.getOrNull(targetIndex) as? HomeItem.AppShortcut ?: return@edit
+            val mergedKeys = listOf(target.appKey, appKeyToAdd).filter { it.isNotBlank() }.distinct()
+            current[targetIndex] = HomeItem.Folder(
+                id = "folder_${UUID.randomUUID()}",
+                name = defaultName.trim().ifBlank { context.getString(R.string.home_folder_default_name) },
+                appKeys = mergedKeys,
+                cellX = target.cellX,
+                cellY = target.cellY,
+                page = target.page,
+            )
+            if (sourceShortcutId != null) {
+                current.removeAll { it.id == sourceShortcutId }
+            }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+            created = true
+        }
+        return created
+    }
+
+    suspend fun addAppToFolder(
+        folderId: String,
+        appKey: String,
+        sourceShortcutId: String? = null,
+    ): Boolean {
+        if (appKey.isBlank()) return false
+        var updated = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val index = current.indexOfFirst { it.id == folderId }
+            val folder = current.getOrNull(index) as? HomeItem.Folder ?: return@edit
+            val nextKeys = (folder.appKeys + appKey).distinct()
+            current[index] = folder.copy(appKeys = nextKeys)
+            if (sourceShortcutId != null && sourceShortcutId != folderId) {
+                current.removeAll { it.id == sourceShortcutId }
+            }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+            updated = true
+        }
+        return updated
+    }
+
+    suspend fun removeAppFromFolder(
+        folderId: String,
+        appKey: String,
+    ) {
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val index = current.indexOfFirst { it.id == folderId }
+            val folder = current.getOrNull(index) as? HomeItem.Folder ?: return@edit
+            val remaining = folder.appKeys.filterNot { it == appKey }
+            if (remaining.isEmpty()) {
+                current.removeAt(index)
+            } else {
+                current[index] = folder.copy(appKeys = remaining)
+            }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+        }
+    }
+
+    suspend fun updateFolder(
+        folderId: String,
+        name: String,
+        appKeys: List<String>,
+    ) {
+        val cleanName = name.trim().ifBlank { return }
+        val distinctKeys = appKeys.filter { it.isNotBlank() }.distinct()
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val index = current.indexOfFirst { it.id == folderId }
+            val folder = current.getOrNull(index) as? HomeItem.Folder ?: return@edit
+            if (distinctKeys.isEmpty()) {
+                current.removeAt(index)
+            } else {
+                current[index] = folder.copy(name = cleanName, appKeys = distinctKeys)
+            }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+        }
+    }
+
     suspend fun moveItem(
         id: String,
         newCellX: Int,
         newCellY: Int,
+        newPage: Int? = null,
         columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
         rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
@@ -164,6 +353,10 @@ class HomeWorkspaceRepository(
             val index = current.indexOfFirst { it.id == id }
             if (index == -1) return@edit
             val item = current[index]
+            val targetPage = (newPage ?: item.page).coerceIn(
+                0,
+                io.github.vimitt.overview.domain.model.HomeGridSpec.MAX_PAGES - 1,
+            )
 
             if (!placementUseCase.canPlace(
                     existingItems = current,
@@ -171,6 +364,7 @@ class HomeWorkspaceRepository(
                     cellY = newCellY,
                     spanX = item.spanX,
                     spanY = item.spanY,
+                    page = targetPage,
                     ignoreItemId = id,
                     columns = columns,
                     rows = rows,
@@ -180,9 +374,11 @@ class HomeWorkspaceRepository(
             }
 
             current[index] = when (item) {
-                is HomeItem.AppShortcut -> item.copy(cellX = newCellX, cellY = newCellY)
-                is HomeItem.Widget -> item.copy(cellX = newCellX, cellY = newCellY)
-                is HomeItem.NativeWidget -> item.copy(cellX = newCellX, cellY = newCellY)
+                is HomeItem.AppShortcut -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
+                is HomeItem.PinnedShortcut -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
+                is HomeItem.Folder -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
+                is HomeItem.Widget -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
+                is HomeItem.NativeWidget -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
             }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             moved = true
@@ -234,6 +430,7 @@ class HomeWorkspaceRepository(
                     cellY = candidateY,
                     spanX = safeSpanX,
                     spanY = safeSpanY,
+                    page = item.page,
                     ignoreItemId = id,
                     columns = columns,
                     rows = rows,
@@ -255,7 +452,10 @@ class HomeWorkspaceRepository(
                     spanX = safeSpanX,
                     spanY = safeSpanY,
                 )
-                is HomeItem.AppShortcut -> item
+                is HomeItem.AppShortcut,
+                is HomeItem.PinnedShortcut,
+                is HomeItem.Folder,
+                -> item
             }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             resized = true
@@ -278,19 +478,62 @@ class HomeWorkspaceRepository(
 
     suspend fun currentItems(): List<HomeItem> = items.first()
 
-    internal fun encodeItems(items: List<HomeItem>): String {
+    /**
+     * Exporta os itens portáveis da tela inicial em JSON (omiti widgets do sistema, pois `appWidgetId` é local).
+     */
+    suspend fun exportBackupItemsJson(): JSONArray {
+        val portableItems = currentItems().filterNot { it is HomeItem.Widget }
+        return encodeItemsArray(portableItems)
+    }
+
+    /**
+     * Restaura os itens portáveis da tela inicial a partir de um backup JSON e retorna os `appWidgetId`s removidos.
+     */
+    suspend fun importBackupItemsJson(array: JSONArray): List<Int> {
+        val decoded = decodeItems(array.toString()).filterNot { it is HomeItem.Widget }
+        var removedWidgetIds: List<Int> = emptyList()
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
+            removedWidgetIds = current.filterIsInstance<HomeItem.Widget>().map { it.appWidgetId }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(decoded)
+        }
+        return removedWidgetIds
+    }
+
+    internal fun encodeItems(items: List<HomeItem>): String = encodeItemsArray(items).toString()
+
+    internal fun encodeItemsArray(items: List<HomeItem>): JSONArray {
         val array = JSONArray()
         for (item in items) {
             val obj = JSONObject().apply {
                 put("id", item.id)
                 put("cellX", item.cellX)
                 put("cellY", item.cellY)
+                put("page", item.page)
                 when (item) {
                     is HomeItem.AppShortcut -> {
                         put("type", TYPE_SHORTCUT)
                         put("packageName", item.packageName)
                         put("activityName", item.activityName)
                         put("userHandleHash", item.userHandleHash)
+                    }
+
+                    is HomeItem.PinnedShortcut -> {
+                        put("type", TYPE_PINNED_SHORTCUT)
+                        put("packageName", item.packageName)
+                        put("shortcutId", item.shortcutId)
+                        put("label", item.label)
+                        put("userHandleHash", item.userHandleHash)
+                    }
+
+                    is HomeItem.Folder -> {
+                        put("type", TYPE_FOLDER)
+                        put("name", item.name)
+                        val keysArray = JSONArray()
+                        for (key in item.appKeys) {
+                            keysArray.put(key)
+                        }
+                        put("appKeys", keysArray)
                     }
 
                     is HomeItem.Widget -> {
@@ -312,7 +555,7 @@ class HomeWorkspaceRepository(
             }
             array.put(obj)
         }
-        return array.toString()
+        return array
     }
 
     internal fun decodeItems(raw: String): List<HomeItem> {
@@ -325,6 +568,10 @@ class HomeWorkspaceRepository(
                     val id = obj.getString("id")
                     val cellX = obj.getInt("cellX")
                     val cellY = obj.getInt("cellY")
+                    val page = obj.optInt("page", 0).coerceIn(
+                        0,
+                        io.github.vimitt.overview.domain.model.HomeGridSpec.MAX_PAGES - 1,
+                    )
                     when (obj.getString("type")) {
                         TYPE_SHORTCUT -> add(
                             HomeItem.AppShortcut(
@@ -334,8 +581,50 @@ class HomeWorkspaceRepository(
                                 userHandleHash = obj.optInt("userHandleHash", 0),
                                 cellX = cellX,
                                 cellY = cellY,
+                                page = page,
                             ),
                         )
+
+                        TYPE_PINNED_SHORTCUT -> {
+                            val packageName = obj.optString("packageName")
+                            val shortcutId = obj.optString("shortcutId")
+                            if (packageName.isBlank() || shortcutId.isBlank()) continue
+                            add(
+                                HomeItem.PinnedShortcut(
+                                    id = id,
+                                    packageName = packageName,
+                                    shortcutId = shortcutId,
+                                    label = obj.optString("label").ifBlank { shortcutId },
+                                    userHandleHash = obj.optInt("userHandleHash", 0),
+                                    cellX = cellX,
+                                    cellY = cellY,
+                                    page = page,
+                                ),
+                            )
+                        }
+
+                        TYPE_FOLDER -> {
+                            val name = obj.optString("name").takeIf { it.isNotBlank() } ?: continue
+                            val keysArray = obj.optJSONArray("appKeys")
+                            val appKeys = buildList {
+                                if (keysArray != null) {
+                                    for (j in 0 until keysArray.length()) {
+                                        val key = keysArray.optString(j)
+                                        if (key.isNotBlank()) add(key)
+                                    }
+                                }
+                            }
+                            add(
+                                HomeItem.Folder(
+                                    id = id,
+                                    name = name,
+                                    appKeys = appKeys,
+                                    cellX = cellX,
+                                    cellY = cellY,
+                                    page = page,
+                                ),
+                            )
+                        }
 
                         TYPE_WIDGET -> add(
                             HomeItem.Widget(
@@ -347,6 +636,7 @@ class HomeWorkspaceRepository(
                                 cellY = cellY,
                                 spanX = obj.optInt("spanX", 2),
                                 spanY = obj.optInt("spanY", 2),
+                                page = page,
                             ),
                         )
 
@@ -362,6 +652,7 @@ class HomeWorkspaceRepository(
                                     cellY = cellY,
                                     spanX = obj.optInt("spanX", widgetType.defaultSpanX),
                                     spanY = obj.optInt("spanY", widgetType.defaultSpanY),
+                                    page = page,
                                 ),
                             )
                         }
@@ -374,6 +665,8 @@ class HomeWorkspaceRepository(
     private companion object {
         val KEY_WORKSPACE_ITEMS = stringPreferencesKey("workspace_items_json")
         const val TYPE_SHORTCUT = "shortcut"
+        const val TYPE_PINNED_SHORTCUT = "pinned_shortcut"
+        const val TYPE_FOLDER = "folder"
         const val TYPE_WIDGET = "widget"
         const val TYPE_NATIVE_WIDGET = "native_widget"
     }

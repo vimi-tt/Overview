@@ -1,0 +1,571 @@
+<resources>
+    <string name="search_apps_hint">Pesquisar aplicativos…</string>
+    <string name="search_apps_content_description">Pesquisar aplicativos</string>
+    <string name="clear_search_content_description">Limpar pesquisa</string>
+    <string name="open_overview_content_description">Abrir visão geral de aplicativos</string>
+    <string name="open_settings_content_description">Configurações do Overview</string>
+    <string name="no_apps_found">Nenhum aplicativo encontrado</string>
+    <string name="loading_apps">Carregando aplicativos…</string>
+
+    <!-- Menu da tela inicial e personalização -->
+    <string name="home_menu_title">Tela inicial</string>
+    <string name="home_menu_add_app">Adicionar aplicativo</string>
+    <string name="home_menu_add_folder">Criar pasta</string>
+    <string name="home_menu_add_widget">Adicionar widget</string>
+    <string name="home_menu_customize">Configurações</string>
+    <string name="home_menu_wallpaper">Alterar papel de parede</string>
+    <string name="wallpaper_chooser_title">Escolher papel de parede</string>
+
+    <!-- Adição e edição de apps e widgets na Home -->
+    <string name="picker_apps_title">Adicionar aplicativo</string>
+    <string name="picker_widgets_title">Adicionar widget</string>
+    <string name="picker_widgets_search_hint">Pesquisar widgets…</string>
+    <string name="picker_widgets_loading">Carregando widgets…</string>
+    <string name="picker_widgets_empty">Nenhum widget encontrado</string>
+    <plurals name="picker_widgets_count">
+        <item quantity="one">%1$d widget</item>
+        <item quantity="many">%1$d widgets</item>
+        <item quantity="other">%1$d widgets</item>
+    </plurals>
+    <string name="home_grid_full">Sem espaço livre na tela inicial</string>
+    <string name="home_item_added">Adicionado à tela inicial</string>
+    <string name="home_layout_locked_notice">Layout bloqueado nas configurações</string>
+    <string name="home_move_hint">Toque na nova posição</string>
+    <string name="home_move_cancel">Cancelar</string>
+    <string name="home_resize_hint">Arraste as bordas</string>
+    <string name="home_resize_done">Concluir</string>
+    <string name="home_resize_move">Mover</string>
+    <string name="home_resize_remove">Remover</string>
+    <string name="home_action_move">Mover posição</string>
+    <string name="home_action_remove">Remover da tela inicial</string>
+    <string name="home_folder_default_name">Pasta</string>
+    <string name="home_folder_action_open">Abrir pasta</string>
+    <string name="home_folder_action_edit">Editar pasta</string>
+    <string name="home_folder_move_to_home">Mover para tela inicial</string>
+    <string name="home_widget_width">Largura</string>
+    <string name="home_widget_height">Altura</string>
+    <string name="home_widget_unavailable">Widget indisponível</string>
+    <string name="home_drag_remove">Solte aqui para remover</string>
+    <string name="overview_action_add_home">Adicionar à tela inicial</string>
+    <string name="overview_action_app_info">Informações do aplicativo</string>
+    <string name="overview_action_uninstall">Desinstalar</string>
+    <string name="app_shortcuts_header">Atalhos</string>
+    <string name="pin_shortcut_dialog_title">Adicionar atalho à tela inicial?</string>
+    <string name="pin_widget_dialog_title">Adicionar widget à tela inicial?</string>
+    <string name="pin_item_accept">Adicionar</string>
+    <string name="shortcut_unavailable">Atalho indisponível</string>
+
+    <!-- Hub de Configurações -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_back_content_description">Voltar</string>
+    <string name="settings_hub_appearance">Aparência</string>
+    <string name="settings_hub_home">Tela inicial</string>
+    <string name="settings_hub_dock">Dock</string>
+    <string name="settings_hub_app_grid">Grade de apps</string>
+    <string name="settings_hub_overview">Overview</string>
+    <string name="settings_hub_search">Busca</string>
+    <string name="settings_hub_folders">Pastas</string>
+    <string name="settings_hub_gestures">Gestos</string>
+    <string name="settings_hub_about">Sobre</string>
+
+    <!-- Categoria: Aparência -->
+    <string name="settings_section_visual_style">Estilo visual</string>
+    <string name="settings_visual_style_label">Identidade visual</string>
+    <string name="settings_visual_style_gnome_sub">Adwaita clássico, formas limpas e transições contidas</string>
+    <string name="settings_visual_style_expressive_sub">GNOME × Material 3 Expressive: molas, morphing e superfícies tonais</string>
+    <string name="settings_visual_style_preview_title">Pré-visualização ao vivo</string>
+    <string name="settings_visual_style_preview_action">Testar</string>
+    <string name="settings_visual_style_preview_toggle_cd">Alternar estilo visual</string>
+    <string name="settings_visual_style_preview_gnome_pill">Limpo e previsível</string>
+    <string name="settings_visual_style_preview_expressive_pill">Molas, morphing e tom</string>
+
+    <string name="settings_section_theme">Tema e cores</string>
+    <string name="settings_section_motion_type">Movimento e tipografia</string>
+    <string name="settings_section_icons">Formas e ícones</string>
+    <string name="settings_section_appearance_effects">Efeitos e transparência</string>
+
+    <string name="settings_theme_label">Tema</string>
+    <string name="settings_theme_system">Automático</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Escuro</string>
+    <string name="settings_color_source_label">Origem das cores</string>
+    <string name="settings_color_source_dynamic">Dinâmica</string>
+    <string name="settings_color_source_custom">Personalizada</string>
+    <string name="settings_color_source_subtitle_gnome">Paleta fixa inspirada no libadwaita</string>
+    <string name="settings_color_source_subtitle_dynamic">Cores dinâmicas do sistema (Material You)</string>
+    <string name="settings_color_source_subtitle_custom">Cor escolhida manualmente com contraste adaptado</string>
+    <string name="settings_accent_label">Cor de destaque</string>
+    <string name="settings_accent_subtitle">Inspirada na paleta Adwaita</string>
+    <string name="settings_custom_accent_label">Cor personalizada</string>
+    <string name="settings_custom_accent_hex">Código HEX (#RRGGBB)</string>
+    <string name="settings_custom_accent_apply">Aplicar</string>
+    <string name="settings_custom_accent_reset">Padrão</string>
+    <string name="settings_custom_accent_invalid_hex">Digite 6 dígitos hexadecimais (ex.: 6750A4)</string>
+
+    <!-- Nomes das cores predefinidas -->
+    <string name="color_preset_blue">Azul</string>
+    <string name="color_preset_teal">Turquesa</string>
+    <string name="color_preset_green">Verde</string>
+    <string name="color_preset_yellow">Amarelo</string>
+    <string name="color_preset_orange">Laranja</string>
+    <string name="color_preset_red">Vermelho</string>
+    <string name="color_preset_pink">Rosa</string>
+    <string name="color_preset_purple">Roxo</string>
+    <string name="color_preset_slate">Ardósia</string>
+    <string name="color_preset_indigo">Índigo</string>
+    <string name="color_preset_lavender">Lavanda</string>
+    <string name="color_preset_cyan">Ciano</string>
+    <string name="color_preset_emerald">Esmeralda</string>
+    <string name="color_preset_amber">Âmbar</string>
+    <string name="color_preset_coral">Coral</string>
+    <string name="color_preset_magenta">Magenta</string>
+    <string name="color_preset_graphite">Grafite</string>
+
+    <string name="settings_motion_intensity_label">Intensidade do movimento</string>
+    <string name="settings_motion_intensity_low">Baixa</string>
+    <string name="settings_motion_intensity_medium">Média</string>
+    <string name="settings_motion_intensity_high">Alta</string>
+    <string name="settings_motion_intensity_subtitle_low">Molas discretas e estáveis, com overshoot mínimo</string>
+    <string name="settings_motion_intensity_subtitle_medium">Física de mola equilibrada para o estilo Expressive</string>
+    <string name="settings_motion_intensity_subtitle_high">Molas expressivas com overshoot acentuado</string>
+    <string name="settings_motion_intensity_subtitle_gnome">Curvas suaves lineares ativas no estilo GNOME</string>
+    <string name="settings_typography_weight_label">Peso da tipografia</string>
+    <string name="settings_typography_weight_normal">Normal</string>
+    <string name="settings_typography_weight_emphatic">Enfático</string>
+    <string name="settings_typography_weight_subtitle_normal">Hierarquia limpa e moderada</string>
+    <string name="settings_typography_weight_subtitle_emphatic">Títulos e seções mais encorpados</string>
+
+    <string name="settings_shape_family_label">Família de formas</string>
+    <string name="settings_shape_family_soft">Discreta</string>
+    <string name="settings_shape_family_rounded">Padrão</string>
+    <string name="settings_shape_family_expressive">Expressiva</string>
+    <string name="settings_shape_family_subtitle_soft">Cantos mais contidos em cards, dock e menus</string>
+    <string name="settings_shape_family_subtitle_rounded">Arredondamento equilibrado no padrão GNOME</string>
+    <string name="settings_shape_family_subtitle_expressive">Raios ampliados com morphing expressivo ao tocar</string>
+    <string name="settings_icon_pack_label">Pacote de ícones</string>
+    <string name="settings_icon_pack_system">Ícones do sistema</string>
+    <string name="settings_icon_pack_loading">Buscando pacotes instalados…</string>
+    <string name="settings_icon_pack_empty">Nenhum pacote de ícones compatível instalado</string>
+    <string name="settings_icon_shape_label">Forma dos ícones</string>
+    <string name="settings_icon_shape_circle">Círculo</string>
+    <string name="settings_icon_shape_rounded">Quadrado arredondado</string>
+    <string name="settings_icon_shape_squircle">Squircle</string>
+    <string name="settings_icon_shape_square">Quadrado</string>
+    <string name="settings_icon_shape_clover">Trevo</string>
+    <string name="settings_icon_shape_flower">Flor</string>
+    <string name="settings_icon_roundness_label">Arredondamento dos ícones</string>
+    <string name="settings_icon_roundness_value">%1$d%%</string>
+    <string name="settings_notification_dots">Pontos de notificação</string>
+    <string name="settings_notification_dots_subtitle">Mostra um ponto discreto quando há notificações ativas</string>
+    <string name="settings_notification_permission_title">Permitir acesso às notificações</string>
+    <string name="settings_notification_permission_body">Para exibir pontos de notificação nos ícones, conceda acesso ao serviço do Overview nas configurações do sistema.</string>
+    <string name="settings_notification_permission_grant">Abrir configurações</string>
+    <string name="settings_notification_permission_missing">Permissão de notificações não concedida</string>
+
+    <string name="settings_appearance_blur_toggle">Desfoque do fundo</string>
+    <string name="settings_appearance_blur_toggle_on">Ativado · %1$d dp com RenderEffect</string>
+    <string name="settings_appearance_blur_toggle_off">Desativado · sem custo extra de GPU</string>
+    <string name="settings_appearance_blur_intensity">Intensidade do desfoque</string>
+
+    <!-- Categoria: Overview -->
+    <string name="settings_section_overview_blur">Desfoque e fundo</string>
+    <string name="settings_section_overview_motion">Animações e transições</string>
+    <string name="settings_blur_label">Intensidade do desfoque</string>
+    <string name="settings_blur_subtitle">Aplica blur com RenderEffect e papel de parede no fundo</string>
+    <string name="settings_blur_off">Desativado</string>
+    <string name="settings_overview_blur_summary_on">Desfoque %1$d dp</string>
+    <string name="settings_overview_blur_summary_off">Sem desfoque</string>
+    <string name="settings_overview_scrim_label">Escurecimento do fundo</string>
+    <string name="settings_overview_scrim_subtitle">Controla o contraste do fundo atrás da grade de apps</string>
+    <string name="settings_overview_transition_label">Estilo de transição</string>
+    <string name="settings_overview_transition_slide">Deslizar</string>
+    <string name="settings_overview_transition_fade">Esmaecer</string>
+    <string name="settings_overview_speed_label">Velocidade das animações</string>
+    <string name="settings_overview_speed_fast">Rápida</string>
+    <string name="settings_overview_speed_normal">Padrão</string>
+    <string name="settings_overview_speed_relaxed">Suave</string>
+    <string name="settings_overview_depth_label">Efeito de profundidade</string>
+    <string name="settings_overview_depth_subtitle">Recua suavemente a tela inicial ao abrir o Overview</string>
+    <string name="settings_overview_launch_anim_label">Animação ao abrir aplicativos</string>
+    <string name="settings_overview_launch_anim_subtitle">Expande a janela do aplicativo a partir do ícone tocado</string>
+    <string name="settings_overview_reduced_motion_notice">Animações reduzidas ativas no sistema — as transições espaciais são substituídas por trocas instantâneas.</string>
+    <string name="settings_overview_preview_hint">Toque para alternar a pré-visualização</string>
+
+    <!-- Categoria: Tela inicial -->
+    <string name="settings_section_home_grid">Grade</string>
+    <string name="settings_section_home_clock">Relógio</string>
+    <string name="settings_section_home_items">Ícones e rótulos</string>
+    <string name="settings_section_home_general">Geral</string>
+    <string name="settings_home_columns">Colunas da grade</string>
+    <string name="settings_home_rows">Linhas da grade</string>
+    <string name="settings_home_icon_scale">Tamanho dos ícones</string>
+    <string name="settings_home_show_labels">Mostrar rótulos</string>
+    <string name="settings_home_show_labels_subtitle">Exibe o nome abaixo dos atalhos na tela inicial</string>
+    <string name="settings_home_label_scale">Tamanho dos rótulos</string>
+    <string name="settings_home_lock_layout">Bloquear layout</string>
+    <string name="settings_home_lock_layout_subtitle">Impede mover, redimensionar ou remover itens da tela inicial</string>
+    <string name="settings_home_quick_settings_button">Atalho do painel rápido GNOME</string>
+    <string name="settings_home_quick_settings_button_subtitle">Exibe a pílula de status e ajustes rápidos no topo da tela inicial</string>
+    <string name="settings_show_clock">Mostrar relógio</string>
+    <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
+    <string name="settings_home_clock_style">Estilo do relógio</string>
+    <string name="settings_home_clock_alpha">Opacidade do fundo</string>
+    <string name="settings_home_clock_alpha_subtitle">Ajusta a transparência dos estilos com fundo</string>
+    <string name="settings_home_clock_weather">Clima nos relógios</string>
+    <string name="settings_home_clock_weather_subtitle">Exibe temperatura e clima junto ao relógio; desative para exibir só hora e data</string>
+    <string name="clock_weather_hide_action">Não mostrar no relógio</string>
+    <string name="settings_home_clock_location">Localização do clima</string>
+    <string name="settings_home_clock_location_active">Localização ativa: %1$s</string>
+    <string name="settings_home_clock_location_enable">Ativar localização para obter o clima automaticamente</string>
+    <string name="settings_home_clock_location_gps_off">GPS do aparelho desligado — toque para ativar</string>
+    <string name="settings_home_clock_city">Escolher cidade manualmente</string>
+    <string name="settings_home_weather_provider">Provedor de clima</string>
+    <string name="weather_provider_auto">Automático (com fallback)</string>
+    <string name="weather_provider_met_norway">MET Norway (mais estável)</string>
+    <string name="weather_provider_open_meteo">Open-Meteo (multi-modelo)</string>
+    <string name="weather_provider_wttr">wttr.in (alternativo)</string>
+    <string name="weather_provider_dialog_label">Fonte do clima</string>
+    <string name="weather_refresh_failed">Falha ao atualizar clima</string>
+    <string name="clock_enable_location_cta">Ativar localização</string>
+    <string name="permission_calendar_settings_notice">Ative a permissão de Agenda nas configurações do aplicativo.</string>
+    <string name="permission_location_settings_notice">Ative a permissão de Localização nas configurações do aplicativo.</string>
+    <string name="weather_location_gps_disabled_notice">Ative a localização (GPS) do aparelho para buscar o clima automaticamente.</string>
+    <string name="weather_location_resolving_notice">Buscando localização atual…</string>
+    <string name="weather_location_unavailable_notice">Não foi possível obter a localização agora. Tente escolher a cidade.</string>
+    <string name="weather_location_found_forecast_pending">Localização %1$s salva. Toque no relógio para atualizar o clima.</string>
+    <string name="settings_home_clock_style_gnome">GNOME Clássico</string>
+    <string name="settings_home_clock_style_stacked">Empilhado</string>
+    <string name="settings_home_clock_style_analog">Analógico Adwaita</string>
+    <string name="settings_home_clock_style_side">Editorial lateral</string>
+    <string name="settings_home_clock_style_pill">Cápsula compacta</string>
+    <string name="settings_home_clock_style_full_pill">Cápsula completa (Resumo)</string>
+    <string name="clock_greeting_morning">Bom dia</string>
+    <string name="clock_greeting_afternoon">Boa tarde</string>
+    <string name="clock_greeting_evening">Boa noite</string>
+    <string name="settings_home_clock_preview_hint">Toque para alternar entre os estilos</string>
+    <string name="settings_wallpaper_row">Papel de parede do sistema</string>
+
+    <!-- Categoria: Dock -->
+    <string name="settings_section_dock_layout">Aparência e layout</string>
+    <string name="settings_section_dock_favorites">Aplicativos fixados</string>
+    <string name="settings_dock_icon_count">Número de ícones</string>
+    <plurals name="settings_dock_icons_count">
+        <item quantity="one">%1$d ícone</item>
+        <item quantity="many">%1$d ícones</item>
+        <item quantity="other">%1$d ícones</item>
+    </plurals>
+    <string name="settings_dock_bg_alpha">Opacidade do fundo</string>
+    <string name="settings_dock_show_search">Barra de busca no Dock</string>
+    <string name="settings_dock_show_search_subtitle">Exibe um atalho de pesquisa logo acima do Dock</string>
+    <plurals name="settings_dash_subtitle">
+        <item quantity="one">Selecione até %1$d aplicativo para fixar no Dock</item>
+        <item quantity="many">Selecione até %1$d aplicativos para fixar no Dock</item>
+        <item quantity="other">Selecione até %1$d aplicativos para fixar no Dock</item>
+    </plurals>
+    <string name="settings_dash_reset">Usar padrão automático</string>
+    <string name="settings_dash_auto_badge">Automático</string>
+    <plurals name="settings_dock_summary_auto">
+        <item quantity="one">%1$d ícone · Automático</item>
+        <item quantity="many">%1$d ícones · Automático</item>
+        <item quantity="other">%1$d ícones · Automático</item>
+    </plurals>
+    <plurals name="settings_dock_summary_pinned">
+        <item quantity="one">%1$d ícone · %2$d fixados</item>
+        <item quantity="many">%1$d ícones · %2$d fixados</item>
+        <item quantity="other">%1$d ícones · %2$d fixados</item>
+    </plurals>
+
+    <!-- Categoria: Grade de apps -->
+    <string name="settings_section_drawer_layout">Grade</string>
+    <string name="settings_section_drawer_apps">Organização e visibilidade</string>
+    <string name="settings_app_grid_layout_mode">Rolagem da grade</string>
+    <string name="settings_app_grid_layout_paged">Paginada</string>
+    <string name="settings_app_grid_layout_continuous">Contínua</string>
+    <string name="settings_app_grid_layout_paged_subtitle">Páginas horizontais no estilo GNOME</string>
+    <string name="settings_app_grid_layout_continuous_subtitle">Lista contínua para baixo</string>
+    <string name="settings_app_grid_columns">Colunas</string>
+    <plurals name="settings_app_grid_columns_count">
+        <item quantity="one">%1$d coluna</item>
+        <item quantity="many">%1$d colunas</item>
+        <item quantity="other">%1$d colunas</item>
+    </plurals>
+    <string name="settings_app_grid_icon_scale">Tamanho dos ícones</string>
+    <string name="settings_app_sort_order">Ordenação</string>
+    <string name="settings_sort_alpha_asc">Alfabética (A–Z)</string>
+    <string name="settings_sort_alpha_desc">Alfabética (Z–A)</string>
+    <string name="settings_sort_recent">Mais recentes</string>
+    <string name="settings_hidden_apps_title">Aplicativos ocultos</string>
+    <string name="settings_hidden_apps_none">Nenhum aplicativo oculto</string>
+    <plurals name="settings_hidden_apps_count">
+        <item quantity="one">%1$d oculto</item>
+        <item quantity="many">%1$d ocultos</item>
+        <item quantity="other">%1$d ocultos</item>
+    </plurals>
+    <string name="settings_hidden_show_in_search">Mostrar ocultos na busca</string>
+    <string name="settings_hidden_show_in_search_subtitle">Permite encontrar apps ocultos ao digitar na pesquisa do Overview</string>
+    <string name="settings_hidden_apps_search_hint">Filtrar aplicativos…</string>
+    <string name="settings_hidden_apps_empty">Nenhum aplicativo para exibir</string>
+
+    <!-- Categoria: Sobre -->
+    <string name="settings_about_tagline">Launcher Android inspirado no GNOME / libadwaita</string>
+    <string name="settings_about_section_app">Aplicativo</string>
+    <string name="settings_about_version">Versão</string>
+    <string name="settings_about_license">Licença</string>
+    <string name="settings_about_source">Código-fonte no GitHub</string>
+    <string name="settings_about_section_credits">Créditos e inspiração</string>
+    <string name="settings_about_credit_gnome_sub">Estética limpa, tipografia legível, espaçamento generoso e foco em gestos</string>
+    <string name="settings_about_credit_lawnchair_sub">Inspiração na organização das categorias e subtítulos dinâmicos das configurações</string>
+    <string name="settings_about_credit_fonts_sub">Tipografia variável oficial do GNOME embarcada para leitura clara em qualquer densidade</string>
+    <string name="settings_about_credit_openmeteo_sub">API aberta de previsão do tempo e geocodificação usada no widget de clima do relógio</string>
+    <string name="settings_about_section_highlights">Novidades da versão 1.0</string>
+    <string name="settings_about_highlight_home">Tela inicial multipáginas e pastas</string>
+    <string name="settings_about_highlight_home_sub">Navegue em até 5 páginas, arraste ícones pelas bordas e organize apps em pastas na Home</string>
+    <string name="settings_about_highlight_quick_settings">Configurações rápidas GNOME e widgets</string>
+    <string name="settings_about_highlight_quick_settings_sub">Painel próprio estilo Adwaita, clima com previsão, ferramentas de relógio, agenda, tarefas e notas</string>
+    <string name="settings_about_highlight_launcher">Integração nativa ao Android</string>
+    <string name="settings_about_highlight_launcher_sub">App Shortcuts, fixação de atalhos e widgets externos, desinstalação direta, ícone monocromático e Predictive Back</string>
+    <string name="settings_about_highlight_backup">Idiomas e backup em JSON</string>
+    <string name="settings_about_highlight_backup_sub">Tradução completa em português e inglês com exportação e restauração local de preferências e layout</string>
+
+    <!-- Categoria: Busca -->
+    <string name="settings_section_search_behavior">Comportamento</string>
+    <string name="settings_section_search_web">Pesquisa na web</string>
+    <string name="settings_search_autofocus">Abrir teclado ao entrar no Overview</string>
+    <string name="settings_search_autofocus_subtitle">Foca automaticamente a barra de busca ao abrir o Overview</string>
+    <string name="settings_search_match_pkg">Buscar pelo nome do pacote</string>
+    <string name="settings_search_match_pkg_subtitle">Encontra apps pelo identificador técnico além do título</string>
+    <string name="settings_search_clear_close">Limpar busca ao fechar</string>
+    <string name="settings_search_clear_close_subtitle">Reinicia o texto pesquisado ao sair do Overview</string>
+    <string name="settings_search_web_suggestion">Atalho de pesquisa na web</string>
+    <string name="settings_search_web_suggestion_subtitle">Oferece pesquisar o termo digitado no navegador</string>
+    <string name="settings_search_engine_label">Mecanismo de busca</string>
+    <string name="settings_search_summary_autofocus">Teclado automático · %1$s</string>
+    <string name="settings_search_summary_manual">Busca sob demanda · %1$s</string>
+    <string name="overview_web_search_pill">Pesquisar \"%1$s\" no %2$s</string>
+
+    <!-- Categoria: Pastas -->
+    <string name="settings_section_folders_appearance">Visual e organização</string>
+    <string name="settings_section_folders_manage">Suas pastas</string>
+    <string name="settings_folders_preview_label">Estilo da miniatura</string>
+    <string name="settings_folders_preview_grid">Grade 2 × 2</string>
+    <string name="settings_folders_preview_stacked">Empilhada</string>
+    <string name="settings_folders_columns_label">Colunas na pasta aberta</string>
+    <string name="settings_folders_sort_inside">Ordenar apps na pasta</string>
+    <string name="settings_folders_sort_inside_subtitle">Exibe os aplicativos em ordem alfabética ao abrir</string>
+    <string name="settings_folders_close_launch">Fechar ao abrir app</string>
+    <string name="settings_folders_close_launch_subtitle">Fecha a pasta automaticamente ao iniciar um aplicativo</string>
+    <string name="settings_folders_create">Criar pasta</string>
+    <string name="settings_folders_create_subtitle">Agrupe aplicativos semelhantes na grade do Overview</string>
+    <string name="settings_folders_empty">Nenhuma pasta criada ainda</string>
+    <plurals name="settings_folders_app_count">
+        <item quantity="one">%1$d aplicativo</item>
+        <item quantity="many">%1$d aplicativos</item>
+        <item quantity="other">%1$d aplicativos</item>
+    </plurals>
+    <string name="settings_folders_summary_none">Sem pastas · %1$s</string>
+    <plurals name="settings_folders_summary">
+        <item quantity="one">%1$d pasta · %2$s</item>
+        <item quantity="many">%1$d pastas · %2$s</item>
+        <item quantity="other">%1$d pastas · %2$s</item>
+    </plurals>
+    <string name="settings_folder_dialog_title_new">Nova pasta</string>
+    <string name="settings_folder_dialog_title_edit">Editar pasta</string>
+    <string name="settings_folder_name_label">Nome da pasta</string>
+    <string name="settings_folder_name_placeholder">Ex.: Ferramentas, Jogos…</string>
+    <string name="settings_folder_select_apps">Selecionar aplicativos (%1$d)</string>
+    <string name="settings_folder_save">Salvar</string>
+    <string name="settings_folder_delete">Excluir pasta</string>
+    <string name="overview_action_move_to_folder">Mover para pasta…</string>
+    <string name="overview_folder_picker_title">Escolher pasta</string>
+    <string name="overview_folder_remove_app">Remover da pasta</string>
+    <string name="overview_folder_edit_apps">Editar pasta</string>
+    <string name="overview_folder_empty">Pasta vazia</string>
+
+    <!-- Categoria: Gestos -->
+    <string name="settings_section_gestures_home">Gestos na tela inicial</string>
+    <string name="settings_section_gestures_feel">Sensibilidade</string>
+    <string name="settings_gesture_swipe_up">Deslizar para cima</string>
+    <string name="settings_gesture_swipe_down">Deslizar para baixo</string>
+    <string name="settings_gesture_double_tap">Toque duplo</string>
+    <string name="settings_gesture_home_button">Botão Início (na Home)</string>
+    <string name="settings_gesture_sensitivity">Sensibilidade ao deslizar</string>
+    <string name="settings_gesture_sensitivity_low">Baixa</string>
+    <string name="settings_gesture_sensitivity_medium">Média</string>
+    <string name="settings_gesture_sensitivity_high">Alta</string>
+    <string name="settings_gesture_action_none">Nenhuma ação</string>
+    <string name="settings_gesture_action_overview">Abrir Overview</string>
+    <string name="settings_gesture_action_overview_search">Abrir busca no Overview</string>
+    <string name="settings_gesture_action_gnome_quick_settings">Painel rápido GNOME</string>
+    <string name="settings_gesture_action_notifications">Expandir notificações</string>
+    <string name="settings_gesture_action_quick_settings">Configurações rápidas do sistema</string>
+    <string name="settings_gesture_action_settings">Configurações do Overview</string>
+    <string name="settings_gesture_action_wallpaper">Alterar papel de parede</string>
+    <string name="settings_gesture_action_assistant">Abrir assistente</string>
+    <string name="settings_gesture_action_camera">Abrir câmera</string>
+    <string name="settings_gestures_summary_format">Para cima: %1$s · Para baixo: %2$s</string>
+
+    <!-- Comuns -->
+    <string name="settings_close_dialog">Fechar</string>
+    <string name="settings_cancel">Cancelar</string>
+    <string name="settings_home_summary_locked">%1$d × %2$d · Bloqueado</string>
+
+    <!-- Widgets nativos do Overview -->
+    <string name="picker_native_widgets_section">Widgets do Overview</string>
+    <string name="picker_android_widgets_section">Widgets de aplicativos</string>
+    <string name="picker_widget_style_badge_gnome">Adaptado ao tema GNOME</string>
+    <string name="picker_widget_style_badge_expressive">Adaptado ao Material Expressive</string>
+
+    <string name="native_widget_daily_summary_title">Resumo do dia</string>
+    <string name="native_widget_daily_summary_desc">Próximo evento, clima e alarme numa linha só</string>
+    <string name="native_widget_summary_tap_weather">Definir cidade</string>
+    <string name="native_widget_summary_no_events">Agenda livre</string>
+
+    <string name="native_widget_agenda_title">Agenda</string>
+    <string name="native_widget_agenda_desc">Próximos compromissos, toque para abrir o evento</string>
+    <string name="native_widget_agenda_untitled">Compromisso</string>
+    <string name="native_widget_agenda_all_day">Dia inteiro</string>
+    <string name="native_widget_agenda_empty">Nenhum compromisso próximo</string>
+    <string name="native_widget_agenda_permission_title">Permissão de calendário necessária</string>
+    <string name="native_widget_agenda_permission_cta">Permitir agenda</string>
+
+    <string name="native_widget_weather_title">Clima (Open-Meteo)</string>
+    <string name="native_widget_weather_desc">Temperatura atual e previsão curta sem chave de API</string>
+    <string name="native_widget_weather_setup_title">Escolha sua cidade ou localização</string>
+    <string name="native_widget_weather_choose_city">Escolher cidade</string>
+    <string name="native_widget_weather_use_gps">Usar localização</string>
+    <string name="native_widget_weather_current_location">Localização atual</string>
+    <string name="native_widget_weather_feels_like">Sensação %1$d°</string>
+    <string name="native_widget_weather_min_max">Min %1$d° · Máx %2$d°</string>
+    <string name="native_widget_weather_city_dialog_title">Cidade para o clima</string>
+    <string name="native_widget_weather_city_hint">Digite o nome da cidade…</string>
+    <string name="native_widget_weather_search">Buscar</string>
+    <string name="native_widget_weather_search_empty">Nenhuma cidade encontrada</string>
+    <string name="native_widget_weather_cond_clear">Céu limpo</string>
+    <string name="native_widget_weather_cond_partly_cloudy">Parcialmente nublado</string>
+    <string name="native_widget_weather_cond_cloudy">Nublado</string>
+    <string name="native_widget_weather_cond_fog">Neblina</string>
+    <string name="native_widget_weather_cond_drizzle">Garoa</string>
+    <string name="native_widget_weather_cond_rain">Chuva</string>
+    <string name="native_widget_weather_cond_snow">Neve</string>
+    <string name="native_widget_weather_cond_storm">Tempestade</string>
+
+    <string name="native_widget_media_title">Controle de música</string>
+    <string name="native_widget_media_desc">Capa, reproduzir/pausar e trocar de faixa na Home</string>
+    <string name="native_widget_media_untitled">Mídia em reprodução</string>
+    <string name="native_widget_media_idle">Nada tocando agora</string>
+    <string name="native_widget_media_access_title">Ative o acesso às notificações para controlar mídias</string>
+    <string name="native_widget_media_access_cta">Conceder acesso</string>
+    <string name="native_widget_media_prev">Faixa anterior</string>
+    <string name="native_widget_media_play_pause">Reproduzir ou pausar</string>
+    <string name="native_widget_media_next">Próxima faixa</string>
+
+    <string name="native_widget_device_title">Bateria e dispositivo</string>
+    <string name="native_widget_device_desc">Bateria, armazenamento interno e rede em cartão compacto</string>
+    <string name="native_widget_battery_label">Bateria</string>
+    <string name="native_widget_battery_charging">%1$d%% · Carregando</string>
+    <string name="native_widget_storage_label">Armazenamento</string>
+    <string name="native_widget_network_label">Rede</string>
+    <string name="native_widget_network_cellular">Dados móveis</string>
+    <string name="native_widget_network_connected">Conectado</string>
+    <string name="native_widget_network_offline">Sem conexão</string>
+
+    <string name="native_widget_notes_title">Notas rápidas</string>
+    <string name="native_widget_notes_desc">Anotar e consultar a última nota direto da tela inicial</string>
+    <string name="native_widget_notes_empty">Toque em + para anotar algo rápido</string>
+    <plurals name="native_widget_notes_count">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <string name="native_widget_notes_dialog_title">Nota rápida</string>
+    <string name="native_widget_notes_placeholder">Escreva sua anotação…</string>
+    <string name="native_widget_notes_save">Salvar nota</string>
+    <string name="native_widget_notes_delete">Apagar</string>
+
+    <string name="native_widget_tasks_title">Tarefas</string>
+    <string name="native_widget_tasks_desc">Lista curta com marcar como concluída na própria tela</string>
+    <string name="native_widget_tasks_empty">Nenhuma tarefa pendente</string>
+    <string name="native_widget_tasks_dialog_title">Nova tarefa</string>
+    <string name="native_widget_tasks_placeholder">O que precisa ser feito?</string>
+    <string name="native_widget_tasks_add">Adicionar</string>
+    <string name="native_widget_tasks_clear_done">Limpar feitas</string>
+
+    <string name="native_widget_frequent_apps_title">Apps frequentes</string>
+    <string name="native_widget_frequent_apps_desc">Atalho direto para os aplicativos mais abertos</string>
+    <string name="native_widget_frequent_apps_empty">Abra alguns apps para preencher seus favoritos</string>
+
+    <string name="native_widget_timer_title">Timer e cronômetro</string>
+    <string name="native_widget_timer_desc">Iniciar e acompanhar sem abrir o aplicativo de relógio</string>
+    <string name="native_widget_mode_timer">Timer</string>
+    <string name="native_widget_mode_stopwatch">Cronômetro</string>
+    <string name="native_widget_timer_done">Tempo esgotado</string>
+    <string name="native_widget_timer_start">Iniciar</string>
+    <string name="native_widget_timer_pause">Pausar</string>
+    <string name="native_widget_timer_reset">Zerar</string>
+
+    <!-- Depuração (somente Debug) -->
+    <string name="settings_section_debug">Depuração</string>
+    <string name="settings_debug_replay_onboarding">Visualizar boas-vindas</string>
+    <string name="settings_debug_replay_onboarding_subtitle">Reproduz a animação inicial, permissões e escolha de tema</string>
+
+    <!-- Boas-vindas (Onboarding) -->
+    <string name="onboarding_preview_badge">Prévia (Debug)</string>
+    <string name="onboarding_welcome_title">Bem-vindo ao Overview</string>
+    <string name="onboarding_welcome_subtitle">Configure suas permissões e escolha o visual para começar.</string>
+    <string name="onboarding_start_cta">Começar</string>
+    <string name="onboarding_back">Voltar</string>
+    <string name="onboarding_skip">Agora não</string>
+    <string name="onboarding_continue">Continuar</string>
+    <string name="onboarding_finish">Concluir</string>
+
+    <string name="onboarding_requests_title">Permissões e recursos</string>
+    <string name="onboarding_requests_subtitle">Ative apenas o que quiser usar. Tudo é opcional e pode ser alterado depois.</string>
+    <string name="onboarding_req_notifications_title">Notificações e música</string>
+    <string name="onboarding_req_notifications_desc">Exibe emblemas nos ícones e controla músicas na tela inicial.</string>
+    <string name="onboarding_req_calendar_title">Agenda do celular</string>
+    <string name="onboarding_req_calendar_desc">Mostra próximos compromissos nos widgets de Agenda e Resumo.</string>
+    <string name="onboarding_req_location_title">Localização para o clima</string>
+    <string name="onboarding_req_location_desc">Atualiza automaticamente a previsão do tempo para a sua cidade.</string>
+    <string name="onboarding_req_default_home_title">Launcher padrão</string>
+    <string name="onboarding_req_default_home_desc">Define o Overview como sua tela inicial ao pressionar Início.</string>
+    <string name="onboarding_req_grant">Ativar</string>
+    <string name="onboarding_req_granted">Ativado</string>
+
+    <string name="onboarding_theme_title">Escolha seu estilo visual</string>
+    <string name="onboarding_theme_subtitle">Você pode alternar entre GNOME e Material Expressive a qualquer momento nas configurações.</string>
+    <string name="onboarding_theme_gnome_desc">Superfícies Adwaita calmas, cantos contidos e leitura direta.</string>
+    <string name="onboarding_theme_expressive_desc">Formas orgânicas, cores tonais vibrantes e animações com mola.</string>
+    <string name="onboarding_theme_preview_caption">Pré-visualização ao vivo</string>
+    <string name="onboarding_theme_preview_sample_meta">seg., 16 de nov · 24°</string>
+
+    <!-- Painel rápido GNOME -->
+    <string name="quick_settings_title">Ajustes rápidos</string>
+    <string name="quick_settings_open_cd">Abrir painel rápido GNOME</string>
+    <string name="quick_settings_battery_charging">%1$d%% · Carregando</string>
+    <string name="quick_settings_brightness">Brilho</string>
+    <string name="quick_settings_brightness_grant">Permitir</string>
+    <string name="quick_settings_volume">Volume de mídia</string>
+    <string name="quick_settings_internet">Internet</string>
+    <string name="quick_settings_flashlight">Lanterna</string>
+    <string name="quick_settings_dnd">Não perturbe</string>
+    <string name="quick_settings_rotate">Rotação</string>
+    <string name="quick_settings_dark_style">Modo escuro</string>
+    <string name="quick_settings_airplane">Modo avião</string>
+    <string name="quick_settings_state_on">Ativado</string>
+    <string name="quick_settings_state_off">Desativado</string>
+    <string name="quick_settings_state_connected">Conectado</string>
+    <string name="quick_settings_state_unavailable">Indisponível</string>
+    <string name="quick_settings_system_settings_cd">Configurações do Android</string>
+    <string name="quick_settings_toggle_theme_cd">Alternar modo claro e escuro</string>
+
+    <!-- Backup e restauração -->
+    <string name="settings_section_backup">Backup e restauração</string>
+    <string name="settings_backup_export">Exportar backup</string>
+    <string name="settings_backup_export_subtitle">Salva preferências, pastas e layout da tela inicial em JSON</string>
+    <string name="settings_backup_import">Restaurar backup</string>
+    <string name="settings_backup_import_subtitle">Importa preferências e layout de um arquivo salvo</string>
+    <string name="backup_export_success">Backup exportado com sucesso</string>
+    <string name="backup_export_error">Não foi possível exportar o backup</string>
+    <string name="backup_import_success">Backup restaurado</string>
+    <string name="backup_import_error">Arquivo de backup inválido ou ilegível</string>
+</resources>

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.VisualStyle
 import kotlin.math.max
@@ -49,6 +50,26 @@ object AdwaitaPalette {
         "Coral" to 0xFFE04F5FL,
         "Magenta" to 0xFFC63D85L,
         "Grafite" to 0xFF526375L,
+    )
+
+    val AccentPresetNameRes: Map<Long, Int> = mapOf(
+        0xFF3584E4L to R.string.color_preset_blue,
+        0xFF2190A4L to R.string.color_preset_teal,
+        0xFF3A944AL to R.string.color_preset_green,
+        0xFFC88800L to R.string.color_preset_yellow,
+        0xFFED5B00L to R.string.color_preset_orange,
+        0xFFE62D42L to R.string.color_preset_red,
+        0xFFD56199L to R.string.color_preset_pink,
+        0xFF9141ACL to R.string.color_preset_purple,
+        0xFF6F8396L to R.string.color_preset_slate,
+        0xFF5B5CE6L to R.string.color_preset_indigo,
+        0xFF7D52B8L to R.string.color_preset_lavender,
+        0xFF0087A8L to R.string.color_preset_cyan,
+        0xFF1F9D55L to R.string.color_preset_emerald,
+        0xFFD97706L to R.string.color_preset_amber,
+        0xFFE04F5FL to R.string.color_preset_coral,
+        0xFFC63D85L to R.string.color_preset_magenta,
+        0xFF526375L to R.string.color_preset_graphite,
     )
 
     // Superfícies claras

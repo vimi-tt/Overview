@@ -1,6 +1,9 @@
 package io.github.vimitt.overview.ui.settings
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -12,13 +15,18 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.LauncherBackupHelper
 import io.github.vimitt.overview.di.AppContainer
+import kotlinx.coroutines.launch
 import io.github.vimitt.overview.domain.model.NativeWidgetsState
 import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.domain.model.WeatherProvider
@@ -168,6 +176,43 @@ fun SettingsNavHost(
                 factory = SettingsHubViewModel.Factory(appContainer.settingsRepository),
             )
             val uiState by hubViewModel.uiState.collectAsStateWithLifecycle()
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            val exportLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/json"),
+            ) { uri ->
+                if (uri == null) return@rememberLauncherForActivityResult
+                scope.launch {
+                    LauncherBackupHelper.exportToUri(
+                        context = context,
+                        uri = uri,
+                        settingsRepository = appContainer.settingsRepository,
+                        homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
+                    ).onSuccess {
+                        Toast.makeText(context, R.string.backup_export_success, Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        Toast.makeText(context, R.string.backup_export_error, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            val importLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri == null) return@rememberLauncherForActivityResult
+                scope.launch {
+                    LauncherBackupHelper.importFromUri(
+                        context = context,
+                        uri = uri,
+                        settingsRepository = appContainer.settingsRepository,
+                        homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
+                        appWidgetController = appContainer.appWidgetController,
+                    ).onSuccess {
+                        Toast.makeText(context, R.string.backup_import_success, Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        Toast.makeText(context, R.string.backup_import_error, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
 
             SettingsHubScreen(
                 uiState = uiState,
@@ -180,6 +225,12 @@ fun SettingsNavHost(
                 onOpenFolders = { navController.navigate(SettingsRoute.FOLDERS) },
                 onOpenGestures = { navController.navigate(SettingsRoute.GESTURES) },
                 onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
+                onExportBackup = {
+                    exportLauncher.launch(context.getString(R.string.backup_default_filename))
+                },
+                onImportBackup = {
+                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                },
                 onPreviewOnboarding = onPreviewOnboarding,
                 onClose = onClose,
             )
@@ -243,6 +294,7 @@ fun SettingsNavHost(
                 },
                 onClockStyleChange = viewModel::onClockStyleChange,
                 onClockBackgroundAlphaChange = viewModel::onClockBackgroundAlphaChange,
+                onShowQuickSettingsButtonChange = viewModel::onShowQuickSettingsButtonChange,
                 onActivateWeatherLocation = onActivateWeatherLocation,
                 onSearchWeatherCities = onSearchWeatherCities,
                 onSelectWeatherLocation = onSelectWeatherLocation,

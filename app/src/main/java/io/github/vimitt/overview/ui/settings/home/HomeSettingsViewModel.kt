@@ -100,6 +100,12 @@ class HomeSettingsViewModel(
         }
     }
 
+    fun onShowQuickSettingsButtonChange(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowQuickSettingsButton(show)
+        }
+    }
+
     class Factory(
         private val settingsRepository: SettingsRepository,
     ) : ViewModelProvider.Factory {

@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -440,7 +441,11 @@ fun QuickNotesNativeWidget(
             trailing = {
                 if (notes.size > 1 && spanX >= 2) {
                     Text(
-                        text = stringResource(R.string.native_widget_notes_count, notes.size),
+                        text = pluralStringResource(
+                            R.plurals.native_widget_notes_count,
+                            notes.size,
+                            notes.size,
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceMuted,
                     )

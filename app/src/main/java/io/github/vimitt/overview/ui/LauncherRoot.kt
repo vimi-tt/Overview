@@ -18,12 +18,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -50,7 +54,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
@@ -64,6 +70,9 @@ import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
+import io.github.vimitt.overview.ui.components.FolderEditorDialog
+import io.github.vimitt.overview.ui.components.FolderPopupOverlay
+import io.github.vimitt.overview.ui.components.GnomeQuickSettingsPanel
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
@@ -95,7 +104,10 @@ fun LauncherRoot(
     isSettingsOpen: Boolean,
     isAppPickerOpen: Boolean,
     isWidgetPickerOpen: Boolean,
+    isQuickSettingsOpen: Boolean,
+    openHomeFolderId: String?,
     selectedHomeItem: HomeWorkspaceItem?,
+    hasNotificationAccess: Boolean,
     overviewSettings: OverviewSettings,
     gestureSettings: GestureSettings,
     appWidgetController: AppWidgetController,
@@ -106,6 +118,9 @@ fun LauncherRoot(
     onOpenOverview: () -> Unit,
     onOpenOverviewSearch: () -> Unit,
     onCloseOverview: () -> Unit,
+    onOpenQuickSettings: () -> Unit,
+    onCloseQuickSettings: () -> Unit,
+    onToggleThemeDark: (currentlyDark: Boolean) -> Unit,
     onExecuteGesture: (LauncherGestureAction) -> Unit,
     onHomeLongPress: () -> Unit,
     onDismissHomeMenu: () -> Unit,
@@ -121,20 +136,32 @@ fun LauncherRoot(
     permissionRevision: Int = 0,
     onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
     onDismissHomeItemAction: () -> Unit,
+    onOpenHomeFolder: (String) -> Unit,
+    onDismissHomeFolder: () -> Unit,
+    onAddHomeFolder: (name: String, appKeys: List<String>) -> Unit,
+    onMergeShortcutsIntoFolder: (sourceShortcutId: String?, targetShortcutId: String, appKeyToAdd: String) -> Unit,
+    onAddAppToHomeFolder: (folderId: String, appKey: String, sourceShortcutId: String?) -> Unit,
+    onRemoveAppFromHomeFolder: (folderId: String, appKey: String) -> Unit,
+    onMoveAppFromHomeFolderToHome: (folderId: String, app: AppInfo) -> Unit,
+    onUpdateHomeFolder: (folderId: String, name: String, appKeys: List<String>) -> Unit,
+    findFolderMergeTargetAt: (cellX: Int, cellY: Int, page: Int, ignoreItemId: String?) -> HomeFolderMergeTarget?,
     onStartMovingHomeItem: (String) -> Unit,
     onStartResizingHomeItem: (String) -> Unit = {},
     onCancelResizingHomeItem: () -> Unit = {},
     onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit = { _, _, _, _, _ -> },
     onResizeWidget: (itemId: String, deltaX: Int, deltaY: Int) -> Unit,
     onRemoveHomeItem: (String) -> Unit,
-    canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
-    onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    canPlaceMovingItemAt: (cellX: Int, cellY: Int, page: Int) -> Boolean,
+    onPlaceMovingItemAt: (cellX: Int, cellY: Int, page: Int) -> Unit,
     onCancelMovingItem: () -> Unit,
-    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
-    onMoveHomeItemTo: (itemId: String, cellX: Int, cellY: Int) -> Unit,
-    onDropAppFromOverviewAt: (app: AppInfo, cellX: Int, cellY: Int) -> Unit,
+    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, page: Int, ignoreItemId: String?) -> Boolean,
+    onMoveHomeItemTo: (itemId: String, cellX: Int, cellY: Int, page: Int) -> Unit,
+    onDropAppFromOverviewAt: (app: AppInfo, cellX: Int, cellY: Int, page: Int) -> Unit,
     onDropAppOnDock: (app: AppInfo, targetIndex: Int) -> Unit,
     onRemoveAppFromDock: (appKey: String) -> Unit,
+    currentHomePage: Int = 0,
+    onCurrentHomePageChanged: (Int) -> Unit = {},
+    onLaunchPinnedShortcut: (HomeWorkspaceItem.PinnedShortcut, android.graphics.Rect?) -> Unit = { _, _ -> },
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onPreviewOnboarding: () -> Unit = {},
@@ -181,6 +208,24 @@ fun LauncherRoot(
     var dockBounds by remember { mutableStateOf<ComposeRect?>(null) }
     var removeZoneBounds by remember { mutableStateOf<ComposeRect?>(null) }
     var lastClosedByDrag by remember { mutableStateOf(false) }
+    var isCreatingHomeFolder by remember { mutableStateOf(false) }
+    var editingHomeFolder by remember { mutableStateOf<HomeWorkspaceItem.Folder?>(null) }
+    var homeFolderAppActionTarget by remember { mutableStateOf<Pair<HomeWorkspaceItem.Folder, AppInfo>?>(null) }
+
+    val openHomeFolder = remember(openHomeFolderId, homeUiState.workspaceItems) {
+        openHomeFolderId?.let { id ->
+            homeUiState.workspaceItems
+                .filterIsInstance<HomeWorkspaceItem.Folder>()
+                .firstOrNull { it.item.id == id }
+        }
+    }
+
+    LaunchedEffect(openHomeFolderId, openHomeFolder) {
+        if (openHomeFolderId != null && openHomeFolder == null) {
+            homeFolderAppActionTarget = null
+            onDismissHomeFolder()
+        }
+    }
 
     LaunchedEffect(isOverviewOpen) {
         if (isOverviewOpen) {
@@ -221,10 +266,15 @@ fun LauncherRoot(
             gridBounds = homeGridBounds,
             removeZoneBounds = removeZoneBounds,
             payload = drag.payload,
-            canPlace = canPlaceDragItemAt,
+            canPlace = { cellX, cellY, spanX, spanY, ignoreItemId ->
+                canPlaceDragItemAt(cellX, cellY, spanX, spanY, currentHomePage, ignoreItemId)
+            },
             gridColumns = homeUiState.gridColumns,
             gridRows = homeUiState.gridRows,
-        )
+            findFolderMergeTarget = { cellX, cellY, ignoreItemId ->
+                findFolderMergeTargetAt(cellX, cellY, currentHomePage, ignoreItemId)
+            },
+        )?.copy(page = currentHomePage)
     }
     val effectiveDropTarget: HomeDropTarget? = if (currentDockTarget != null) null else currentDropTarget
 
@@ -311,6 +361,8 @@ fun LauncherRoot(
             appWidgetController = appWidgetController,
             activeDrag = activeDrag,
             dropTarget = effectiveDropTarget,
+            currentPage = currentHomePage,
+            onCurrentPageChanged = onCurrentHomePageChanged,
             isVisible = isHomeVisible,
             dockDropTarget = currentDockTarget,
             nativeWidgetActions = nativeWidgetActions,
@@ -320,6 +372,11 @@ fun LauncherRoot(
             onAppClick = { app, view, bounds ->
                 onLaunchFromHome(app, view, bounds, reducedMotion)
             },
+            onPinnedShortcutClick = onLaunchPinnedShortcut,
+            onFolderClick = { folder ->
+                onOpenHomeFolder(folder.item.id)
+            },
+            onOpenQuickSettings = onOpenQuickSettings,
             onOpenOverview = onOpenOverview,
             onOpenOverviewSearch = onOpenOverviewSearch,
             onOverviewDragProgress = { fraction ->
@@ -374,17 +431,35 @@ fun LauncherRoot(
                             is HomeWorkspaceItem.NativeWidget,
                             -> onStartResizingHomeItem(item.item.id)
 
-                            is HomeWorkspaceItem.Shortcut -> onWorkspaceItemLongPress(item)
+                            is HomeWorkspaceItem.Shortcut,
+                            is HomeWorkspaceItem.PinnedShortcut,
+                            is HomeWorkspaceItem.Folder,
+                            -> onWorkspaceItemLongPress(item)
                         }
                     } else if (dockTarget != null && draggedShortcutApp != null) {
                         onDropAppOnDock(draggedShortcutApp, dockTarget.targetIndex)
                     } else if (target != null && target.isOverRemoveZone) {
                         onRemoveHomeItem(finished.payload.item.item.id)
+                    } else if (target != null && target.mergeFolderTargetId != null && draggedShortcutApp != null) {
+                        if (target.isCreatingFolder) {
+                            onMergeShortcutsIntoFolder(
+                                finished.payload.item.item.id,
+                                target.mergeFolderTargetId,
+                                draggedShortcutApp.key,
+                            )
+                        } else {
+                            onAddAppToHomeFolder(
+                                target.mergeFolderTargetId,
+                                draggedShortcutApp.key,
+                                finished.payload.item.item.id,
+                            )
+                        }
                     } else if (target != null && target.isValid) {
                         onMoveHomeItemTo(
                             finished.payload.item.item.id,
                             target.cellX,
                             target.cellY,
+                            target.page,
                         )
                     }
                 }
@@ -415,11 +490,26 @@ fun LauncherRoot(
                         onDropAppOnDock(finished.payload.app, dockTarget.targetIndex)
                     } else if (target != null && target.isOverRemoveZone) {
                         onRemoveAppFromDock(finished.payload.app.key)
+                    } else if (target != null && target.mergeFolderTargetId != null) {
+                        if (target.isCreatingFolder) {
+                            onMergeShortcutsIntoFolder(
+                                null,
+                                target.mergeFolderTargetId,
+                                finished.payload.app.key,
+                            )
+                        } else {
+                            onAddAppToHomeFolder(
+                                target.mergeFolderTargetId,
+                                finished.payload.app.key,
+                                null,
+                            )
+                        }
                     } else if (target != null && target.isValid) {
                         onDropAppFromOverviewAt(
                             finished.payload.app,
                             target.cellX,
                             target.cellY,
+                            target.page,
                         )
                     }
                 }
@@ -551,6 +641,7 @@ fun LauncherRoot(
                     scrimAlpha = overviewSettings.scrimAlpha,
                     animationDurationScale = overviewSettings.animationSpeed.durationScale,
                     closeSensitivity = gestureSettings.sensitivity,
+                    onOpenQuickSettings = onOpenQuickSettings,
                     onSearchQueryChange = onSearchQueryChange,
                     onClearSearch = onClearSearch,
                     onMoveAppToFolder = onMoveAppToFolder,
@@ -586,11 +677,28 @@ fun LauncherRoot(
                             } else if (target != null) {
                                 if (homeUiState.lockLayout) {
                                     showLockedToast()
+                                } else if (target.mergeFolderTargetId != null) {
+                                    if (target.isCreatingFolder) {
+                                        onMergeShortcutsIntoFolder(
+                                            null,
+                                            target.mergeFolderTargetId,
+                                            finished.payload.app.key,
+                                        )
+                                    } else {
+                                        onAddAppToHomeFolder(
+                                            target.mergeFolderTargetId,
+                                            finished.payload.app.key,
+                                            null,
+                                        )
+                                    }
+                                    lastClosedByDrag = true
+                                    onCloseOverview()
                                 } else if (target.isValid) {
                                     onDropAppFromOverviewAt(
                                         finished.payload.app,
                                         target.cellX,
                                         target.cellY,
+                                        target.page,
                                     )
                                     lastClosedByDrag = true
                                     onCloseOverview()
@@ -623,7 +731,7 @@ fun LauncherRoot(
         }
 
         AnimatedVisibility(
-            visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen,
+            visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen,
             enter = fadeIn(motion.effectSpec(durationMillis = 160)),
             exit = fadeOut(motion.effectSpec(durationMillis = 140)),
         ) {
@@ -631,6 +739,10 @@ fun LauncherRoot(
                 onAddApp = {
                     onDismissHomeMenu()
                     if (homeUiState.lockLayout) showLockedToast() else onOpenAppPicker()
+                },
+                onAddFolder = {
+                    onDismissHomeMenu()
+                    if (homeUiState.lockLayout) showLockedToast() else isCreatingHomeFolder = true
                 },
                 onAddWidget = {
                     onDismissHomeMenu()
@@ -648,9 +760,29 @@ fun LauncherRoot(
             )
         }
 
-        if (selectedHomeItem != null && !isOverviewOpen && !anyModalFullScreen) {
+        if (selectedHomeItem != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
             HomeItemActionOverlay(
                 workspaceItem = selectedHomeItem,
+                onOpenFolder = if (selectedHomeItem is HomeWorkspaceItem.Folder) {
+                    {
+                        onDismissHomeItemAction()
+                        onOpenHomeFolder(selectedHomeItem.item.id)
+                    }
+                } else {
+                    null
+                },
+                onEditFolder = if (selectedHomeItem is HomeWorkspaceItem.Folder) {
+                    {
+                        onDismissHomeItemAction()
+                        if (homeUiState.lockLayout) {
+                            showLockedToast()
+                        } else {
+                            editingHomeFolder = selectedHomeItem
+                        }
+                    }
+                } else {
+                    null
+                },
                 onMove = {
                     onDismissHomeItemAction()
                     onStartMovingHomeItem(selectedHomeItem.item.id)
@@ -663,6 +795,97 @@ fun LauncherRoot(
                     onRemoveHomeItem(selectedHomeItem.item.id)
                 },
                 onDismiss = onDismissHomeItemAction,
+            )
+        }
+
+        if (openHomeFolder != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
+            FolderPopupOverlay(
+                folderName = openHomeFolder.item.name,
+                apps = openHomeFolder.apps,
+                folderSettings = homeUiState.folderSettings,
+                iconSize = remember(homeUiState.iconScale) { (52f * homeUiState.iconScale).dp },
+                showNotificationDots = homeUiState.showNotificationDots,
+                badgePackages = homeUiState.badgePackages,
+                onAppClick = { app, view, bounds ->
+                    if (homeUiState.folderSettings.closeOnAppLaunch) {
+                        onDismissHomeFolder()
+                    }
+                    onLaunchFromHome(app, view, bounds, reducedMotion)
+                },
+                onAppLongClick = { app ->
+                    homeFolderAppActionTarget = openHomeFolder to app
+                },
+                onEditFolder = if (!homeUiState.lockLayout) {
+                    { editingHomeFolder = openHomeFolder }
+                } else {
+                    null
+                },
+                onDismiss = onDismissHomeFolder,
+            )
+        }
+
+        val folderAppAction = homeFolderAppActionTarget
+        if (folderAppAction != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
+            val (folderWs, folderApp) = folderAppAction
+            HomeFolderAppActionOverlay(
+                app = folderApp,
+                folderName = folderWs.item.name,
+                onMoveToHome = {
+                    homeFolderAppActionTarget = null
+                    if (homeUiState.lockLayout) {
+                        showLockedToast()
+                    } else {
+                        onMoveAppFromHomeFolderToHome(folderWs.item.id, folderApp)
+                    }
+                },
+                onRemoveFromFolder = {
+                    homeFolderAppActionTarget = null
+                    if (homeUiState.lockLayout) {
+                        showLockedToast()
+                    } else {
+                        onRemoveAppFromHomeFolder(folderWs.item.id, folderApp.key)
+                    }
+                },
+                onOpenAppInfo = {
+                    homeFolderAppActionTarget = null
+                    onOpenAppInfo(folderApp)
+                },
+                onDismiss = { homeFolderAppActionTarget = null },
+            )
+        }
+
+        if (isCreatingHomeFolder || editingHomeFolder != null) {
+            val target = editingHomeFolder
+            FolderEditorDialog(
+                initialName = target?.item?.name.orEmpty(),
+                initialAppKeys = target?.item?.appKeys.orEmpty(),
+                isNewFolder = target == null,
+                allApps = allApps,
+                onSave = { name, appKeys ->
+                    if (target == null) {
+                        onAddHomeFolder(name, appKeys)
+                    } else {
+                        onUpdateHomeFolder(target.item.id, name, appKeys)
+                    }
+                    isCreatingHomeFolder = false
+                    editingHomeFolder = null
+                },
+                onDismiss = {
+                    isCreatingHomeFolder = false
+                    editingHomeFolder = null
+                },
+            )
+        }
+
+        if (isQuickSettingsOpen && !anyModalFullScreen) {
+            GnomeQuickSettingsPanel(
+                hasNotificationAccess = hasNotificationAccess,
+                onToggleThemeDark = onToggleThemeDark,
+                onOpenLauncherSettings = {
+                    onCloseQuickSettings()
+                    onOpenSettings()
+                },
+                onDismiss = onCloseQuickSettings,
             )
         }
 
@@ -718,6 +941,7 @@ fun LauncherRoot(
 @Composable
 private fun HomeContextMenuOverlay(
     onAddApp: () -> Unit,
+    onAddFolder: () -> Unit,
     onAddWidget: () -> Unit,
     onCustomize: () -> Unit,
     onChangeWallpaper: () -> Unit,
@@ -754,6 +978,14 @@ private fun HomeContextMenuOverlay(
         OverviewPopupDivider()
 
         OverviewPopupActionRow(
+            painter = painterResource(R.drawable.ic_settings_folders),
+            label = stringResource(R.string.home_menu_add_folder),
+            onClick = onAddFolder,
+        )
+
+        OverviewPopupDivider()
+
+        OverviewPopupActionRow(
             icon = Icons.Filled.Star,
             label = stringResource(R.string.home_menu_add_widget),
             onClick = onAddWidget,
@@ -773,6 +1005,70 @@ private fun HomeContextMenuOverlay(
             icon = Icons.Filled.Edit,
             label = stringResource(R.string.home_menu_wallpaper),
             onClick = onChangeWallpaper,
+        )
+    }
+}
+
+@Composable
+private fun HomeFolderAppActionOverlay(
+    app: AppInfo,
+    folderName: String,
+    onMoveToHome: () -> Unit,
+    onRemoveFromFolder: () -> Unit,
+    onOpenAppInfo: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = OverviewTheme.colors
+    val isExpressive = OverviewTheme.components.isExpressive
+
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = true,
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = if (isExpressive) 12.dp else 16.dp,
+            ),
+        ) {
+            Text(
+                text = app.label,
+                style = if (isExpressive) {
+                    OverviewTheme.typography.sectionHeader
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = folderName,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isExpressive) colors.accent else colors.onSurfaceMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            icon = Icons.AutoMirrored.Filled.ArrowForward,
+            label = stringResource(R.string.home_folder_move_to_home),
+            onClick = onMoveToHome,
+        )
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Close,
+            label = stringResource(R.string.overview_folder_remove_app),
+            tint = colors.onSurfaceMuted,
+            onClick = onRemoveFromFolder,
+        )
+        OverviewPopupDivider()
+        OverviewPopupActionRow(
+            icon = Icons.Filled.Info,
+            label = stringResource(R.string.overview_action_app_info),
+            tint = colors.onSurfaceMuted,
+            onClick = onOpenAppInfo,
         )
     }
 }

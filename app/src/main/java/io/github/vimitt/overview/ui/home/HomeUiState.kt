@@ -1,10 +1,14 @@
 package io.github.vimitt.overview.ui.home
 
 import android.appwidget.AppWidgetProviderInfo
+import android.os.UserHandle
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.DockSettings
+import io.github.vimitt.overview.domain.model.FolderSettings
 import io.github.vimitt.overview.domain.model.HomeClockStyle
+import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.HomeSettings
 import io.github.vimitt.overview.domain.model.NativeWidgetsState
@@ -20,6 +24,20 @@ sealed interface HomeWorkspaceItem {
     data class Shortcut(
         override val item: HomeItem.AppShortcut,
         val app: AppInfo,
+    ) : HomeWorkspaceItem
+
+    @Immutable
+    data class PinnedShortcut(
+        override val item: HomeItem.PinnedShortcut,
+        val icon: ImageBitmap? = null,
+        val userHandle: UserHandle? = null,
+    ) : HomeWorkspaceItem
+
+    @Immutable
+    data class Folder(
+        override val item: HomeItem.Folder,
+        val apps: List<AppInfo>,
+        val hasBadge: Boolean,
     ) : HomeWorkspaceItem
 
     @Immutable
@@ -51,9 +69,13 @@ data class HomeUiState(
     val resizingItemId: String? = null,
     val homeSettings: HomeSettings = HomeSettings(),
     val dockSettings: DockSettings = DockSettings(),
+    val folderSettings: FolderSettings = FolderSettings(),
     val showNotificationDots: Boolean = false,
     val badgePackages: Set<String> = emptySet(),
 ) {
+    val pageCount: Int
+        get() = ((workspaceItems.maxOfOrNull { it.item.page } ?: 0) + 1)
+            .coerceIn(1, HomeGridSpec.MAX_PAGES)
     val gridColumns: Int get() = homeSettings.gridColumns
     val gridRows: Int get() = homeSettings.gridRows
     val iconScale: Float get() = homeSettings.iconScale

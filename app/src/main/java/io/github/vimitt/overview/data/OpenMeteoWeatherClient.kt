@@ -26,10 +26,11 @@ class OpenMeteoWeatherClient(
     suspend fun searchCities(query: String): Result<List<WeatherLocation>> = withContext(ioDispatcher) {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return@withContext Result.success(emptyList())
+        val lang = Locale.getDefault().language.ifBlank { "en" }
         val encoded = URLEncoder.encode(trimmed, Charsets.UTF_8.name())
         val primary = runCatching {
             val endpoint =
-                "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=6&language=pt&format=json"
+                "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=6&language=$lang&format=json"
             parseGeocodingJson(httpGet(endpoint, "Open-Meteo Geocoding"))
         }
         if (primary.isSuccess && primary.getOrNull().orEmpty().isNotEmpty()) {
@@ -37,7 +38,7 @@ class OpenMeteoWeatherClient(
         }
         runCatching<List<WeatherLocation>> {
             val nominatim =
-                "https://nominatim.openstreetmap.org/search?q=$encoded&format=jsonv2&limit=6&accept-language=pt&addressdetails=1"
+                "https://nominatim.openstreetmap.org/search?q=$encoded&format=jsonv2&limit=6&accept-language=$lang&addressdetails=1"
             parseNominatimSearchJson(httpGet(nominatim, "Nominatim"))
         }.recoverCatching { err ->
             primary.getOrNull() ?: throw (primary.exceptionOrNull() ?: err)
@@ -130,14 +131,15 @@ class OpenMeteoWeatherClient(
     suspend fun reverseGeocodeCity(latitude: Double, longitude: Double): String? = withContext(ioDispatcher) {
         val lat = String.format(Locale.US, "%.4f", latitude)
         val lon = String.format(Locale.US, "%.4f", longitude)
+        val lang = Locale.getDefault().language.ifBlank { "en" }
         runCatching {
             val endpoint =
-                "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lon&localityLanguage=pt"
+                "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lon&localityLanguage=$lang"
             parseReverseGeocodeCityJson(httpGet(endpoint))
         }.getOrNull()
     }
 
-    private fun httpGet(urlString: String, serviceName: String = "serviço de clima"): String {
+    private fun httpGet(urlString: String, serviceName: String = "Weather"): String {
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             instanceFollowRedirects = true
@@ -150,7 +152,7 @@ class OpenMeteoWeatherClient(
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use(BufferedReader::readText).orEmpty()
-            check(code in 200..299) { "HTTP $code ao consultar $serviceName" }
+            check(code in 200..299) { "$serviceName HTTP $code" }
             text
         } finally {
             connection.disconnect()

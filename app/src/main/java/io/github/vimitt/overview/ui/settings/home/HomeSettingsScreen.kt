@@ -66,6 +66,7 @@ fun HomeSettingsScreen(
     onWeatherProviderChange: (WeatherProvider) -> Unit = {},
     onClockStyleChange: (HomeClockStyle) -> Unit,
     onClockBackgroundAlphaChange: (Float) -> Unit,
+    onShowQuickSettingsButtonChange: (Boolean) -> Unit = {},
     onActivateWeatherLocation: () -> Unit = {},
     onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
@@ -242,6 +243,13 @@ fun HomeSettingsScreen(
 
         item(key = "home_general_group") {
             SettingsGroup(title = stringResource(R.string.settings_section_home_general)) {
+                SwitchRow(
+                    title = stringResource(R.string.settings_home_quick_settings_button),
+                    subtitle = stringResource(R.string.settings_home_quick_settings_button_subtitle),
+                    checked = settings.showQuickSettingsButton,
+                    onCheckedChange = onShowQuickSettingsButtonChange,
+                )
+                SettingsDivider()
                 SwitchRow(
                     title = stringResource(R.string.settings_home_lock_layout),
                     subtitle = stringResource(R.string.settings_home_lock_layout_subtitle),

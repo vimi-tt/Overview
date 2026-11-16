@@ -1,5 +1,6 @@
 package io.github.vimitt.overview.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -33,7 +34,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -46,7 +51,7 @@ import io.github.vimitt.overview.ui.theme.OverviewTheme
  * Barra de busca no estilo Adwaita para filtrar aplicativos no Overview.
  *
  * Mantém o [TextFieldValue] localmente de forma síncrona para preservar a posição
- * do cursor e a composição do teclado (IME) sem saltos durante a filtragem assíncrona.
+ * do cursor e a composição do teclado (IME) sem saltos durante a filtragem assrona.
  */
 @Composable
 fun OverviewSearchBar(
@@ -57,6 +62,7 @@ fun OverviewSearchBar(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     onOpenSettings: (() -> Unit)? = null,
+    onOpenQuickSettings: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
     var isFocused by remember { mutableStateOf(false) }
@@ -148,14 +154,51 @@ fun OverviewSearchBar(
                     modifier = Modifier.size(18.dp),
                 )
             }
-        } else if (onOpenSettings != null) {
-            IconButton(onClick = onOpenSettings) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.open_settings_content_description),
-                    tint = colors.onSurfaceMuted,
-                    modifier = Modifier.size(19.dp),
-                )
+        } else if (onOpenQuickSettings != null || onOpenSettings != null) {
+            if (onOpenQuickSettings != null) {
+                IconButton(onClick = onOpenQuickSettings) {
+                    val tint = colors.onSurfaceMuted
+                    Canvas(modifier = Modifier.size(18.dp)) {
+                        val w = size.width
+                        val h = size.height
+                        val stroke = (h * 0.10f).coerceAtLeast(1.8f)
+                        // Duas barras de sliders estilo GNOME Quick Settings
+                        drawLine(
+                            color = tint,
+                            start = Offset(w * 0.14f, h * 0.32f),
+                            end = Offset(w * 0.86f, h * 0.32f),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                        drawCircle(
+                            color = tint,
+                            radius = h * 0.13f,
+                            center = Offset(w * 0.36f, h * 0.32f),
+                        )
+                        drawLine(
+                            color = tint,
+                            start = Offset(w * 0.14f, h * 0.68f),
+                            end = Offset(w * 0.86f, h * 0.68f),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                        drawCircle(
+                            color = tint,
+                            radius = h * 0.13f,
+                            center = Offset(w * 0.66f, h * 0.68f),
+                        )
+                    }
+                }
+            }
+            if (onOpenSettings != null) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.open_settings_content_description),
+                        tint = colors.onSurfaceMuted,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
             }
         }
     }

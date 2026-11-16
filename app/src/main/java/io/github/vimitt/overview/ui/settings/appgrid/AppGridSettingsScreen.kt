@@ -7,6 +7,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
@@ -64,7 +65,11 @@ fun AppGridSettingsScreen(
                     value = settings.columns.toFloat(),
                     valueRange = SettingsDefaults.MIN_GRID_COLUMNS.toFloat()..SettingsDefaults.MAX_GRID_COLUMNS.toFloat(),
                     steps = SettingsDefaults.MAX_GRID_COLUMNS - SettingsDefaults.MIN_GRID_COLUMNS - 1,
-                    valueLabel = stringResource(R.string.settings_app_grid_columns_format, settings.columns),
+                    valueLabel = pluralStringResource(
+                        R.plurals.settings_app_grid_columns_count,
+                        settings.columns,
+                        settings.columns,
+                    ),
                     onValueChange = { value ->
                         onColumnsChange(value.roundToInt())
                     },
@@ -94,10 +99,10 @@ fun AppGridSettingsScreen(
                 )
                 SettingsDivider()
                 val hiddenCount = settings.hiddenAppKeys.size
-                val hiddenSubtitle = when (hiddenCount) {
-                    0 -> stringResource(R.string.settings_hidden_apps_none)
-                    1 -> stringResource(R.string.settings_hidden_apps_one)
-                    else -> stringResource(R.string.settings_hidden_apps_count, hiddenCount)
+                val hiddenSubtitle = if (hiddenCount == 0) {
+                    stringResource(R.string.settings_hidden_apps_none)
+                } else {
+                    pluralStringResource(R.plurals.settings_hidden_apps_count, hiddenCount, hiddenCount)
                 }
                 NavigationRow(
                     title = stringResource(R.string.settings_hidden_apps_title),

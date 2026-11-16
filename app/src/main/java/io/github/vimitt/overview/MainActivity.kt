@@ -3,10 +3,13 @@ package io.github.vimitt.overview
 import android.Manifest
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.appwidget.AppWidgetManager
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Bundle
+import android.os.Process
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -20,8 +23,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -29,14 +47,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import io.github.vimitt.overview.data.LauncherShortcutHelper
 import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.SystemPanelHelper
 import io.github.vimitt.overview.data.WidgetEntry
@@ -45,7 +72,9 @@ import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
 import io.github.vimitt.overview.domain.model.NativeWidgetType
+import io.github.vimitt.overview.domain.model.ThemeMode
 import io.github.vimitt.overview.ui.LauncherRoot
+import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.home.HomeViewModel
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
@@ -99,6 +128,8 @@ class MainActivity : ComponentActivity() {
     private var isSettingsOpen by mutableStateOf(false)
     private var isAppPickerOpen by mutableStateOf(false)
     private var isWidgetPickerOpen by mutableStateOf(false)
+    private var isQuickSettingsOpen by mutableStateOf(false)
+    private var openHomeFolderId by mutableStateOf<String?>(null)
     private var selectedHomeItemId by mutableStateOf<String?>(null)
     private var permissionRevision by mutableIntStateOf(0)
     private var isOnboardingPreviewOpen by mutableStateOf(false)
@@ -107,6 +138,8 @@ class MainActivity : ComponentActivity() {
     private var requestedLocationOnce = false
     private var pendingLocationRetryAfterSettings = false
     private var pendingWidgetRequest: PendingWidgetRequest? = null
+    private var pendingPinItemRequest by mutableStateOf<LauncherApps.PinItemRequest?>(null)
+    private var currentHomePage by mutableIntStateOf(0)
     private var currentPreferences: LauncherPreferences = LauncherPreferences()
 
     private val calendarPermissionLauncher = registerForActivityResult(
@@ -212,7 +245,11 @@ class MainActivity : ComponentActivity() {
                 val isDark = OverviewTheme.colors.isDark
                 val isOnboardingActive = loadedPreferences != null &&
                     (!preferences.onboardingCompleted || isOnboardingPreviewOpen)
-                val anyModalOpen = isOnboardingActive || isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen || isOverviewOpen
+                val anyModalOpen = isOnboardingActive || isSettingsOpen || isAppPickerOpen ||
+                    isWidgetPickerOpen || isOverviewOpen || isQuickSettingsOpen
+                val hasNotificationAccess = remember(permissionRevision) {
+                    appContainer.notificationBadgeRepository.hasNotificationAccess()
+                }
                 LaunchedEffect(anyModalOpen, isDark, wallpaperSupportsDarkText) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val useLightBars = if (anyModalOpen) !isDark else wallpaperSupportsDarkText
@@ -315,7 +352,10 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 isAppPickerOpen = isAppPickerOpen,
                                 isWidgetPickerOpen = isWidgetPickerOpen,
+                                isQuickSettingsOpen = isQuickSettingsOpen,
+                                openHomeFolderId = openHomeFolderId,
                                 selectedHomeItem = selectedHomeItem,
+                                hasNotificationAccess = hasNotificationAccess,
                                 overviewSettings = preferences.overview,
                                 gestureSettings = preferences.gestures,
                                 appWidgetController = appContainer.appWidgetController,
@@ -326,6 +366,18 @@ class MainActivity : ComponentActivity() {
                                 onOpenOverview = ::openOverview,
                                 onOpenOverviewSearch = ::openOverviewSearch,
                                 onCloseOverview = ::closeOverview,
+                                onOpenQuickSettings = {
+                                    isHomeMenuOpen = false
+                                    selectedHomeItemId = null
+                                    isQuickSettingsOpen = true
+                                },
+                                onCloseQuickSettings = { isQuickSettingsOpen = false },
+                                onToggleThemeDark = { currentlyDark ->
+                                    val nextMode = if (currentlyDark) ThemeMode.LIGHT else ThemeMode.DARK
+                                    lifecycleScope.launch {
+                                        appContainer.settingsRepository.setThemeMode(nextMode)
+                                    }
+                                },
                                 onExecuteGesture = ::executeGestureAction,
                                 onHomeLongPress = {
                                     selectedHomeItemId = null
@@ -356,6 +408,38 @@ class MainActivity : ComponentActivity() {
                                     selectedHomeItemId = workspaceItem.item.id
                                 },
                                 onDismissHomeItemAction = { selectedHomeItemId = null },
+                                onOpenHomeFolder = { folderId ->
+                                    isHomeMenuOpen = false
+                                    selectedHomeItemId = null
+                                    openHomeFolderId = folderId
+                                },
+                                onDismissHomeFolder = { openHomeFolderId = null },
+                                onAddHomeFolder = { name, appKeys ->
+                                    homeViewModel.addFolderToHome(
+                                        name = name,
+                                        appKeys = appKeys,
+                                        preferredPage = currentHomePage,
+                                    ) { added ->
+                                        val msg = if (added) R.string.home_item_added else R.string.home_grid_full
+                                        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onMergeShortcutsIntoFolder = { sourceId, targetId, appKey ->
+                                    homeViewModel.mergeShortcutsIntoFolder(sourceId, targetId, appKey)
+                                },
+                                onAddAppToHomeFolder = { folderId, appKey, sourceId ->
+                                    homeViewModel.addAppToHomeFolder(folderId, appKey, sourceId)
+                                },
+                                onRemoveAppFromHomeFolder = homeViewModel::removeAppFromHomeFolder,
+                                onMoveAppFromHomeFolderToHome = { folderId, app ->
+                                    homeViewModel.moveAppFromFolderToHome(folderId, app) { added ->
+                                        if (!added) {
+                                            Toast.makeText(this@MainActivity, R.string.home_grid_full, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onUpdateHomeFolder = homeViewModel::updateHomeFolder,
+                                findFolderMergeTargetAt = homeViewModel::findFolderMergeTargetAt,
                                 onStartMovingHomeItem = homeViewModel::startMovingItem,
                                 onStartResizingHomeItem = homeViewModel::startResizingItem,
                                 onCancelResizingHomeItem = homeViewModel::cancelResizingItem,
@@ -367,15 +451,34 @@ class MainActivity : ComponentActivity() {
                                 onCancelMovingItem = homeViewModel::cancelMovingItem,
                                 canPlaceDragItemAt = homeViewModel::canPlaceItemAt,
                                 onMoveHomeItemTo = homeViewModel::moveItemTo,
-                                onDropAppFromOverviewAt = { app, cellX, cellY ->
+                                onDropAppFromOverviewAt = { app, cellX, cellY, page ->
                                     addAppShortcutToHome(
                                         app = app,
                                         preferredCellX = cellX,
                                         preferredCellY = cellY,
+                                        preferredPage = page,
                                     )
                                 },
                                 onDropAppOnDock = homeViewModel::dropAppOnDock,
                                 onRemoveAppFromDock = homeViewModel::removeAppFromDock,
+                                currentHomePage = currentHomePage,
+                                onCurrentHomePageChanged = { currentHomePage = it },
+                                onLaunchPinnedShortcut = { pinned, sourceBounds ->
+                                    val launched = LauncherShortcutHelper.launchPinnedShortcut(
+                                        context = this@MainActivity,
+                                        packageName = pinned.item.packageName,
+                                        shortcutId = pinned.item.shortcutId,
+                                        userHandle = pinned.userHandle ?: Process.myUserHandle(),
+                                        sourceBounds = sourceBounds,
+                                    )
+                                    if (!launched) {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            R.string.shortcut_unavailable,
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                },
                                 onOpenSettings = {
                                     isHomeMenuOpen = false
                                     isSettingsOpen = true
@@ -408,6 +511,20 @@ class MainActivity : ComponentActivity() {
                                 },
                             )
                         }
+                    }
+
+                    val activePinRequest = pendingPinItemRequest
+                    if (activePinRequest != null && !isOnboardingActive) {
+                        PinItemConfirmationOverlay(
+                            request = activePinRequest,
+                            onAccept = {
+                                pendingPinItemRequest = null
+                                acceptPinItemRequest(activePinRequest)
+                            },
+                            onDismiss = {
+                                pendingPinItemRequest = null
+                            },
+                        )
                     }
                 }
             }
@@ -488,11 +605,25 @@ class MainActivity : ComponentActivity() {
             LauncherGestureAction.NONE -> Unit
             LauncherGestureAction.OPEN_OVERVIEW -> openOverview()
             LauncherGestureAction.OPEN_OVERVIEW_SEARCH -> openOverviewSearch()
+            LauncherGestureAction.OPEN_QUICK_SETTINGS -> {
+                isHomeMenuOpen = false
+                selectedHomeItemId = null
+                openHomeFolderId = null
+                isQuickSettingsOpen = true
+            }
             LauncherGestureAction.EXPAND_NOTIFICATIONS -> SystemPanelHelper.expandNotificationsPanel(this)
-            LauncherGestureAction.EXPAND_QUICK_SETTINGS -> SystemPanelHelper.expandQuickSettingsPanel(this)
+            LauncherGestureAction.EXPAND_QUICK_SETTINGS -> {
+                if (!SystemPanelHelper.expandQuickSettingsPanel(this)) {
+                    isHomeMenuOpen = false
+                    selectedHomeItemId = null
+                    openHomeFolderId = null
+                    isQuickSettingsOpen = true
+                }
+            }
             LauncherGestureAction.OPEN_SETTINGS -> {
                 isHomeMenuOpen = false
                 isOverviewOpen = false
+                isQuickSettingsOpen = false
                 isSettingsOpen = true
             }
             LauncherGestureAction.OPEN_WALLPAPER -> openWallpaperPicker()
@@ -504,11 +635,30 @@ class MainActivity : ComponentActivity() {
     private fun handleIncomingIntent(intent: Intent?, isNewIntent: Boolean) {
         if (intent == null) return
         when {
+            intent.action == LauncherApps.ACTION_CONFIRM_PIN_SHORTCUT ||
+                intent.action == LauncherApps.ACTION_CONFIRM_PIN_APPWIDGET -> {
+                val launcherApps = getSystemService(LauncherApps::class.java)
+                val request = runCatching { launcherApps?.getPinItemRequest(intent) }.getOrNull()
+                if (request != null && request.isValid) {
+                    isHomeMenuOpen = false
+                    isSettingsOpen = false
+                    isAppPickerOpen = false
+                    isWidgetPickerOpen = false
+                    isQuickSettingsOpen = false
+                    openHomeFolderId = null
+                    selectedHomeItemId = null
+                    isOverviewOpen = false
+                    pendingPinItemRequest = request
+                }
+            }
+
             intent.action == Intent.ACTION_APPLICATION_PREFERENCES -> {
                 isHomeMenuOpen = false
                 isOverviewOpen = false
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
+                isQuickSettingsOpen = false
+                openHomeFolderId = null
                 selectedHomeItemId = null
                 isSettingsOpen = true
             }
@@ -521,12 +671,16 @@ class MainActivity : ComponentActivity() {
                     !isSettingsOpen &&
                     !isAppPickerOpen &&
                     !isWidgetPickerOpen &&
+                    !isQuickSettingsOpen &&
+                    openHomeFolderId == null &&
                     selectedHomeItemId == null
 
                 isHomeMenuOpen = false
                 isSettingsOpen = false
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
+                isQuickSettingsOpen = false
+                openHomeFolderId = null
                 selectedHomeItemId = null
                 isOverviewOpen = false
                 homeViewModel.cancelMovingItem()
@@ -547,6 +701,8 @@ class MainActivity : ComponentActivity() {
                 isHomeMenuOpen = false
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
+                isQuickSettingsOpen = false
+                openHomeFolderId = null
                 selectedHomeItemId = null
                 isOverviewOpen = false
                 homeViewModel.cancelMovingItem()
@@ -563,11 +719,13 @@ class MainActivity : ComponentActivity() {
         app: AppInfo,
         preferredCellX: Int? = null,
         preferredCellY: Int? = null,
+        preferredPage: Int = currentHomePage,
     ) {
         homeViewModel.addAppToHome(
             app = app,
             preferredCellX = preferredCellX,
             preferredCellY = preferredCellY,
+            preferredPage = preferredPage,
         ) { added ->
             if (!added || preferredCellX == null) {
                 val msg = if (added) R.string.home_item_added else R.string.home_grid_full
@@ -577,7 +735,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun addNativeWidgetToHome(widgetType: NativeWidgetType) {
-        homeViewModel.addNativeWidgetToHome(widgetType = widgetType) { added ->
+        homeViewModel.addNativeWidgetToHome(
+            widgetType = widgetType,
+            preferredPage = currentHomePage,
+        ) { added ->
             val msg = if (added) R.string.home_item_added else R.string.home_grid_full
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
@@ -622,9 +783,64 @@ class MainActivity : ComponentActivity() {
             provider = request.entry.providerInfo.provider,
             spanX = request.entry.spanX,
             spanY = request.entry.spanY,
+            preferredPage = currentHomePage,
         ) { added ->
             val msg = if (added) R.string.home_item_added else R.string.home_grid_full
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun acceptPinItemRequest(request: LauncherApps.PinItemRequest) {
+        if (!request.isValid) return
+        if (homeViewModel.uiState.value.lockLayout) {
+            Toast.makeText(this, R.string.home_layout_locked_notice, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        when (request.requestType) {
+            LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT -> {
+                val info = request.shortcutInfo ?: return
+                val accepted = runCatching { request.accept() }.getOrDefault(false)
+                if (!accepted) return
+                lifecycleScope.launch {
+                    val icon = LauncherShortcutHelper.loadShortcutIcon(this@MainActivity, info)
+                    val label = (info.shortLabel ?: info.longLabel ?: info.id).toString().trim()
+                    homeViewModel.addPinnedShortcutToHome(
+                        packageName = info.`package`,
+                        shortcutId = info.id,
+                        label = label.ifBlank { info.id },
+                        userHandle = info.userHandle,
+                        icon = icon,
+                        preferredPage = currentHomePage,
+                    ) { added ->
+                        val msg = if (added) R.string.home_item_added else R.string.home_grid_full
+                        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            LauncherApps.PinItemRequest.REQUEST_TYPE_APPWIDGET -> {
+                val providerInfo = request.getAppWidgetProviderInfo(this) ?: return
+                val controller = appContainer.appWidgetController
+                val appWidgetId = controller.allocateAppWidgetId()
+                val extras = Bundle().apply {
+                    putInt(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                }
+                val accepted = runCatching { request.accept(extras) }.getOrDefault(false)
+                if (!accepted) {
+                    controller.deleteAppWidgetId(appWidgetId)
+                    return
+                }
+                val (spanX, spanY) = controller.computeDefaultSpan(providerInfo)
+                val entry = WidgetEntry(
+                    providerInfo = providerInfo,
+                    label = providerInfo.loadLabel(packageManager).ifBlank { providerInfo.provider.shortClassName },
+                    spanX = spanX,
+                    spanY = spanY,
+                    preview = null,
+                )
+                continueAfterWidgetBound(PendingWidgetRequest(appWidgetId = appWidgetId, entry = entry))
+            }
         }
     }
 
@@ -725,5 +941,89 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val REQUEST_CONFIGURE_WIDGET = 4001
+    }
+}
+
+@Composable
+private fun PinItemConfirmationOverlay(
+    request: LauncherApps.PinItemRequest,
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val colors = OverviewTheme.colors
+    val isShortcut = request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT
+    val titleRes = if (isShortcut) {
+        R.string.pin_shortcut_dialog_title
+    } else {
+        R.string.pin_widget_dialog_title
+    }
+    val itemLabel = remember(request) {
+        if (isShortcut) {
+            val info = request.shortcutInfo
+            (info?.shortLabel ?: info?.longLabel ?: info?.id ?: "").toString().trim()
+        } else {
+            val provider = request.getAppWidgetProviderInfo(context)
+            provider?.loadLabel(context.packageManager).orEmpty()
+        }
+    }
+    val shortcutIcon by produceState<ImageBitmap?>(initialValue = null, key1 = request) {
+        val info = request.shortcutInfo
+        value = if (isShortcut && info != null) {
+            LauncherShortcutHelper.loadShortcutIcon(context, info)
+        } else {
+            null
+        }
+    }
+
+    OverviewPopupSurface(
+        onDismiss = onDismiss,
+        bottomSheet = false,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(titleRes),
+                style = OverviewTheme.typography.sectionHeader,
+                color = colors.onSurface,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (shortcutIcon != null) {
+                    Image(
+                        bitmap = shortcutIcon!!,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(44.dp),
+                    )
+                }
+                Text(
+                    text = itemLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                OutlinedButton(onClick = onDismiss) {
+                    Text(text = stringResource(R.string.settings_cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = onAccept) {
+                    Text(text = stringResource(R.string.pin_item_accept))
+                }
+            }
+        }
     }
 }
