@@ -52,6 +52,7 @@ import io.github.vimitt.overview.domain.model.CalendarEventItem
 import io.github.vimitt.overview.domain.model.DeviceStatusSnapshot
 import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.model.QuickNoteItem
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -304,6 +305,7 @@ fun rememberNativeWidgetEnvironment(
 fun NativeWidgetDialogsOverlay(
     environment: NativeWidgetLiveEnvironment,
     actions: NativeWidgetActions,
+    selectedWeatherProvider: WeatherProvider = WeatherProvider.AUTO,
 ) {
     when (val dialog = environment.activeDialog) {
         is NativeWidgetActiveDialog.QuickNote -> QuickNoteDialog(
@@ -319,6 +321,8 @@ fun NativeWidgetDialogsOverlay(
         )
 
         NativeWidgetActiveDialog.WeatherCityPicker -> WeatherCityPickerDialog(
+            selectedProvider = selectedWeatherProvider,
+            onSelectProvider = actions.onSelectWeatherProvider,
             onSearchCities = actions.onSearchWeatherCities,
             onSelectLocation = actions.onSelectWeatherLocation,
             onUseGpsLocation = environment.onRequestCoarseLocationOrUseGps,

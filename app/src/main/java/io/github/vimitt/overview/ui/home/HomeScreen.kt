@@ -486,6 +486,7 @@ fun HomeScreen(
         NativeWidgetDialogsOverlay(
             environment = nativeEnvironment,
             actions = nativeWidgetActions,
+            selectedWeatherProvider = uiState.homeSettings.weatherProvider,
         )
     }
 }

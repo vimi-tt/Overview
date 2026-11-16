@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import io.github.vimitt.overview.di.AppContainer
 import io.github.vimitt.overview.domain.model.NativeWidgetsState
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.ui.settings.about.AboutScreen
 import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsScreen
 import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsViewModel
@@ -66,6 +67,7 @@ fun SettingsNavHost(
     onActivateWeatherLocation: () -> Unit = {},
     onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
+    onSelectWeatherProvider: (WeatherProvider) -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -233,6 +235,10 @@ fun SettingsNavHost(
                 onLockLayoutChange = viewModel::onLockLayoutChange,
                 onShowClockChange = viewModel::onShowClockChange,
                 onShowClockWeatherChange = viewModel::onShowClockWeatherChange,
+                onWeatherProviderChange = { provider ->
+                    viewModel.onWeatherProviderChange(provider)
+                    onSelectWeatherProvider(provider)
+                },
                 onClockStyleChange = viewModel::onClockStyleChange,
                 onClockBackgroundAlphaChange = viewModel::onClockBackgroundAlphaChange,
                 onActivateWeatherLocation = onActivateWeatherLocation,

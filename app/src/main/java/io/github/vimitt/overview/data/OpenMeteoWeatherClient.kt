@@ -2,10 +2,12 @@ package io.github.vimitt.overview.data
 
 import io.github.vimitt.overview.domain.model.HourlyWeatherPoint
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.model.WeatherSnapshot
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.net.HttpURLConnection
@@ -22,23 +24,56 @@ class OpenMeteoWeatherClient(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun searchCities(query: String): Result<List<WeatherLocation>> = withContext(ioDispatcher) {
-        runCatching {
-            val trimmed = query.trim()
-            if (trimmed.isEmpty()) return@runCatching emptyList()
-            val encoded = URLEncoder.encode(trimmed, Charsets.UTF_8.name())
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return@withContext Result.success(emptyList())
+        val encoded = URLEncoder.encode(trimmed, Charsets.UTF_8.name())
+        val primary = runCatching {
             val endpoint =
                 "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=6&language=pt&format=json"
-            val body = httpGet(endpoint)
-            parseGeocodingJson(body)
+            parseGeocodingJson(httpGet(endpoint))
+        }
+        if (primary.isSuccess && primary.getOrNull().orEmpty().isNotEmpty()) {
+            return@withContext primary
+        }
+        runCatching<List<WeatherLocation>> {
+            val nominatim =
+                "https://nominatim.openstreetmap.org/search?q=$encoded&format=jsonv2&limit=6&accept-language=pt&addressdetails=1"
+            parseNominatimSearchJson(httpGet(nominatim))
+        }.recoverCatching { err ->
+            primary.getOrNull() ?: throw (primary.exceptionOrNull() ?: err)
         }
     }
 
     suspend fun fetchForecast(
         location: WeatherLocation,
+        provider: WeatherProvider = WeatherProvider.AUTO,
         nowMs: Long = System.currentTimeMillis(),
     ): Result<WeatherSnapshot> = withContext(ioDispatcher) {
         val lat = String.format(Locale.US, "%.4f", location.latitude)
         val lon = String.format(Locale.US, "%.4f", location.longitude)
+
+        when (provider) {
+            WeatherProvider.OPEN_METEO -> fetchOpenMeteo(location, lat, lon, nowMs)
+            WeatherProvider.MET_NORWAY -> fetchMetNorway(location, lat, lon, nowMs)
+            WeatherProvider.WTTR_IN -> fetchWttrIn(location, lat, lon, nowMs)
+            WeatherProvider.AUTO -> {
+                val metResult = fetchMetNorway(location, lat, lon, nowMs)
+                if (metResult.isSuccess) return@withContext metResult
+                val openMeteoResult = fetchOpenMeteo(location, lat, lon, nowMs)
+                if (openMeteoResult.isSuccess) return@withContext openMeteoResult
+                fetchWttrIn(location, lat, lon, nowMs).recoverCatching { wttrErr ->
+                    throw (metResult.exceptionOrNull() ?: openMeteoResult.exceptionOrNull() ?: wttrErr)
+                }
+            }
+        }
+    }
+
+    private fun fetchOpenMeteo(
+        location: WeatherLocation,
+        lat: String,
+        lon: String,
+        nowMs: Long,
+    ): Result<WeatherSnapshot> {
         val primaryEndpoint =
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                 "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m" +
@@ -48,25 +83,36 @@ class OpenMeteoWeatherClient(
         val primaryResult = runCatching {
             parseOpenMeteoForecastJson(json = httpGet(primaryEndpoint), location = location, nowMs = nowMs)
         }
-        if (primaryResult.isSuccess) return@withContext primaryResult
+        if (primaryResult.isSuccess) return primaryResult
 
-        // Fallback enxuto caso campos horários/diários falhem temporariamente
         val minimalEndpoint =
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                 "&current=temperature_2m,weather_code,is_day&timezone=UTC"
-        val minimalResult = runCatching {
+        return runCatching {
             parseOpenMeteoForecastJson(json = httpGet(minimalEndpoint), location = location, nowMs = nowMs)
+        }.recoverCatching {
+            throw (primaryResult.exceptionOrNull() ?: it)
         }
-        if (minimalResult.isSuccess) return@withContext minimalResult
+    }
 
-        // Fallback secundário (MET Norway public API, sem chave) caso Open-Meteo esteja bloqueado/429
-        val metEndpoint =
-            "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$lat&lon=$lon"
-        runCatching {
-            parseMetNorwayCompactJson(json = httpGet(metEndpoint), location = location, nowMs = nowMs)
-        }.recoverCatching { metErr ->
-            throw (primaryResult.exceptionOrNull() ?: minimalResult.exceptionOrNull() ?: metErr)
-        }
+    private fun fetchMetNorway(
+        location: WeatherLocation,
+        lat: String,
+        lon: String,
+        nowMs: Long,
+    ): Result<WeatherSnapshot> = runCatching {
+        val endpoint = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$lat&lon=$lon"
+        parseMetNorwayCompactJson(json = httpGet(endpoint), location = location, nowMs = nowMs)
+    }
+
+    private fun fetchWttrIn(
+        location: WeatherLocation,
+        lat: String,
+        lon: String,
+        nowMs: Long,
+    ): Result<WeatherSnapshot> = runCatching {
+        val endpoint = "https://wttr.in/$lat,$lon?format=j1"
+        parseWttrInJson(json = httpGet(endpoint), location = location, nowMs = nowMs)
     }
 
     /**
@@ -196,7 +242,37 @@ class OpenMeteoWeatherClient(
                 windSpeedKmh = windSpeed,
                 hourlyForecast = hourlyPoints,
                 updatedAtMs = nowMs,
+                sourceLabel = "Open-Meteo",
             )
+        }
+
+        fun parseNominatimSearchJson(json: String): List<WeatherLocation> {
+            if (json.isBlank()) return emptyList()
+            val arr = JSONArray(json)
+            return buildList(arr.length()) {
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val lat = obj.optString("lat").toDoubleOrNull() ?: continue
+                    val lon = obj.optString("lon").toDoubleOrNull() ?: continue
+                    val addr = obj.optJSONObject("address")
+                    val city = listOfNotNull(
+                        addr?.optString("city"),
+                        addr?.optString("town"),
+                        addr?.optString("village"),
+                        addr?.optString("municipality"),
+                        obj.optString("name"),
+                    ).firstOrNull { it.isNotBlank() } ?: continue
+                    add(
+                        WeatherLocation(
+                            name = city,
+                            region = addr?.optString("state").orEmpty(),
+                            country = addr?.optString("country").orEmpty(),
+                            latitude = lat,
+                            longitude = lon,
+                        ),
+                    )
+                }
+            }
         }
 
         fun parseIpWhoIsJson(json: String): WeatherLocation? {
@@ -311,6 +387,7 @@ class OpenMeteoWeatherClient(
                 windSpeedKmh = windSpeedKmh,
                 hourlyForecast = hourlyPoints,
                 updatedAtMs = nowMs,
+                sourceLabel = "MET Norway",
             )
         }
 
@@ -329,6 +406,71 @@ class OpenMeteoWeatherClient(
                 else -> 2
             }
             return wmo to isDay
+        }
+
+        fun parseWttrInJson(
+            json: String,
+            location: WeatherLocation,
+            nowMs: Long,
+        ): WeatherSnapshot {
+            val root = JSONObject(json)
+            val currentArr = root.getJSONArray("current_condition")
+            check(currentArr.length() > 0) { "Sem condição atual em wttr.in" }
+            val current = currentArr.getJSONObject(0)
+            val tempC = current.getString("temp_C").toDoubleOrNull()?.takeIf { it.isFinite() }
+                ?: error("Temperatura ausente em wttr.in")
+            val feelsLikeC = current.optString("FeelsLikeC").toDoubleOrNull()?.takeIf { it.isFinite() } ?: tempC
+            val windKmh = current.optString("windspeedKmph").toDoubleOrNull()?.takeIf { it.isFinite() } ?: 0.0
+            val weatherCode = mapWwoCodeToWmo(current.optString("weatherCode").toIntOrNull() ?: 113)
+
+            val daysArr = root.optJSONArray("weather")
+            val today = daysArr?.optJSONObject(0)
+            val minTemp = today?.optString("mintempC")?.toDoubleOrNull()?.takeIf { it.isFinite() } ?: tempC
+            val maxTemp = today?.optString("maxtempC")?.toDoubleOrNull()?.takeIf { it.isFinite() } ?: tempC
+
+            val hourlyPoints = mutableListOf<HourlyWeatherPoint>()
+            val hourlyArr = today?.optJSONArray("hourly")
+            if (hourlyArr != null) {
+                for (i in 0 until minOf(hourlyArr.length(), 4)) {
+                    val h = hourlyArr.optJSONObject(i) ?: continue
+                    val rawTime = h.optString("time").padStart(4, '0')
+                    val hourLabel = if (rawTime.length >= 4) "${rawTime.substring(0, 2)}:${rawTime.substring(2, 4)}" else "${i * 3}h"
+                    val hTemp = h.optString("tempC").toDoubleOrNull()?.takeIf { it.isFinite() } ?: tempC
+                    val hCode = mapWwoCodeToWmo(h.optString("weatherCode").toIntOrNull() ?: 113)
+                    hourlyPoints += HourlyWeatherPoint(
+                        timeIso = rawTime,
+                        hourLabel = hourLabel,
+                        temperatureC = hTemp,
+                        weatherCode = hCode,
+                    )
+                }
+            }
+
+            return WeatherSnapshot(
+                location = location,
+                temperatureC = tempC,
+                apparentTempC = feelsLikeC,
+                minTempC = minTemp,
+                maxTempC = maxTemp,
+                weatherCode = weatherCode,
+                isDay = true,
+                windSpeedKmh = windKmh,
+                hourlyForecast = hourlyPoints,
+                updatedAtMs = nowMs,
+                sourceLabel = "wttr.in",
+            )
+        }
+
+        private fun mapWwoCodeToWmo(code: Int): Int = when (code) {
+            113 -> 0
+            116 -> 2
+            119, 122 -> 3
+            143, 248, 260 -> 45
+            176, 263, 266, 281, 293, 296, 353 -> 51
+            299, 302, 305, 308, 356, 359 -> 61
+            179, 227, 230, 323, 326, 329, 332, 335, 338, 368, 371 -> 71
+            200, 386, 389, 392, 395 -> 95
+            else -> 2
         }
     }
 }

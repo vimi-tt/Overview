@@ -701,6 +701,7 @@ fun LauncherRoot(
                 onActivateWeatherLocation = nativeWidgetActions.onRequestLocationPermission,
                 onSearchWeatherCities = nativeWidgetActions.onSearchWeatherCities,
                 onSelectWeatherLocation = nativeWidgetActions.onSelectWeatherLocation,
+                onSelectWeatherProvider = nativeWidgetActions.onSelectWeatherProvider,
                 onClose = onCloseSettings,
             )
         }

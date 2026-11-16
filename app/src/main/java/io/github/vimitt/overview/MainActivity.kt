@@ -230,6 +230,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onSearchWeatherCities = homeViewModel::searchWeatherCities,
                         onSelectWeatherLocation = homeViewModel::selectWeatherLocation,
+                        onSelectWeatherProvider = homeViewModel::selectWeatherProvider,
                         onUseDeviceWeatherLocation = ::fetchDeviceWeatherLocationOrOpenGps,
                         onRequestCalendarPermission = ::requestCalendarPermission,
                         onRequestLocationPermission = ::requestWeatherLocation,

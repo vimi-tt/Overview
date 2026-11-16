@@ -38,6 +38,7 @@ import io.github.vimitt.overview.domain.model.ShapeFamily
 import io.github.vimitt.overview.domain.model.ThemeMode
 import io.github.vimitt.overview.domain.model.TypographyWeightMode
 import io.github.vimitt.overview.domain.model.VisualStyle
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.model.WebSearchEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -500,6 +501,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setWeatherProvider(provider: WeatherProvider) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_WEATHER_PROVIDER] = provider.name
+        }
+    }
+
     suspend fun setHomeClockStyle(style: HomeClockStyle) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_HOME_CLOCK_STYLE] = style.name
@@ -715,6 +722,9 @@ class SettingsRepository(
         val lockLayout = prefs[KEY_HOME_LOCK_LAYOUT] ?: false
         val showClock = prefs[KEY_SHOW_CLOCK] ?: true
         val showClockWeather = prefs[KEY_SHOW_CLOCK_WEATHER] ?: true
+        val weatherProvider = prefs[KEY_HOME_WEATHER_PROVIDER]?.let { saved ->
+            runCatching { WeatherProvider.valueOf(saved) }.getOrNull()
+        } ?: WeatherProvider.AUTO
         val clockStyle = prefs[KEY_HOME_CLOCK_STYLE]?.let { saved ->
             runCatching { HomeClockStyle.valueOf(saved) }.getOrNull()
         } ?: HomeClockStyle.GNOME
@@ -730,6 +740,7 @@ class SettingsRepository(
             lockLayout = lockLayout,
             showClock = showClock,
             showClockWeather = showClockWeather,
+            weatherProvider = weatherProvider,
             clockStyle = clockStyle,
             clockBackgroundAlpha = clockBackgroundAlpha,
         )
@@ -919,6 +930,7 @@ class SettingsRepository(
         val KEY_HOME_LABEL_SCALE = floatPreferencesKey("home_label_scale")
         val KEY_HOME_LOCK_LAYOUT = booleanPreferencesKey("home_lock_layout")
         val KEY_SHOW_CLOCK_WEATHER = booleanPreferencesKey("home_show_clock_weather")
+        val KEY_HOME_WEATHER_PROVIDER = stringPreferencesKey("home_weather_provider")
         val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
         val KEY_HOME_CLOCK_BG_ALPHA = floatPreferencesKey("home_clock_bg_alpha")
 

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.HomeSettings
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -78,6 +79,12 @@ class HomeSettingsViewModel(
     fun onShowClockWeatherChange(show: Boolean) {
         viewModelScope.launch {
             settingsRepository.setShowClockWeather(show)
+        }
+    }
+
+    fun onWeatherProviderChange(provider: WeatherProvider) {
+        viewModelScope.launch {
+            settingsRepository.setWeatherProvider(provider)
         }
     }
 

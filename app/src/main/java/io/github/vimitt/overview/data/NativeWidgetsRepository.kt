@@ -15,6 +15,7 @@ import io.github.vimitt.overview.domain.model.QuickNoteItem
 import io.github.vimitt.overview.domain.model.QuickTaskItem
 import io.github.vimitt.overview.domain.model.TimerStopwatchState
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.model.WeatherSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -152,23 +153,29 @@ class NativeWidgetsRepository(
 
     val currentWeatherError: String? get() = weatherError.value
 
-    suspend fun setWeatherLocationAndRefresh(location: WeatherLocation): Boolean {
+    suspend fun setWeatherLocationAndRefresh(
+        location: WeatherLocation,
+        provider: WeatherProvider = WeatherProvider.AUTO,
+    ): Boolean {
         context.nativeWidgetsDataStore.edit { prefs ->
             prefs[KEY_WEATHER_LOCATION] = encodeLocation(location)
         }
-        return refreshWeather(force = true, explicitLocation = location)
+        return refreshWeather(force = true, explicitLocation = location, provider = provider)
     }
 
     suspend fun refreshWeather(
         force: Boolean = false,
         explicitLocation: WeatherLocation? = null,
+        provider: WeatherProvider = WeatherProvider.AUTO,
     ): Boolean = weatherRefreshMutex.withLock {
         val current = storedState.first()
         val targetLocation = explicitLocation ?: current.weatherLocation ?: return@withLock false
         val cached = current.weather
         val now = System.currentTimeMillis()
+        val matchesProvider = provider == WeatherProvider.AUTO || cached?.sourceLabel == providerDisplayLabel(provider)
         if (!force &&
             cached != null &&
+            matchesProvider &&
             cached.location.latitude == targetLocation.latitude &&
             cached.location.longitude == targetLocation.longitude &&
             (now - cached.updatedAtMs) < WEATHER_TTL_MS
@@ -179,7 +186,11 @@ class NativeWidgetsRepository(
         weatherLoading.value = true
         weatherError.value = null
         return@withLock try {
-            val result = weatherClient.fetchForecast(location = targetLocation, nowMs = now)
+            val result = weatherClient.fetchForecast(
+                location = targetLocation,
+                provider = provider,
+                nowMs = now,
+            )
             result.fold(
                 onSuccess = { snapshot ->
                     context.nativeWidgetsDataStore.edit { prefs ->
@@ -196,6 +207,13 @@ class NativeWidgetsRepository(
         } finally {
             weatherLoading.value = false
         }
+    }
+
+    private fun providerDisplayLabel(provider: WeatherProvider): String = when (provider) {
+        WeatherProvider.AUTO -> ""
+        WeatherProvider.MET_NORWAY -> "MET Norway"
+        WeatherProvider.OPEN_METEO -> "Open-Meteo"
+        WeatherProvider.WTTR_IN -> "wttr.in"
     }
 
     // --- Timer e Cronômetro ---
@@ -428,6 +446,7 @@ class NativeWidgetsRepository(
             put("windSpeedKmh", weather.windSpeedKmh.takeIf { it.isFinite() } ?: 0.0)
             put("hourly", hourlyArr)
             put("updatedAtMs", weather.updatedAtMs)
+            put("sourceLabel", weather.sourceLabel)
         }.toString()
     }
 
@@ -463,6 +482,7 @@ class NativeWidgetsRepository(
                 windSpeedKmh = obj.optDouble("windSpeedKmh", 0.0),
                 hourlyForecast = hourly,
                 updatedAtMs = obj.optLong("updatedAtMs", 0L),
+                sourceLabel = obj.optString("sourceLabel", ""),
             )
         }.getOrNull()
     }

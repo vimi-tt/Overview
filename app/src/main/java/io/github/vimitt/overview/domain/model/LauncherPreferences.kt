@@ -270,6 +270,16 @@ enum class HomeClockStyle(val hasBackground: Boolean) {
 }
 
 /**
+ * Provedores de dados meteorológicos sem necessidade de chave de API.
+ */
+enum class WeatherProvider {
+    AUTO,
+    MET_NORWAY,
+    OPEN_METEO,
+    WTTR_IN,
+}
+
+/**
  * Preferências da categoria Tela inicial.
  */
 @Immutable
@@ -282,6 +292,7 @@ data class HomeSettings(
     val lockLayout: Boolean = false,
     val showClock: Boolean = true,
     val showClockWeather: Boolean = true,
+    val weatherProvider: WeatherProvider = WeatherProvider.AUTO,
     val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
     val clockBackgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
 )

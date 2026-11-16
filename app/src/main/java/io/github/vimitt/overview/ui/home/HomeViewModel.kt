@@ -21,6 +21,7 @@ import io.github.vimitt.overview.domain.model.ClockToolMode
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -505,7 +506,8 @@ class HomeViewModel(
         onError: ((String) -> Unit)? = null,
     ) {
         viewModelScope.launch {
-            val ok = nativeWidgetsRepository.refreshWeather(force = force)
+            val provider = uiState.value.homeSettings.weatherProvider
+            val ok = nativeWidgetsRepository.refreshWeather(force = force, provider = provider)
             if (!ok && onError != null) {
                 val err = nativeWidgetsRepository.currentWeatherError
                 if (!err.isNullOrBlank()) {
@@ -521,7 +523,15 @@ class HomeViewModel(
 
     fun selectWeatherLocation(location: WeatherLocation) {
         viewModelScope.launch {
-            nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
+            val provider = uiState.value.homeSettings.weatherProvider
+            nativeWidgetsRepository.setWeatherLocationAndRefresh(location, provider = provider)
+        }
+    }
+
+    fun selectWeatherProvider(provider: WeatherProvider) {
+        viewModelScope.launch {
+            settingsRepository.setWeatherProvider(provider)
+            nativeWidgetsRepository.refreshWeather(force = true, provider = provider)
         }
     }
 
@@ -531,7 +541,8 @@ class HomeViewModel(
         viewModelScope.launch {
             val location = NativeWidgetSystemProviders.resolveCoarseWeatherLocation(appContext)
             if (location != null) {
-                val refreshed = nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
+                val provider = uiState.value.homeSettings.weatherProvider
+                val refreshed = nativeWidgetsRepository.setWeatherLocationAndRefresh(location, provider = provider)
                 onResult(location, refreshed)
             } else {
                 onResult(null, false)

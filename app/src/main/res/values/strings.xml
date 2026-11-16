@@ -186,6 +186,12 @@
     <string name="settings_home_clock_location_enable">Ativar localização para obter o clima automaticamente</string>
     <string name="settings_home_clock_location_gps_off">GPS do aparelho desligado — toque para ativar</string>
     <string name="settings_home_clock_city">Escolher cidade manualmente</string>
+    <string name="settings_home_weather_provider">Provedor de clima</string>
+    <string name="weather_provider_auto">Automático (com fallback)</string>
+    <string name="weather_provider_met_norway">MET Norway (mais estável)</string>
+    <string name="weather_provider_open_meteo">Open-Meteo (multi-modelo)</string>
+    <string name="weather_provider_wttr">wttr.in (alternativo)</string>
+    <string name="weather_provider_dialog_label">Fonte do clima</string>
     <string name="clock_enable_location_cta">Ativar localização</string>
     <string name="permission_calendar_settings_notice">Ative a permissão de Agenda nas configurações do aplicativo.</string>
     <string name="permission_location_settings_notice">Ative a permissão de Localização nas configurações do aplicativo.</string>

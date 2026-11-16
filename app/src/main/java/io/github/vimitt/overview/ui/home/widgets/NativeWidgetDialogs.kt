@@ -1,7 +1,9 @@
 package io.github.vimitt.overview.ui.home.widgets
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -39,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.QuickNoteItem
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlinx.coroutines.delay
@@ -201,10 +205,12 @@ fun QuickTaskDialog(
 }
 
 /**
- * Diálogo de busca e escolha de cidade via geocodificação gratuita Open-Meteo (sem chave de API).
+ * Diálogo de busca e escolha de cidade e seleção do provedor aberto de clima.
  */
 @Composable
 fun WeatherCityPickerDialog(
+    selectedProvider: WeatherProvider = WeatherProvider.AUTO,
+    onSelectProvider: (WeatherProvider) -> Unit = {},
     onSearchCities: suspend (String) -> Result<List<WeatherLocation>>,
     onSelectLocation: (WeatherLocation) -> Unit,
     onUseGpsLocation: () -> Unit,
@@ -251,6 +257,53 @@ fun WeatherCityPickerDialog(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = colors.onSurface,
             )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = stringResource(R.string.weather_provider_dialog_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceMuted,
+                )
+                val providerChips = listOf(
+                    WeatherProvider.AUTO to stringResource(R.string.weather_provider_auto),
+                    WeatherProvider.MET_NORWAY to "MET Norway",
+                    WeatherProvider.OPEN_METEO to "Open-Meteo",
+                    WeatherProvider.WTTR_IN to "wttr.in",
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    for ((provider, label) in providerChips) {
+                        val selected = provider == selectedProvider
+                        Box(
+                            modifier = Modifier
+                                .clip(shapes.pill)
+                                .background(
+                                    if (selected) colors.accentContainer else colors.surfaceContainerHigh,
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (selected) colors.accent else colors.hairlineBorder,
+                                    shape = shapes.pill,
+                                )
+                                .clickable { onSelectProvider(provider) }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                ),
+                                color = if (selected) colors.onAccentContainer else colors.onSurface,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

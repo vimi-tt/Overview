@@ -139,6 +139,7 @@ data class WeatherSnapshot(
     val windSpeedKmh: Double,
     val hourlyForecast: List<HourlyWeatherPoint> = emptyList(),
     val updatedAtMs: Long,
+    val sourceLabel: String = "",
 )
 
 enum class ClockToolMode {

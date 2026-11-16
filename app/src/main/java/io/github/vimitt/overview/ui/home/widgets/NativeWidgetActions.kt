@@ -3,6 +3,7 @@ package io.github.vimitt.overview.ui.home.widgets
 import androidx.compose.runtime.Immutable
 import io.github.vimitt.overview.domain.model.ClockToolMode
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 
 /**
  * Agrupador de ações interativas disparadas pelos widgets nativos na tela inicial.
@@ -17,6 +18,7 @@ data class NativeWidgetActions(
     val onRefreshWeather: (force: Boolean) -> Unit = {},
     val onSearchWeatherCities: suspend (query: String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     val onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
+    val onSelectWeatherProvider: (WeatherProvider) -> Unit = {},
     val onUseDeviceWeatherLocation: () -> Unit = {},
     val onRequestCalendarPermission: () -> Unit = {},
     val onRequestLocationPermission: () -> Unit = {},

@@ -35,6 +35,7 @@ import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherProvider
 import io.github.vimitt.overview.domain.model.WeatherSnapshot
 import io.github.vimitt.overview.ui.components.HomeClock
 import io.github.vimitt.overview.ui.components.rememberIsLifecycleActive
@@ -62,6 +63,7 @@ fun HomeSettingsScreen(
     onLockLayoutChange: (Boolean) -> Unit,
     onShowClockChange: (Boolean) -> Unit,
     onShowClockWeatherChange: (Boolean) -> Unit = {},
+    onWeatherProviderChange: (WeatherProvider) -> Unit = {},
     onClockStyleChange: (HomeClockStyle) -> Unit,
     onClockBackgroundAlphaChange: (Float) -> Unit,
     onActivateWeatherLocation: () -> Unit = {},
@@ -221,6 +223,20 @@ fun HomeSettingsScreen(
                     enabled = settings.showClock && settings.showClockWeather,
                     onClick = { showCityPicker = true },
                 )
+                SettingsDivider()
+                val weatherProviderOptions = listOf(
+                    WeatherProvider.AUTO to stringResource(R.string.weather_provider_auto),
+                    WeatherProvider.MET_NORWAY to stringResource(R.string.weather_provider_met_norway),
+                    WeatherProvider.OPEN_METEO to stringResource(R.string.weather_provider_open_meteo),
+                    WeatherProvider.WTTR_IN to stringResource(R.string.weather_provider_wttr),
+                )
+                SingleChoiceRow(
+                    title = stringResource(R.string.settings_home_weather_provider),
+                    options = weatherProviderOptions,
+                    selected = settings.weatherProvider,
+                    enabled = settings.showClock && settings.showClockWeather,
+                    onSelect = onWeatherProviderChange,
+                )
             }
         }
 
@@ -255,6 +271,8 @@ fun HomeSettingsScreen(
 
         if (showCityPicker) {
             WeatherCityPickerDialog(
+                selectedProvider = settings.weatherProvider,
+                onSelectProvider = onWeatherProviderChange,
                 onSearchCities = onSearchWeatherCities,
                 onSelectLocation = onSelectWeatherLocation,
                 onUseGpsLocation = onActivateWeatherLocation,
