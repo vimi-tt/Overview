@@ -19,6 +19,7 @@ local.properties
 *.class
 *.jks
 *.keystore
+keystore.properties
 
 # Logs e caches locais
 *.log

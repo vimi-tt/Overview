@@ -2,16 +2,16 @@
 
 # Overview
 
-**Launcher Android moderno e minimalista inspirado no GNOME 51 ("A Coruña") / libadwaita, agora com modo opcional Material 3 Expressive.**
+**Launcher Android moderno e minimalista inspirado no GNOME 51 ("A Coruña") / libadwaita.**
 
-Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos fluidos (60/120 Hz), personalização em tempo real e fidelidade à estética limpa do GNOME para dispositivos móveis.
+Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos fluidos (60/120 Hz), personalização completa e fidelidade à estética limpa do GNOME para dispositivos móveis.
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0--beta--1-3584e4?style=flat-square)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.0-3584e4?style=flat-square)
 ![Android](https://img.shields.io/badge/Android-12%2B%20(API%2031--35)-3ddc84?style=flat-square&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff?style=flat-square&logo=kotlin&logoColor=white)
 ![Licença](https://img.shields.io/badge/Licen%C3%A7a-GPL--3.0-orange?style=flat-square)
 
-[Estilos visuais](#estilos-visuais) • [Recursos](#recursos) • [Capturas de tela](#capturas-de-tela) • [Compilar e instalar](#compilar-e-instalar) • [Arquitetura](#arquitetura) • [Roadmap](#roadmap)
+[Recursos](#recursos) • [Capturas de tela](#capturas-de-tela) • [Compilar e instalar](#compilar-e-instalar) • [Arquitetura](#arquitetura) • [Roadmap](#roadmap)
 
 </div>
 
@@ -22,28 +22,6 @@ Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos flui
 O **Overview** traz para o Android a organização espacial e a clareza visual do **GNOME Shell** e da linguagem **libadwaita** — unindo uma tela inicial leve sobre o papel de parede do sistema, um **Dash** fixo para os favoritos e uma visão geral (**Overview**) com busca instantânea, pastas e grade paginada por gestos.
 
 Código-fonte oficial: **[github.com/vimi-tt/Overview](https://github.com/vimi-tt/Overview)**
-
----
-
-## Capturas de tela
-
-| Estilo GNOME (Home / Overview) | Estilo Expressive (Home / Overview) | Aparência & Prévia ao vivo |
-| :---: | :---: | :---: |
-| _Pendente (captura no Android 15)_ | _Pendente (captura no Android 15)_ | _Pendente (captura no Android 15)_ |
-
-> _Espaço reservado para capturas comparativas entre os estilos **GNOME** e **Expressive** em dispositivo físico com Android 15 (nenhum aparelho conectado durante esta etapa)._
-
----
-
-## Estilos visuais
-
-Em **Configurações → Aparência**, você pode alternar em tempo real entre dois estilos construídos sobre o mesmo sistema centralizado de tokens (`OverviewTheme`):
-
-- **GNOME (padrão)**: preserva a identidade clássica inspirada no GNOME 51 / libadwaita — superfícies neutras (`#fafafa` / `#242424`), destaque Adwaita, formas equilibradas, transições curtas e grupos lineares previsíveis.
-- **Expressive (GNOME × Material 3 Expressive)**: mantém a estrutura e a calma do layout GNOME, somando superfícies tonais e cor dinâmica (**Material You**, API 31+), física de mola configurável (**Baixa / Média / Alta**) em Overview, pager horizontal, pastas, drag-and-drop e navegação, *shape morphing* contínuo via `androidx.graphics:graphics-shapes` ao pressionar ícones, peso tipográfico enfático e controles expressivos (*button groups*, *split buttons*, *switches* com ícone, seletores segmentados e indicadores de carregamento com *morphing* e barra ondulada).
-- **Personalização completa em tempo real**: escolha a origem das cores (**GNOME**, **Dinâmica** ou **Personalizada** com código HEX `#RRGGBB` e garantia de contraste WCAG AA), família de formas (**Discreta**, **Padrão**, **Expressiva**), 6 formatos de ícone (*Círculo*, *Quadrado arredondado*, *Squircle*, *Quadrado*, *Trevo*, *Flor*) com controle de arredondamento, peso da tipografia (**Normal** / **Enfático**) e desfoque (`RenderEffect`).
-
----
 
 ## Recursos
 
@@ -72,28 +50,28 @@ Em **Configurações → Aparência**, você pode alternar em tempo real entre d
 
 ### Gestos, aparência e acessibilidade
 - **Gestos configuráveis**: personalize ações para **deslizar para cima**, **deslizar para baixo**, **toque duplo** e **botão Início na Home** (Overview, busca, notificações, configurações rápidas, configurações do Overview, papel de parede, assistente ou câmera), com 3 níveis de sensibilidade.
-- **Aparência e personalização**: alternância ao vivo entre **GNOME** e **Expressive**, tema Claro/Escuro/Automático, paleta Adwaita, **Material You** (cor dinâmica no Android 12+) ou cor personalizada em HEX, **6 formas de ícone** com controle contínuo de arredondamento e *morphing* no toque, **pacotes de ícones**, **pontos de notificação** via `NotificationListenerService` e controle direto do desfoque (`RenderEffect`).
-- **Acessibilidade**: respeito nativo à preferência global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`), removendo molas e overshoot em ambos os estilos, contraste WCAG AA nas superfícies, dígitos tabulares e alvos de toque mínimos de 48 dp.
+- **Aparência Adwaita**: tema Claro (`#fafafa`), Escuro (`#242424`) ou Automático, paleta de cores de destaque do GNOME, **pacotes de ícones** compatíveis com launchers, formato de ícone (*Círculo*, *Quadrado arredondado* ou *Quadrado*) e **pontos de notificação** via `NotificationListenerService`.
+- **Acessibilidade**: respeito nativo à preferência global de **animações reduzidas** (`ANIMATOR_DURATION_SCALE`), dígitos tabulares e alvos de toque mínimos de 48 dp.
 
 ---
 
 ## Tecnologias e arquitetura
 
-- **Linguagem & UI**: Kotlin + Jetpack Compose + Material 3 + `androidx.graphics:graphics-shapes:1.1.0` (design system próprio com tokens GNOME / Expressive)
-- **Persistência**: Jetpack DataStore (`Preferences`) para preferências reativas por categoria (incluindo estilo visual, movimento, formas, cor dinâmica/personalizada e tipografia) + armazenamento JSON para workspace e pastas
+- **Linguagem & UI**: Kotlin + Jetpack Compose + Material 3 (design system próprio com tokens Adwaita)
+- **Persistência**: Jetpack DataStore (`Preferences`) para preferências reativas por categoria + armazenamento JSON para workspace e pastas
 - **Integração Android**: `LauncherApps` (eventos reativos de pacotes e animações de abertura), `AppWidgetHost`, `NotificationListenerService`, `WallpaperManager` e `Navigation Compose`
 
 ```text
 app/src/main/java/io/github/vimitt/overview/
 ├── data/          # Repositórios (Apps, Settings DataStore, IconPacks, Badges, Widgets, HomeWorkspace, SystemPanelHelper)
 ├── di/            # AppContainer (injeção de dependências manual leve)
-├── domain/        # Modelos imutáveis (AppInfo, HomeItem, LauncherPreferences, VisualStyle)
+├── domain/        # Modelos imutáveis (AppInfo, HomeItem, LauncherPreferences) e casos de uso
 └── ui/
-    ├── theme/     # Tokens de cor (GNOME/Dynamic/Custom), formas, molas de movimento, tipografia e ExpressiveBridge
-    ├── components/# AppIconItem (press morph), DashBar, HomeClock, OverviewSearchBar, MorphingShape, ExpressiveControls
+    ├── theme/     # Tokens de cor Adwaita, raios, tipografia e utilitários de movimento reduzido
+    ├── components/# AppIconItem, DashBar, HomeClock, OverviewSearchBar
     ├── home/      # HomeScreen, HomeViewModel, HomeUiState e seletores de apps/widgets
     ├── overview/  # OverviewScreen, OverviewViewModel, OverviewUiState (grade paginada, pastas e busca)
-    ├── settings/  # SettingsNavHost, SettingsHubScreen, controles GNOME/Expressive e 9 categorias de configuração
+    ├── settings/  # SettingsNavHost, SettingsHubScreen, componentes libadwaita e 9 categorias de configuração
     └── LauncherRoot.kt
 ```
 
@@ -131,6 +109,12 @@ cd Overview
 ./gradlew testDebugUnitTest lintDebug
 ```
 
+4. Para gerar um APK release assinado localmente com sua própria keystore, copie `keystore.properties.example` para `keystore.properties` na raiz do repositório e preencha os dados da chave (ambos `keystore.properties` e `*.jks` ficam fora do Git via `.gitignore`):
+
+```bash
+./gradlew assembleRelease
+```
+
 ### Definir o Overview como launcher padrão
 
 - **Pelo Android**: acesse **Configurações → Apps → Apps padrão → App de início** e selecione **Overview** (ou pressione o botão Início e escolha **Overview → Sempre**).
@@ -158,7 +142,8 @@ adb shell cmd role remove-role-holder android.app.role.HOME io.github.vimitt.ove
 - [x] Pastas de aplicativos fixadas no início da grade e gerenciamento completo
 - [x] Gestos configuráveis na Home e no botão Início com ajuste de sensibilidade
 - [x] Central de Configurações completa no estilo GNOME / libadwaita (`0.1.0-beta-1`)
-- [ ] **Próximos passos**: pastas diretamente na tela inicial, painel próprio de configurações rápidas estilo GNOME e fonte Adwaita Sans embarcada
+- [x] Pastas diretamente na tela inicial, painel próprio de configurações rápidas estilo GNOME e fonte Adwaita Sans embarcada
+- [x] Internacionalização completa (inglês padrão + português), tela inicial multipáginas, App Shortcuts, `PinItemRequest`, desinstalação direta, ícone monocromático, Predictive Back e backup/restauração JSON (`1.0.0`)
 
 ---
 

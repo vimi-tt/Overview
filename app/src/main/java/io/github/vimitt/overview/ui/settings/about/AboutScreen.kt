@@ -90,6 +90,30 @@ fun AboutScreen(
             }
         }
 
+        item(key = "about_highlights_group") {
+            SettingsGroup(title = stringResource(R.string.settings_about_section_highlights)) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_highlight_home),
+                    subtitle = stringResource(R.string.settings_about_highlight_home_sub),
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_highlight_quick_settings),
+                    subtitle = stringResource(R.string.settings_about_highlight_quick_settings_sub),
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_highlight_launcher),
+                    subtitle = stringResource(R.string.settings_about_highlight_launcher_sub),
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_highlight_backup),
+                    subtitle = stringResource(R.string.settings_about_highlight_backup_sub),
+                )
+            }
+        }
+
         item(key = "about_credits_group") {
             SettingsGroup(title = stringResource(R.string.settings_about_section_credits)) {
                 SettingsRow(
@@ -100,6 +124,16 @@ fun AboutScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_about_credit_lawnchair),
                     subtitle = stringResource(R.string.settings_about_credit_lawnchair_sub),
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_credit_fonts),
+                    subtitle = stringResource(R.string.settings_about_credit_fonts_sub),
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_credit_openmeteo),
+                    subtitle = stringResource(R.string.settings_about_credit_openmeteo_sub),
                 )
             }
         }

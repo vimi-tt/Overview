@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,16 +14,53 @@ android {
         applicationId = "io.github.vimitt.overview"
         minSdk = 31
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.0-beta-1"
+        versionCode = 3
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    val keystoreProperties = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.isFile) {
+            file.inputStream().use(::load)
+        }
+    }
+    val releaseStoreFilePath = keystoreProperties.getProperty("storeFile")
+        ?: System.getenv("OVERVIEW_KEYSTORE_PATH")
+    val releaseStorePassword = keystoreProperties.getProperty("storePassword")
+        ?: System.getenv("OVERVIEW_KEYSTORE_PASSWORD")
+    val releaseKeyAlias = keystoreProperties.getProperty("keyAlias")
+        ?: System.getenv("OVERVIEW_KEY_ALIAS")
+    val releaseKeyPassword = keystoreProperties.getProperty("keyPassword")
+        ?: System.getenv("OVERVIEW_KEY_PASSWORD")
+
+    val hasReleaseSigning = !releaseStoreFilePath.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank() &&
+        rootProject.file(releaseStoreFilePath).isFile
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
