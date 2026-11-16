@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/overview-icon.png" width="96" alt="Overview Launcher" />
+
 # Overview
 
 **Launcher Android moderno e minimalista inspirado no GNOME 51 ("A Coruña") / libadwaita.**
