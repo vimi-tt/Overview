@@ -11,11 +11,16 @@ import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.data.AppsRepository
 import io.github.vimitt.overview.data.DefaultDashPackageProvider
 import io.github.vimitt.overview.data.HomeWorkspaceRepository
+import io.github.vimitt.overview.data.NativeWidgetSystemProviders
+import io.github.vimitt.overview.data.NativeWidgetsRepository
 import io.github.vimitt.overview.data.NotificationBadgeRepository
 import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.ClockToolMode
 import io.github.vimitt.overview.domain.model.HomeItem
+import io.github.vimitt.overview.domain.model.NativeWidgetType
+import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +31,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel responsável pela tela inicial, Dash de favoritos e grade de atalhos/widgets.
+ * ViewModel responsável pela tela inicial, Dash de favoritos, widgets nativos e grade de atalhos/widgets.
  */
 class HomeViewModel(
     private val appContext: Context,
@@ -35,6 +40,7 @@ class HomeViewModel(
     notificationBadgeRepository: NotificationBadgeRepository,
     private val homeWorkspaceRepository: HomeWorkspaceRepository,
     private val appWidgetController: AppWidgetController,
+    private val nativeWidgetsRepository: NativeWidgetsRepository,
     private val homeGridPlacementUseCase: HomeGridPlacementUseCase,
     private val defaultDashPackageProvider: DefaultDashPackageProvider,
     private val resolveDefaultDashAppsUseCase: ResolveDefaultDashAppsUseCase,
@@ -50,9 +56,9 @@ class HomeViewModel(
         appsRepository.apps,
         settingsRepository.preferences,
         homeWorkspaceRepository.items,
-        movingItemId,
-        notificationBadgeRepository.activeBadgePackages,
-    ) { apps, preferences, rawItems, movingId, badgePackages ->
+        nativeWidgetsRepository.state,
+        combine(movingItemId, notificationBadgeRepository.activeBadgePackages, ::Pair),
+    ) { apps, preferences, rawItems, nativeWidgets, (movingId, badgePackages) ->
         val dashApps = resolveDefaultDashAppsUseCase(
             apps = apps,
             pinnedKeys = preferences.pinnedDashKeys,
@@ -87,7 +93,28 @@ class HomeViewModel(
                         label = label,
                     )
                 }
+
+                is HomeItem.NativeWidget -> {
+                    HomeWorkspaceItem.NativeWidget(
+                        item = item,
+                        label = appContext.getString(item.widgetType.titleRes),
+                    )
+                }
             }
+        }
+
+        val rankedFrequent = apps
+            .asSequence()
+            .filter { (nativeWidgets.appLaunchCounts[it.key] ?: 0) > 0 }
+            .sortedByDescending { nativeWidgets.appLaunchCounts[it.key] ?: 0 }
+            .take(8)
+            .toList()
+        val frequentApps = if (rankedFrequent.size >= 4) {
+            rankedFrequent
+        } else {
+            (rankedFrequent + dashApps)
+                .distinctBy { it.key }
+                .take(8)
         }
 
         val activeMovingId = if (
@@ -103,6 +130,8 @@ class HomeViewModel(
         HomeUiState(
             dashApps = dashApps,
             workspaceItems = resolvedWorkspace,
+            frequentApps = frequentApps,
+            nativeWidgets = nativeWidgets,
             showClock = preferences.showClock,
             movingItemId = activeMovingId,
             homeSettings = preferences.home,
@@ -348,6 +377,126 @@ class HomeViewModel(
         return appWidgetController.loadInstalledWidgets()
     }
 
+    fun addNativeWidgetToHome(
+        widgetType: NativeWidgetType,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
+        onResult: (Boolean) -> Unit = {},
+    ) {
+        val state = uiState.value
+        if (state.lockLayout) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val added = homeWorkspaceRepository.addNativeWidget(
+                widgetType = widgetType,
+                preferredCellX = preferredCellX,
+                preferredCellY = preferredCellY,
+                columns = state.gridColumns,
+                rows = state.gridRows,
+            )
+            onResult(added)
+        }
+    }
+
+    fun saveQuickNote(content: String, noteId: String? = null) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.saveQuickNote(content = content, noteId = noteId)
+        }
+    }
+
+    fun deleteQuickNote(noteId: String) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.deleteQuickNote(noteId)
+        }
+    }
+
+    fun addQuickTask(title: String) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.addTask(title)
+        }
+    }
+
+    fun toggleQuickTask(taskId: String) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.toggleTask(taskId)
+        }
+    }
+
+    fun clearCompletedTasks() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.clearCompletedTasks()
+        }
+    }
+
+    fun refreshWeather(force: Boolean = false) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.refreshWeather(force = force)
+        }
+    }
+
+    suspend fun searchWeatherCities(query: String): Result<List<WeatherLocation>> {
+        return nativeWidgetsRepository.searchWeatherCities(query)
+    }
+
+    fun selectWeatherLocation(location: WeatherLocation) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
+        }
+    }
+
+    fun useDeviceWeatherLocation() {
+        viewModelScope.launch {
+            val location = NativeWidgetSystemProviders.resolveCoarseWeatherLocation(appContext)
+            if (location != null) {
+                nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
+            }
+        }
+    }
+
+    fun setClockToolMode(mode: ClockToolMode) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.setClockToolMode(mode)
+        }
+    }
+
+    fun setTimerDuration(durationMs: Long) {
+        viewModelScope.launch {
+            nativeWidgetsRepository.setTimerDuration(durationMs)
+        }
+    }
+
+    fun toggleTimer() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.toggleTimer()
+        }
+    }
+
+    fun resetTimer() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.resetTimer()
+        }
+    }
+
+    fun finishTimerIfElapsed() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.finishTimerIfElapsed()
+        }
+    }
+
+    fun toggleStopwatch() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.toggleStopwatch()
+        }
+    }
+
+    fun resetStopwatch() {
+        viewModelScope.launch {
+            nativeWidgetsRepository.resetStopwatch()
+        }
+    }
+
     class Factory(
         private val appContext: Context,
         private val appsRepository: AppsRepository,
@@ -355,6 +504,7 @@ class HomeViewModel(
         private val notificationBadgeRepository: NotificationBadgeRepository,
         private val homeWorkspaceRepository: HomeWorkspaceRepository,
         private val appWidgetController: AppWidgetController,
+        private val nativeWidgetsRepository: NativeWidgetsRepository,
         private val homeGridPlacementUseCase: HomeGridPlacementUseCase,
         private val defaultDashPackageProvider: DefaultDashPackageProvider,
         private val resolveDefaultDashAppsUseCase: ResolveDefaultDashAppsUseCase,
@@ -368,6 +518,7 @@ class HomeViewModel(
                 notificationBadgeRepository = notificationBadgeRepository,
                 homeWorkspaceRepository = homeWorkspaceRepository,
                 appWidgetController = appWidgetController,
+                nativeWidgetsRepository = nativeWidgetsRepository,
                 homeGridPlacementUseCase = homeGridPlacementUseCase,
                 defaultDashPackageProvider = defaultDashPackageProvider,
                 resolveDefaultDashAppsUseCase = resolveDefaultDashAppsUseCase,

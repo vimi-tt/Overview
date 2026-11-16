@@ -48,4 +48,14 @@ sealed interface HomeItem {
         override val spanX: Int,
         override val spanY: Int,
     ) : HomeItem
+
+    @Immutable
+    data class NativeWidget(
+        override val id: String,
+        val widgetType: NativeWidgetType,
+        override val cellX: Int,
+        override val cellY: Int,
+        override val spanX: Int = widgetType.defaultSpanX,
+        override val spanY: Int = widgetType.defaultSpanY,
+    ) : HomeItem
 }

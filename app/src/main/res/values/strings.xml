@@ -319,4 +319,101 @@
     <string name="settings_cancel">Cancelar</string>
     <string name="settings_home_grid_format">%1$d × %2$d</string>
     <string name="settings_home_summary_locked">%1$d × %2$d · Bloqueado</string>
+
+    <!-- Widgets nativos do Overview -->
+    <string name="picker_native_widgets_section">Widgets do Overview</string>
+    <string name="picker_android_widgets_section">Widgets de aplicativos</string>
+    <string name="picker_widget_style_badge_gnome">Adaptado ao tema GNOME</string>
+    <string name="picker_widget_style_badge_expressive">Adaptado ao Material Expressive</string>
+
+    <string name="native_widget_clock_alarm_title">Relógio e alarme</string>
+    <string name="native_widget_clock_alarm_desc">Hora, data e próximo alarme configurado</string>
+    <string name="native_widget_no_alarm">Sem alarme ativo</string>
+    <string name="native_widget_next_alarm_prefix">Próx. alarme</string>
+
+    <string name="native_widget_daily_summary_title">Resumo do dia</string>
+    <string name="native_widget_daily_summary_desc">Próximo evento, clima e alarme numa linha só</string>
+    <string name="native_widget_summary_tap_weather">Definir cidade</string>
+    <string name="native_widget_summary_no_events">Agenda livre</string>
+
+    <string name="native_widget_agenda_title">Agenda</string>
+    <string name="native_widget_agenda_desc">Próximos compromissos, toque para abrir o evento</string>
+    <string name="native_widget_agenda_untitled">Compromisso</string>
+    <string name="native_widget_agenda_all_day">Dia inteiro</string>
+    <string name="native_widget_agenda_empty">Nenhum compromisso próximo</string>
+    <string name="native_widget_agenda_permission_title">Permissão de calendário necessária</string>
+    <string name="native_widget_agenda_permission_cta">Permitir agenda</string>
+
+    <string name="native_widget_weather_title">Clima (Open-Meteo)</string>
+    <string name="native_widget_weather_desc">Temperatura atual e previsão curta sem chave de API</string>
+    <string name="native_widget_weather_setup_title">Escolha sua cidade ou localização</string>
+    <string name="native_widget_weather_choose_city">Escolher cidade</string>
+    <string name="native_widget_weather_use_gps">Usar localização</string>
+    <string name="native_widget_weather_current_location">Localização atual</string>
+    <string name="native_widget_weather_feels_like">Sensação %1$d°</string>
+    <string name="native_widget_weather_min_max">Min %1$d° · Máx %2$d°</string>
+    <string name="native_widget_weather_city_dialog_title">Cidade para o clima</string>
+    <string name="native_widget_weather_city_hint">Digite o nome da cidade…</string>
+    <string name="native_widget_weather_search">Buscar</string>
+    <string name="native_widget_weather_search_empty">Nenhuma cidade encontrada</string>
+    <string name="native_widget_weather_cond_clear">Céu limpo</string>
+    <string name="native_widget_weather_cond_partly_cloudy">Parcialmente nublado</string>
+    <string name="native_widget_weather_cond_cloudy">Nublado</string>
+    <string name="native_widget_weather_cond_fog">Neblina</string>
+    <string name="native_widget_weather_cond_drizzle">Garoa</string>
+    <string name="native_widget_weather_cond_rain">Chuva</string>
+    <string name="native_widget_weather_cond_snow">Neve</string>
+    <string name="native_widget_weather_cond_storm">Tempestade</string>
+
+    <string name="native_widget_media_title">Controle de música</string>
+    <string name="native_widget_media_desc">Capa, reproduzir/pausar e trocar de faixa na Home</string>
+    <string name="native_widget_media_untitled">Mídia em reprodução</string>
+    <string name="native_widget_media_idle">Nada tocando agora</string>
+    <string name="native_widget_media_access_title">Ative o acesso às notificações para controlar mídias</string>
+    <string name="native_widget_media_access_cta">Conceder acesso</string>
+    <string name="native_widget_media_prev">Faixa anterior</string>
+    <string name="native_widget_media_play_pause">Reproduzir ou pausar</string>
+    <string name="native_widget_media_next">Próxima faixa</string>
+
+    <string name="native_widget_device_title">Bateria e dispositivo</string>
+    <string name="native_widget_device_desc">Bateria, armazenamento interno e rede em cartão compacto</string>
+    <string name="native_widget_battery_label">Bateria</string>
+    <string name="native_widget_battery_charging">%1$d%% · Carregando</string>
+    <string name="native_widget_storage_label">Armazenamento</string>
+    <string name="native_widget_network_label">Rede</string>
+    <string name="native_widget_network_wifi">Wi-Fi</string>
+    <string name="native_widget_network_cellular">Dados móveis</string>
+    <string name="native_widget_network_ethernet">Ethernet</string>
+    <string name="native_widget_network_connected">Conectado</string>
+    <string name="native_widget_network_offline">Sem conexão</string>
+
+    <string name="native_widget_notes_title">Notas rápidas</string>
+    <string name="native_widget_notes_desc">Anotar e consultar a última nota direto da tela inicial</string>
+    <string name="native_widget_notes_empty">Toque em + para anotar algo rápido</string>
+    <string name="native_widget_notes_count">%1$d notas</string>
+    <string name="native_widget_notes_dialog_title">Nota rápida</string>
+    <string name="native_widget_notes_placeholder">Escreva sua anotação…</string>
+    <string name="native_widget_notes_save">Salvar nota</string>
+    <string name="native_widget_notes_delete">Apagar</string>
+
+    <string name="native_widget_tasks_title">Tarefas</string>
+    <string name="native_widget_tasks_desc">Lista curta com marcar como concluída na própria tela</string>
+    <string name="native_widget_tasks_empty">Nenhuma tarefa pendente</string>
+    <string name="native_widget_tasks_dialog_title">Nova tarefa</string>
+    <string name="native_widget_tasks_placeholder">O que precisa ser feito?</string>
+    <string name="native_widget_tasks_add">Adicionar</string>
+    <string name="native_widget_tasks_clear_done">Limpar feitas</string>
+
+    <string name="native_widget_frequent_apps_title">Apps frequentes</string>
+    <string name="native_widget_frequent_apps_desc">Atalho direto para os aplicativos mais abertos</string>
+    <string name="native_widget_frequent_apps_empty">Abra alguns apps para preencher seus favoritos</string>
+
+    <string name="native_widget_timer_title">Timer e cronômetro</string>
+    <string name="native_widget_timer_desc">Iniciar e acompanhar sem abrir o aplicativo de relógio</string>
+    <string name="native_widget_mode_timer">Timer</string>
+    <string name="native_widget_mode_stopwatch">Cronômetro</string>
+    <string name="native_widget_timer_done">Tempo esgotado</string>
+    <string name="native_widget_timer_start">Iniciar</string>
+    <string name="native_widget_timer_pause">Pausar</string>
+    <string name="native_widget_timer_reset">Zerar</string>
 </resources>

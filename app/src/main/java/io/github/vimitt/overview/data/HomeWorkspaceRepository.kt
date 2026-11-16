@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeItem
+import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -116,6 +117,40 @@ class HomeWorkspaceRepository(
         return added
     }
 
+    suspend fun addNativeWidget(
+        widgetType: NativeWidgetType,
+        preferredCellX: Int? = null,
+        preferredCellY: Int? = null,
+        columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
+        rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
+    ): Boolean {
+        var added = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
+            val slot = placementUseCase.findAvailableSlot(
+                existingItems = current,
+                desiredSpanX = widgetType.defaultSpanX,
+                desiredSpanY = widgetType.defaultSpanY,
+                preferredCellX = preferredCellX,
+                preferredCellY = preferredCellY,
+                columns = columns,
+                rows = rows,
+            ) ?: return@edit
+
+            current += HomeItem.NativeWidget(
+                id = "native_${widgetType.name}_${UUID.randomUUID()}",
+                widgetType = widgetType,
+                cellX = slot.cellX,
+                cellY = slot.cellY,
+                spanX = slot.spanX,
+                spanY = slot.spanY,
+            )
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
+            added = true
+        }
+        return added
+    }
+
     suspend fun moveItem(
         id: String,
         newCellX: Int,
@@ -147,6 +182,7 @@ class HomeWorkspaceRepository(
             current[index] = when (item) {
                 is HomeItem.AppShortcut -> item.copy(cellX = newCellX, cellY = newCellY)
                 is HomeItem.Widget -> item.copy(cellX = newCellX, cellY = newCellY)
+                is HomeItem.NativeWidget -> item.copy(cellX = newCellX, cellY = newCellY)
             }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             moved = true
@@ -166,22 +202,34 @@ class HomeWorkspaceRepository(
             val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty()).toMutableList()
             val index = current.indexOfFirst { it.id == id }
             if (index == -1) return@edit
-            val item = current[index] as? HomeItem.Widget ?: return@edit
+            val item = current[index]
+            if (item !is HomeItem.Widget && item !is HomeItem.NativeWidget) return@edit
+
+            val safeSpanX = if (item is HomeItem.NativeWidget) {
+                newSpanX.coerceIn(item.widgetType.minSpanX.coerceAtMost(columns), columns)
+            } else {
+                newSpanX.coerceIn(1, columns)
+            }
+            val safeSpanY = if (item is HomeItem.NativeWidget) {
+                newSpanY.coerceIn(item.widgetType.minSpanY.coerceAtMost(rows), rows)
+            } else {
+                newSpanY.coerceIn(1, rows)
+            }
 
             // Se expandir além da borda direita/inferior, tenta recuar a origem automaticamente.
             val candidateX = item.cellX.coerceAtMost(
-                (columns - newSpanX).coerceAtLeast(0),
+                (columns - safeSpanX).coerceAtLeast(0),
             )
             val candidateY = item.cellY.coerceAtMost(
-                (rows - newSpanY).coerceAtLeast(0),
+                (rows - safeSpanY).coerceAtLeast(0),
             )
 
             if (!placementUseCase.canPlace(
                     existingItems = current,
                     cellX = candidateX,
                     cellY = candidateY,
-                    spanX = newSpanX,
-                    spanY = newSpanY,
+                    spanX = safeSpanX,
+                    spanY = safeSpanY,
                     ignoreItemId = id,
                     columns = columns,
                     rows = rows,
@@ -190,12 +238,21 @@ class HomeWorkspaceRepository(
                 return@edit
             }
 
-            current[index] = item.copy(
-                cellX = candidateX,
-                cellY = candidateY,
-                spanX = newSpanX,
-                spanY = newSpanY,
-            )
+            current[index] = when (item) {
+                is HomeItem.Widget -> item.copy(
+                    cellX = candidateX,
+                    cellY = candidateY,
+                    spanX = safeSpanX,
+                    spanY = safeSpanY,
+                )
+                is HomeItem.NativeWidget -> item.copy(
+                    cellX = candidateX,
+                    cellY = candidateY,
+                    spanX = safeSpanX,
+                    spanY = safeSpanY,
+                )
+                is HomeItem.AppShortcut -> item
+            }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             resized = true
         }
@@ -217,7 +274,7 @@ class HomeWorkspaceRepository(
 
     suspend fun currentItems(): List<HomeItem> = items.first()
 
-    private fun encodeItems(items: List<HomeItem>): String {
+    internal fun encodeItems(items: List<HomeItem>): String {
         val array = JSONArray()
         for (item in items) {
             val obj = JSONObject().apply {
@@ -240,6 +297,13 @@ class HomeWorkspaceRepository(
                         put("spanX", item.spanX)
                         put("spanY", item.spanY)
                     }
+
+                    is HomeItem.NativeWidget -> {
+                        put("type", TYPE_NATIVE_WIDGET)
+                        put("widgetType", item.widgetType.name)
+                        put("spanX", item.spanX)
+                        put("spanY", item.spanY)
+                    }
                 }
             }
             array.put(obj)
@@ -247,7 +311,7 @@ class HomeWorkspaceRepository(
         return array.toString()
     }
 
-    private fun decodeItems(raw: String): List<HomeItem> {
+    internal fun decodeItems(raw: String): List<HomeItem> {
         if (raw.isBlank()) return emptyList()
         return runCatching {
             val array = JSONArray(raw)
@@ -281,6 +345,22 @@ class HomeWorkspaceRepository(
                                 spanY = obj.optInt("spanY", 2),
                             ),
                         )
+
+                        TYPE_NATIVE_WIDGET -> {
+                            val typeName = obj.optString("widgetType")
+                            val widgetType = NativeWidgetType.entries.firstOrNull { it.name == typeName }
+                                ?: continue
+                            add(
+                                HomeItem.NativeWidget(
+                                    id = id,
+                                    widgetType = widgetType,
+                                    cellX = cellX,
+                                    cellY = cellY,
+                                    spanX = obj.optInt("spanX", widgetType.defaultSpanX),
+                                    spanY = obj.optInt("spanY", widgetType.defaultSpanY),
+                                ),
+                            )
+                        }
                     }
                 }
             }
@@ -291,5 +371,6 @@ class HomeWorkspaceRepository(
         val KEY_WORKSPACE_ITEMS = stringPreferencesKey("workspace_items_json")
         const val TYPE_SHORTCUT = "shortcut"
         const val TYPE_WIDGET = "widget"
+        const val TYPE_NATIVE_WIDGET = "native_widget"
     }
 }

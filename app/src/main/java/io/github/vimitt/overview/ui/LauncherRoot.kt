@@ -61,6 +61,7 @@ import io.github.vimitt.overview.di.AppContainer
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.GestureSettings
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
+import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
@@ -73,6 +74,7 @@ import io.github.vimitt.overview.ui.home.HomeScreen
 import io.github.vimitt.overview.ui.home.HomeUiState
 import io.github.vimitt.overview.ui.home.HomeWidgetPickerScreen
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
 import io.github.vimitt.overview.ui.overview.OverviewScreen
 import io.github.vimitt.overview.ui.overview.OverviewUiState
 import io.github.vimitt.overview.ui.settings.SettingsNavHost
@@ -112,8 +114,10 @@ fun LauncherRoot(
     onOpenWidgetPicker: () -> Unit,
     onCloseWidgetPicker: () -> Unit,
     onSelectHomeAppToAdd: (AppInfo) -> Unit,
+    onSelectNativeWidgetToAdd: (NativeWidgetType) -> Unit,
     onSelectWidgetToAdd: (WidgetEntry) -> Unit,
     loadAvailableWidgets: suspend () -> List<WidgetAppGroup>,
+    nativeWidgetActions: NativeWidgetActions = NativeWidgetActions(),
     onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
     onDismissHomeItemAction: () -> Unit,
     onStartMovingHomeItem: (String) -> Unit,
@@ -304,6 +308,7 @@ fun LauncherRoot(
             dropTarget = effectiveDropTarget,
             isVisible = isHomeVisible,
             dockDropTarget = currentDockTarget,
+            nativeWidgetActions = nativeWidgetActions,
             gestureSettings = gestureSettings,
             onExecuteGesture = onExecuteGesture,
             onAppClick = { app, view, bounds ->
@@ -655,6 +660,7 @@ fun LauncherRoot(
         ) {
             HomeWidgetPickerScreen(
                 loadWidgets = loadAvailableWidgets,
+                onSelectNativeWidget = onSelectNativeWidgetToAdd,
                 onSelectWidget = onSelectWidgetToAdd,
                 onClose = onCloseWidgetPicker,
             )

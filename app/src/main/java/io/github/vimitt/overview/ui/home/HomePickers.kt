@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,12 +60,14 @@ import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.HomeGridSpec
+import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.ExpressiveLoadingIndicator
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.components.OverviewSearchBar
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetPickerThumbnail
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -149,21 +152,39 @@ fun HomeAppPickerScreen(
 }
 
 /**
- * Seletor de widgets instalados agrupados por aplicativo, com pré-visualização e tamanho.
+ * Seletor unificado de widgets: lista os 10 widgets nativos adaptados ao tema
+ * (GNOME / Material Expressive) acima dos widgets externos instalados por aplicativo.
  */
 @Composable
 fun HomeWidgetPickerScreen(
     loadWidgets: suspend () -> List<WidgetAppGroup>,
+    onSelectNativeWidget: (NativeWidgetType) -> Unit,
     onSelectWidget: (WidgetEntry) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val colors = OverviewTheme.colors
+    val shapes = OverviewTheme.shapes
+    val isExpressive = OverviewTheme.components.isExpressive
     var query by remember { mutableStateOf("") }
     var expandedPackage by remember { mutableStateOf<String?>(null) }
 
     val groups by produceState<List<WidgetAppGroup>?>(initialValue = null) {
         value = loadWidgets()
+    }
+
+    val filteredNativeWidgets = remember(query, context) {
+        val trimmed = query.trim()
+        val allTypes = NativeWidgetType.entries
+        if (trimmed.isEmpty()) {
+            allTypes
+        } else {
+            allTypes.filter { type ->
+                context.getString(type.titleRes).contains(trimmed, ignoreCase = true) ||
+                    context.getString(type.descriptionRes).contains(trimmed, ignoreCase = true)
+            }
+        }
     }
 
     val filteredGroups = remember(groups, query) {
@@ -212,50 +233,109 @@ fun HomeWidgetPickerScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        when {
-            groups == null -> {
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        if (OverviewTheme.components.useExpressiveLoading) {
-                            ExpressiveLoadingIndicator(size = 46.dp)
+        if (filteredNativeWidgets.isEmpty() && filteredGroups.isEmpty() && groups != null) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.picker_widgets_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceMuted,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 600.dp)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (filteredNativeWidgets.isNotEmpty()) {
+                    item(key = "native_widgets_header") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 2.dp, bottom = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.picker_native_widgets_section),
+                                style = if (isExpressive) {
+                                    OverviewTheme.typography.sectionHeader
+                                } else {
+                                    MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+                                },
+                                color = colors.onSurface,
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(if (isExpressive) shapes.pill else shapes.small)
+                                    .background(if (isExpressive) colors.accentContainer else colors.surfaceElevated)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        if (isExpressive) {
+                                            R.string.picker_widget_style_badge_expressive
+                                        } else {
+                                            R.string.picker_widget_style_badge_gnome
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isExpressive) colors.onAccentContainer else colors.onSurfaceMuted,
+                                )
+                            }
                         }
-                        Text(
-                            text = stringResource(R.string.picker_widgets_loading),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.onSurfaceMuted,
+                    }
+
+                    items(
+                        items = filteredNativeWidgets,
+                        key = { "native_${it.name}" },
+                    ) { widgetType ->
+                        NativeWidgetPickerThumbnail(
+                            type = widgetType,
+                            modifier = Modifier.clickable { onSelectNativeWidget(widgetType) },
                         )
                     }
                 }
-            }
 
-            filteredGroups.isEmpty() -> {
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
+                item(key = "android_widgets_header") {
                     Text(
-                        text = stringResource(R.string.picker_widgets_empty),
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = stringResource(R.string.picker_android_widgets_section),
+                        style = if (isExpressive) {
+                            OverviewTheme.typography.sectionHeader
+                        } else {
+                            MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+                        },
                         color = colors.onSurfaceMuted,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                     )
                 }
-            }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(max = 600.dp)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+                if (groups == null) {
+                    item(key = "android_widgets_loading") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (OverviewTheme.components.useExpressiveLoading) {
+                                ExpressiveLoadingIndicator(size = 24.dp)
+                            }
+                            Text(
+                                text = stringResource(R.string.picker_widgets_loading),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceMuted,
+                            )
+                        }
+                    }
+                } else {
                     items(
                         items = filteredGroups,
                         key = { it.packageName },
@@ -402,6 +482,7 @@ fun HomeItemActionOverlay(
     val title = when (workspaceItem) {
         is HomeWorkspaceItem.Shortcut -> workspaceItem.app.label
         is HomeWorkspaceItem.Widget -> workspaceItem.label
+        is HomeWorkspaceItem.NativeWidget -> workspaceItem.label
     }
 
     OverviewPopupSurface(
@@ -424,11 +505,14 @@ fun HomeItemActionOverlay(
             ),
         )
 
-        if (workspaceItem is HomeWorkspaceItem.Widget) {
+        if (workspaceItem is HomeWorkspaceItem.Widget || workspaceItem is HomeWorkspaceItem.NativeWidget) {
+            val minX = (workspaceItem as? HomeWorkspaceItem.NativeWidget)?.item?.widgetType?.minSpanX ?: 1
+            val minY = (workspaceItem as? HomeWorkspaceItem.NativeWidget)?.item?.widgetType?.minSpanY ?: 1
             OverviewPopupDivider()
             WidgetResizeRow(
                 label = stringResource(R.string.home_widget_width),
                 value = workspaceItem.item.spanX,
+                min = minX,
                 max = HomeGridSpec.COLUMNS,
                 onDecrement = { onResizeWidget(-1, 0) },
                 onIncrement = { onResizeWidget(1, 0) },
@@ -436,6 +520,7 @@ fun HomeItemActionOverlay(
             WidgetResizeRow(
                 label = stringResource(R.string.home_widget_height),
                 value = workspaceItem.item.spanY,
+                min = minY,
                 max = HomeGridSpec.ROWS,
                 onDecrement = { onResizeWidget(0, -1) },
                 onIncrement = { onResizeWidget(0, 1) },
@@ -465,6 +550,7 @@ fun HomeItemActionOverlay(
 private fun WidgetResizeRow(
     label: String,
     value: Int,
+    min: Int = 1,
     max: Int,
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
@@ -484,28 +570,28 @@ private fun WidgetResizeRow(
             color = colors.onSurface,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onDecrement, enabled = value > 1) {
+        IconButton(onClick = onDecrement, enabled = value > min) {
             if (isExpressive) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(
-                            if (value > 1) colors.accentContainer else colors.surfaceContainer,
+                            if (value > min) colors.accentContainer else colors.surfaceContainer,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "−",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (value > 1) colors.onAccentContainer else colors.onSurfaceMuted,
+                        color = if (value > min) colors.onAccentContainer else colors.onSurfaceMuted,
                     )
                 }
             } else {
                 Text(
                     text = "−",
                     style = MaterialTheme.typography.titleLarge,
-                    color = if (value > 1) colors.accent else colors.onSurfaceMuted,
+                    color = if (value > min) colors.accent else colors.onSurfaceMuted,
                 )
             }
         }

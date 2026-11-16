@@ -310,6 +310,16 @@ fun DragGhostOverlay(
                                 cardShape = shapes.large,
                             )
                         }
+
+                        is HomeWorkspaceItem.NativeWidget -> {
+                            WidgetDragGhost(
+                                label = item.label,
+                                spanX = item.item.spanX,
+                                spanY = item.item.spanY,
+                                borderColor = borderColor,
+                                cardShape = shapes.large,
+                            )
+                        }
                     }
                 }
             }

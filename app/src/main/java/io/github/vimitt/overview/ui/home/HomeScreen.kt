@@ -75,6 +75,10 @@ import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.components.HomeClock
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetHost
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetLiveEnvironment
+import io.github.vimitt.overview.ui.home.widgets.rememberNativeWidgetEnvironment
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
@@ -108,11 +112,19 @@ fun HomeScreen(
     onDockDragMove: (Offset) -> Unit = {},
     onDockDragEnd: () -> Unit = {},
     onDockDragCancel: () -> Unit = {},
+    nativeWidgetActions: NativeWidgetActions = NativeWidgetActions(),
     gestureSettings: GestureSettings = GestureSettings(),
     onExecuteGesture: (LauncherGestureAction) -> Unit = {},
     onOverviewDragProgress: (Float) -> Unit = {},
     onOverviewDragEnd: (shouldOpen: Boolean) -> Unit = {},
 ) {
+    val nativeEnvironment = rememberNativeWidgetEnvironment(
+        workspaceItems = uiState.workspaceItems,
+        hasSavedWeatherLocation = uiState.nativeWidgets.weatherLocation != null,
+        hasWeatherCache = uiState.nativeWidgets.weather != null,
+        actions = nativeWidgetActions,
+        isVisible = isVisible,
+    )
     val density = LocalDensity.current
     val dragRangePx = with(density) { 180.dp.toPx() }
     val dragTriggerPx = with(density) { gestureSettings.sensitivity.triggerDp.dp.toPx() }
@@ -261,6 +273,11 @@ fun HomeScreen(
                 if (hasWorkspaceItems || isMoving || isDraggingOverGrid) {
                     HomeWorkspaceGrid(
                         items = uiState.workspaceItems,
+                        frequentApps = uiState.frequentApps,
+                        nativeWidgetsState = uiState.nativeWidgets,
+                        nativeEnvironment = nativeEnvironment,
+                        nativeWidgetActions = nativeWidgetActions,
+                        isVisible = isVisible,
                         gridColumns = uiState.gridColumns,
                         gridRows = uiState.gridRows,
                         iconScale = uiState.iconScale,
@@ -340,6 +357,11 @@ fun HomeScreen(
 @Composable
 private fun HomeWorkspaceGrid(
     items: List<HomeWorkspaceItem>,
+    frequentApps: List<AppInfo>,
+    nativeWidgetsState: io.github.vimitt.overview.domain.model.NativeWidgetsState,
+    nativeEnvironment: NativeWidgetLiveEnvironment,
+    nativeWidgetActions: NativeWidgetActions,
+    isVisible: Boolean,
     gridColumns: Int,
     gridRows: Int,
     iconScale: Float,
@@ -523,6 +545,28 @@ private fun HomeWorkspaceGrid(
                                             Modifier
                                         },
                                     ),
+                            )
+                        }
+
+                        is HomeWorkspaceItem.NativeWidget -> {
+                            NativeWidgetHost(
+                                widgetItem = workspaceItem,
+                                environment = nativeEnvironment,
+                                nativeWidgetsState = nativeWidgetsState,
+                                frequentApps = frequentApps,
+                                showNotificationDots = showNotificationDots,
+                                badgePackages = badgePackages,
+                                isVisible = isVisible,
+                                isMoving = isMovingThis,
+                                actions = nativeWidgetActions,
+                                onAppClick = onAppClick,
+                                onDragStart = { windowPos ->
+                                    onStartItemDrag(workspaceItem, windowPos)
+                                },
+                                onDragMove = onItemDragMove,
+                                onDragEnd = onItemDragEnd,
+                                onDragCancel = onItemDragCancel,
+                                modifier = Modifier.fillMaxSize(),
                             )
                         }
                     }

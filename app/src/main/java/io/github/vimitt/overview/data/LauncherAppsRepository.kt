@@ -44,6 +44,7 @@ class LauncherAppsRepository(
     private val iconCache: AppIconCache = AppIconCache(),
     private val iconPackRepository: IconPackRepository = IconPackRepository(context),
     private val appearanceFlow: Flow<AppearanceSettings> = emptyFlow(),
+    private val onAppLaunched: ((AppInfo) -> Unit)? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : AppsRepository {
 
@@ -161,6 +162,7 @@ class LauncherAppsRepository(
                 sourceBounds,
                 options?.toBundle(),
             )
+            onAppLaunched?.invoke(app)
             true
         } catch (exception: SecurityException) {
             Log.w(TAG, "Permissão negada ao abrir ${app.packageName}", exception)

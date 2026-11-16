@@ -8,6 +8,7 @@ import io.github.vimitt.overview.data.DefaultDashPackageProvider
 import io.github.vimitt.overview.data.HomeWorkspaceRepository
 import io.github.vimitt.overview.data.IconPackRepository
 import io.github.vimitt.overview.data.LauncherAppsRepository
+import io.github.vimitt.overview.data.NativeWidgetsRepository
 import io.github.vimitt.overview.data.NotificationBadgeRepository
 import io.github.vimitt.overview.data.SettingsRepository
 import io.github.vimitt.overview.domain.usecase.FilterAppsUseCase
@@ -16,6 +17,7 @@ import io.github.vimitt.overview.domain.usecase.ResolveDefaultDashAppsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Contêiner manual de dependências do aplicativo.
@@ -27,6 +29,7 @@ class AppContainer(context: Context) {
     val settingsRepository: SettingsRepository = SettingsRepository(appContext)
     val iconPackRepository: IconPackRepository = IconPackRepository(appContext)
     val notificationBadgeRepository: NotificationBadgeRepository = NotificationBadgeRepository(appContext)
+    val nativeWidgetsRepository: NativeWidgetsRepository = NativeWidgetsRepository(appContext)
 
     private val iconCache = AppIconCache()
 
@@ -36,6 +39,11 @@ class AppContainer(context: Context) {
         iconCache = iconCache,
         iconPackRepository = iconPackRepository,
         appearanceFlow = settingsRepository.appearanceSettings,
+        onAppLaunched = { app ->
+            appScope.launch {
+                nativeWidgetsRepository.recordAppLaunch(app.key)
+            }
+        },
     )
 
     val defaultDashPackageProvider: DefaultDashPackageProvider = DefaultDashPackageProvider(appContext)

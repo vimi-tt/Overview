@@ -7,6 +7,7 @@ import io.github.vimitt.overview.domain.model.DockSettings
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.HomeSettings
+import io.github.vimitt.overview.domain.model.NativeWidgetsState
 
 /**
  * Representação pronta para exibição na grade da tela inicial.
@@ -27,16 +28,24 @@ sealed interface HomeWorkspaceItem {
         val providerInfo: AppWidgetProviderInfo?,
         val label: String,
     ) : HomeWorkspaceItem
+
+    @Immutable
+    data class NativeWidget(
+        override val item: HomeItem.NativeWidget,
+        val label: String,
+    ) : HomeWorkspaceItem
 }
 
 /**
  * Estado imutável da tela inicial (Home), refletindo em tempo real as configurações
- * de grade, dock e emblemas de notificação.
+ * de grade, dock, widgets nativos e emblemas de notificação.
  */
 @Immutable
 data class HomeUiState(
     val dashApps: List<AppInfo> = emptyList(),
     val workspaceItems: List<HomeWorkspaceItem> = emptyList(),
+    val frequentApps: List<AppInfo> = emptyList(),
+    val nativeWidgets: NativeWidgetsState = NativeWidgetsState(),
     val showClock: Boolean = true,
     val movingItemId: String? = null,
     val homeSettings: HomeSettings = HomeSettings(),

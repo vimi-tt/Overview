@@ -31,9 +31,11 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.ColorSourceMode
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.domain.model.LauncherPreferences
+import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.ui.LauncherRoot
 import io.github.vimitt.overview.ui.home.HomeViewModel
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
 import io.github.vimitt.overview.ui.overview.OverviewViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -60,6 +62,7 @@ class MainActivity : ComponentActivity() {
             notificationBadgeRepository = appContainer.notificationBadgeRepository,
             homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
             appWidgetController = appContainer.appWidgetController,
+            nativeWidgetsRepository = appContainer.nativeWidgetsRepository,
             homeGridPlacementUseCase = appContainer.homeGridPlacementUseCase,
             defaultDashPackageProvider = appContainer.defaultDashPackageProvider,
             resolveDefaultDashAppsUseCase = appContainer.resolveDefaultDashAppsUseCase,
@@ -175,6 +178,32 @@ class MainActivity : ComponentActivity() {
                     homeUiState.workspaceItems.firstOrNull { it.item.id == targetId }
                 }
 
+                val nativeWidgetActions = remember(homeViewModel, appContainer) {
+                    NativeWidgetActions(
+                        onSaveQuickNote = homeViewModel::saveQuickNote,
+                        onDeleteQuickNote = homeViewModel::deleteQuickNote,
+                        onAddQuickTask = homeViewModel::addQuickTask,
+                        onToggleQuickTask = homeViewModel::toggleQuickTask,
+                        onClearCompletedTasks = homeViewModel::clearCompletedTasks,
+                        onRefreshWeather = homeViewModel::refreshWeather,
+                        onSearchWeatherCities = homeViewModel::searchWeatherCities,
+                        onSelectWeatherLocation = homeViewModel::selectWeatherLocation,
+                        onUseDeviceWeatherLocation = homeViewModel::useDeviceWeatherLocation,
+                        onSetClockToolMode = homeViewModel::setClockToolMode,
+                        onSetTimerDuration = homeViewModel::setTimerDuration,
+                        onToggleTimer = homeViewModel::toggleTimer,
+                        onResetTimer = homeViewModel::resetTimer,
+                        onFinishTimerIfElapsed = homeViewModel::finishTimerIfElapsed,
+                        onToggleStopwatch = homeViewModel::toggleStopwatch,
+                        onResetStopwatch = homeViewModel::resetStopwatch,
+                        onOpenNotificationAccessSettings = {
+                            runCatching {
+                                startActivity(appContainer.notificationBadgeRepository.createAccessSettingsIntent())
+                            }
+                        },
+                    )
+                }
+
                 LauncherRoot(
                     appContainer = appContainer,
                     isOverviewOpen = isOverviewOpen,
@@ -208,11 +237,16 @@ class MainActivity : ComponentActivity() {
                         isAppPickerOpen = false
                         addAppShortcutToHome(app)
                     },
+                    onSelectNativeWidgetToAdd = { widgetType ->
+                        isWidgetPickerOpen = false
+                        addNativeWidgetToHome(widgetType)
+                    },
                     onSelectWidgetToAdd = { entry ->
                         isWidgetPickerOpen = false
                         beginAddWidgetFlow(entry)
                     },
                     loadAvailableWidgets = homeViewModel::loadAvailableWidgets,
+                    nativeWidgetActions = nativeWidgetActions,
                     onWorkspaceItemLongPress = { workspaceItem ->
                         isHomeMenuOpen = false
                         selectedHomeItemId = workspaceItem.item.id
@@ -408,6 +442,13 @@ class MainActivity : ComponentActivity() {
                 val msg = if (added) R.string.home_item_added else R.string.home_grid_full
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun addNativeWidgetToHome(widgetType: NativeWidgetType) {
+        homeViewModel.addNativeWidgetToHome(widgetType = widgetType) { added ->
+            val msg = if (added) R.string.home_item_added else R.string.home_grid_full
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
