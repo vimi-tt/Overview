@@ -880,11 +880,13 @@ fun LauncherRoot(
         if (isQuickSettingsOpen && !anyModalFullScreen) {
             GnomeQuickSettingsPanel(
                 hasNotificationAccess = hasNotificationAccess,
+                permissionRevision = permissionRevision,
                 onToggleThemeDark = onToggleThemeDark,
                 onOpenLauncherSettings = {
                     onCloseQuickSettings()
                     onOpenSettings()
                 },
+                onOpenNotificationAccessSettings = nativeWidgetActions.onOpenNotificationAccessSettings,
                 onDismiss = onCloseQuickSettings,
             )
         }

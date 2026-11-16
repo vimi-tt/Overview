@@ -132,9 +132,10 @@ fun rememberNativeWidgetEnvironment(
     var deviceStatus by remember {
         mutableStateOf(NativeWidgetSystemProviders.readDeviceStatusSnapshot(context))
     }
-    var mediaSnapshot by remember {
-        mutableStateOf(MediaSessionSnapshot())
-    }
+    val mediaSnapshot = rememberLiveMediaSnapshot(
+        enabled = needsMedia,
+        permissionRevision = permissionRevision,
+    )
 
     // Relógio + Alarme somente quando visível e necessário
     DisposableEffect(context, needsTime) {
@@ -197,65 +198,6 @@ fun rememberNativeWidgetEnvironment(
     LaunchedEffect(needsWeather, hasSavedWeatherLocation) {
         if (needsWeather && hasSavedWeatherLocation) {
             actions.onRefreshWeather(false)
-        }
-    }
-
-    // Sessão de mídia ativa (listener ativo somente com widget na tela)
-    DisposableEffect(context, needsMedia) {
-        if (!needsMedia) return@DisposableEffect onDispose {}
-        val listenerComponent = ComponentName(context, OverviewNotificationListenerService::class.java)
-        val hasAccess = isNotificationListenerEnabled(context, listenerComponent)
-        if (!hasAccess) {
-            mediaSnapshot = MediaSessionSnapshot(hasNotificationAccess = false)
-            return@DisposableEffect onDispose {}
-        }
-
-        val msm = context.getSystemService(MediaSessionManager::class.java)
-        var attachedController: MediaController? = null
-        val controllerCallback = object : MediaController.Callback() {
-            override fun onPlaybackStateChanged(state: PlaybackState?) {
-                mediaSnapshot = NativeWidgetSystemProviders.readMediaSnapshot(
-                    context = context,
-                    controllers = null,
-                    hasAccess = true,
-                )
-            }
-
-            override fun onMetadataChanged(metadata: MediaMetadata?) {
-                mediaSnapshot = NativeWidgetSystemProviders.readMediaSnapshot(
-                    context = context,
-                    controllers = null,
-                    hasAccess = true,
-                )
-            }
-        }
-
-        fun bindControllers(controllers: List<MediaController>?) {
-            attachedController?.unregisterCallback(controllerCallback)
-            val snap = NativeWidgetSystemProviders.readMediaSnapshot(
-                context = context,
-                controllers = controllers,
-                hasAccess = true,
-            )
-            mediaSnapshot = snap
-            attachedController = snap.controller?.also { it.registerCallback(controllerCallback) }
-        }
-
-        val sessionListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
-            bindControllers(controllers)
-        }
-
-        runCatching {
-            val initial = msm?.getActiveSessions(listenerComponent)
-            bindControllers(initial)
-            msm?.addOnActiveSessionsChangedListener(sessionListener, listenerComponent)
-        }.onFailure {
-            mediaSnapshot = MediaSessionSnapshot(hasNotificationAccess = false)
-        }
-
-        onDispose {
-            attachedController?.unregisterCallback(controllerCallback)
-            runCatching { msm?.removeOnActiveSessionsChangedListener(sessionListener) }
         }
     }
 
@@ -596,6 +538,88 @@ fun NativeWidgetPickerThumbnail(
             )
         }
     }
+}
+
+/**
+ * Observa em tempo real a sessão de mídia ativa via [MediaSessionManager] e [MediaController.Callback].
+ */
+@Composable
+fun rememberLiveMediaSnapshot(
+    enabled: Boolean,
+    permissionRevision: Int = 0,
+): MediaSessionSnapshot {
+    val context = LocalContext.current
+    var mediaSnapshot by remember {
+        mutableStateOf(MediaSessionSnapshot())
+    }
+
+    DisposableEffect(context, enabled, permissionRevision) {
+        if (!enabled) return@DisposableEffect onDispose {}
+        val listenerComponent = ComponentName(context, OverviewNotificationListenerService::class.java)
+        val hasAccess = isNotificationListenerEnabled(context, listenerComponent)
+        if (!hasAccess) {
+            mediaSnapshot = MediaSessionSnapshot(hasNotificationAccess = false)
+            return@DisposableEffect onDispose {}
+        }
+
+        val msm = context.getSystemService(MediaSessionManager::class.java)
+        var attachedController: MediaController? = null
+        val controllerCallback = object : MediaController.Callback() {
+            override fun onPlaybackStateChanged(state: PlaybackState?) {
+                mediaSnapshot = NativeWidgetSystemProviders.readMediaSnapshot(
+                    context = context,
+                    controllers = null,
+                    hasAccess = true,
+                )
+            }
+
+            override fun onMetadataChanged(metadata: MediaMetadata?) {
+                mediaSnapshot = NativeWidgetSystemProviders.readMediaSnapshot(
+                    context = context,
+                    controllers = null,
+                    hasAccess = true,
+                )
+            }
+
+            override fun onSessionDestroyed() {
+                mediaSnapshot = NativeWidgetSystemProviders.readMediaSnapshot(
+                    context = context,
+                    controllers = null,
+                    hasAccess = true,
+                )
+            }
+        }
+
+        fun bindControllers(controllers: List<MediaController>?) {
+            attachedController?.unregisterCallback(controllerCallback)
+            val snap = NativeWidgetSystemProviders.readMediaSnapshot(
+                context = context,
+                controllers = controllers,
+                hasAccess = true,
+            )
+            mediaSnapshot = snap
+            attachedController = snap.controller?.also { it.registerCallback(controllerCallback) }
+        }
+
+        val sessionListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+            bindControllers(controllers)
+        }
+
+        runCatching {
+            val initial = msm?.getActiveSessions(listenerComponent)
+            bindControllers(initial)
+            msm?.addOnActiveSessionsChangedListener(sessionListener, listenerComponent)
+        }.onFailure {
+            mediaSnapshot = MediaSessionSnapshot(hasNotificationAccess = false)
+        }
+
+        onDispose {
+            attachedController?.unregisterCallback(controllerCallback)
+            runCatching { msm?.removeOnActiveSessionsChangedListener(sessionListener) }
+        }
+    }
+
+    return mediaSnapshot
 }
 
 private fun isNotificationListenerEnabled(

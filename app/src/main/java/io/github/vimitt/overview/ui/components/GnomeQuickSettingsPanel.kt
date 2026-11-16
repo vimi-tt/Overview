@@ -1,5 +1,6 @@
 package io.github.vimitt.overview.ui.components
 
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -78,6 +79,7 @@ import io.github.vimitt.overview.data.QuickSettingsController
 import io.github.vimitt.overview.data.QuickSettingsSnapshot
 import io.github.vimitt.overview.ui.home.widgets.PlayPauseGlyph
 import io.github.vimitt.overview.ui.home.widgets.SkipTrackGlyph
+import io.github.vimitt.overview.ui.home.widgets.rememberLiveMediaSnapshot
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -151,6 +153,8 @@ fun GnomeQuickSettingsPanel(
     onOpenLauncherSettings: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    permissionRevision: Int = 0,
+    onOpenNotificationAccessSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
@@ -182,17 +186,23 @@ fun GnomeQuickSettingsPanel(
         refreshRevision++
     }
 
+    val media = rememberLiveMediaSnapshot(
+        enabled = true,
+        permissionRevision = permissionRevision + refreshRevision,
+    )
+    val effectiveHasMediaAccess = hasNotificationAccess || media.hasNotificationAccess
+
     val snapshot: QuickSettingsSnapshot = remember(
         refreshRevision,
         torchEnabled,
         torchCameraId,
-        hasNotificationAccess,
+        effectiveHasMediaAccess,
     ) {
         QuickSettingsController.readSnapshot(
             context = context,
             torchEnabled = torchEnabled,
             torchAvailable = torchCameraId != null,
-            hasNotificationAccess = hasNotificationAccess,
+            hasNotificationAccess = effectiveHasMediaAccess,
         )
     }
 
@@ -353,29 +363,63 @@ fun GnomeQuickSettingsPanel(
                 onAirplaneClick = { QuickSettingsController.openAirplaneSettings(context) },
             )
 
-            val media = snapshot.mediaSnapshot
-            if (media.hasNotificationAccess && (media.controller != null || media.title.isNotBlank())) {
+            if (!effectiveHasMediaAccess) {
+                QuickSettingsMediaAccessCard(
+                    onGrantClick = {
+                        onDismiss()
+                        onOpenNotificationAccessSettings()
+                    },
+                )
+            } else {
+                val hasActiveMedia = media.controller != null || media.title.isNotBlank()
                 QuickSettingsMediaCard(
-                    title = media.title.ifBlank { stringResource(R.string.native_widget_media_untitled) },
-                    artist = media.artist,
-                    isPlaying = media.isPlaying,
-                    artwork = media.artwork,
-                    onCardClick = { NativeWidgetSystemProviders.openMediaSessionApp(context, media) },
+                    title = if (hasActiveMedia) {
+                        media.title.ifBlank { stringResource(R.string.native_widget_media_untitled) }
+                    } else {
+                        stringResource(R.string.native_widget_media_title)
+                    },
+                    artist = if (hasActiveMedia) {
+                        media.artist
+                    } else {
+                        stringResource(R.string.native_widget_media_idle)
+                    },
+                    isPlaying = hasActiveMedia && media.isPlaying,
+                    artwork = if (hasActiveMedia) media.artwork else null,
+                    clickableCard = hasActiveMedia,
+                    onCardClick = {
+                        if (hasActiveMedia) {
+                            NativeWidgetSystemProviders.openMediaSessionApp(context, media)
+                        }
+                    },
                     onPrevClick = {
-                        media.controller?.transportControls?.skipToPrevious()
+                        val controls = media.controller?.transportControls
+                        if (controls != null) {
+                            controls.skipToPrevious()
+                        } else {
+                            QuickSettingsController.dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                        }
                         refreshRevision++
                     },
                     onPlayPauseClick = {
                         val controls = media.controller?.transportControls
-                        if (media.isPlaying) {
-                            controls?.pause()
+                        if (controls != null) {
+                            if (media.isPlaying) {
+                                controls.pause()
+                            } else {
+                                controls.play()
+                            }
                         } else {
-                            controls?.play()
+                            QuickSettingsController.dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
                         }
                         refreshRevision++
                     },
                     onNextClick = {
-                        media.controller?.transportControls?.skipToNext()
+                        val controls = media.controller?.transportControls
+                        if (controls != null) {
+                            controls.skipToNext()
+                        } else {
+                            QuickSettingsController.dispatchMediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT)
+                        }
                         refreshRevision++
                     },
                 )
@@ -815,11 +859,68 @@ private fun GnomeToggleTile(
 }
 
 @Composable
+private fun QuickSettingsMediaAccessCard(
+    onGrantClick: () -> Unit,
+) {
+    val colors = OverviewTheme.colors
+    val cardShape = OverviewTheme.shapes.medium
+    val pillShape = OverviewTheme.shapes.pill
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+            .background(colors.surfaceContainer)
+            .border(1.dp, colors.hairlineBorder, cardShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(OverviewTheme.shapes.small)
+                .background(colors.accentContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            QsMusicNoteGlyph(tint = colors.onAccentContainer, size = 18.dp)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.native_widget_media_title),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.native_widget_media_access_title),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text = stringResource(R.string.quick_settings_brightness_grant),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = colors.onAccentContainer,
+            modifier = Modifier
+                .clip(pillShape)
+                .background(colors.accentContainer)
+                .clickable(role = Role.Button, onClick = onGrantClick)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
 private fun QuickSettingsMediaCard(
     title: String,
     artist: String,
     isPlaying: Boolean,
     artwork: androidx.compose.ui.graphics.ImageBitmap?,
+    clickableCard: Boolean,
     onCardClick: () -> Unit,
     onPrevClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
@@ -834,7 +935,7 @@ private fun QuickSettingsMediaCard(
             .clip(cardShape)
             .background(colors.surfaceContainer)
             .border(1.dp, colors.hairlineBorder, cardShape)
-            .clickable(role = Role.Button, onClick = onCardClick)
+            .clickable(enabled = clickableCard, role = Role.Button, onClick = onCardClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -15,6 +15,7 @@ import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.KeyEvent
 import androidx.compose.runtime.Immutable
 import androidx.core.content.ContextCompat
 
@@ -291,6 +292,14 @@ object QuickSettingsController {
             primary = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
             fallback = Intent(Settings.ACTION_SOUND_SETTINGS),
         )
+    }
+
+    fun dispatchMediaKey(context: Context, keyCode: Int) {
+        val audioManager = context.getSystemService(AudioManager::class.java) ?: return
+        runCatching {
+            audioManager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            audioManager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        }
     }
 
     private fun launchSafe(context: Context, intent: Intent) {
