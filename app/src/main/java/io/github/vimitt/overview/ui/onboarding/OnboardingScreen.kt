@@ -48,7 +48,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,8 +69,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -87,6 +84,7 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.NotificationBadgeRepository
 import io.github.vimitt.overview.domain.model.VisualStyle
+import io.github.vimitt.overview.ui.components.OverviewAppIcon
 import io.github.vimitt.overview.ui.components.OverviewPolygonFactory
 import io.github.vimitt.overview.ui.components.RoundedPolygonShape
 import io.github.vimitt.overview.ui.components.rememberIsLifecycleActive
@@ -356,49 +354,11 @@ private fun OnboardingIntroPhase(
                 this.alpha = alpha
             },
         ) {
-            OverviewBrandEmblem(size = 84.dp)
+            OverviewAppIcon(size = 84.dp)
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = colors.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.onboarding_intro_tagline),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceMuted,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun OverviewBrandEmblem(
-    size: androidx.compose.ui.unit.Dp,
-) {
-    val colors = OverviewTheme.colors
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * 0.28f))
-            .background(colors.accentContainer)
-            .border(1.5.dp, colors.accent.copy(alpha = 0.45f), RoundedCornerShape(size * 0.28f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.size(size * 0.56f)) {
-            val w = this.size.width
-            val h = this.size.height
-            val stroke = (w * 0.11f).coerceAtLeast(3f)
-            drawCircle(
-                color = colors.accent,
-                radius = w * 0.34f,
-                center = Offset(w * 0.5f, h * 0.5f),
-                style = Stroke(width = stroke),
-            )
-            drawCircle(
-                color = colors.onAccentContainer,
-                radius = w * 0.12f,
-                center = Offset(w * 0.5f, h * 0.5f),
             )
         }
     }
@@ -410,22 +370,22 @@ private fun OnboardingWelcomeStep(
 ) {
     val colors = OverviewTheme.colors
     val shapes = OverviewTheme.shapes
-    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(vertical = 16.dp),
+            .padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
+        Spacer(modifier = Modifier.height(1.dp))
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-            OverviewBrandEmblem(size = 64.dp)
+            OverviewAppIcon(size = 76.dp)
             Text(
                 text = stringResource(R.string.onboarding_welcome_title),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -437,39 +397,8 @@ private fun OnboardingWelcomeStep(
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceMuted,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 8.dp),
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shapes.large)
-                    .background(colors.surface.copy(alpha = 0.90f))
-                    .border(1.dp, colors.hairlineBorder, shapes.large)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                WelcomeFeatureRow(
-                    icon = Icons.Default.Search,
-                    title = stringResource(R.string.onboarding_feature_overview_title),
-                    description = stringResource(R.string.onboarding_feature_overview_desc),
-                )
-                WelcomeFeatureRow(
-                    icon = Icons.Default.Home,
-                    title = stringResource(R.string.onboarding_feature_dock_title),
-                    description = stringResource(R.string.onboarding_feature_dock_desc),
-                )
-                WelcomeFeatureRow(
-                    icon = Icons.Default.Star,
-                    title = stringResource(R.string.onboarding_feature_widgets_title),
-                    description = stringResource(R.string.onboarding_feature_widgets_desc),
-                )
-            }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = onStart,
@@ -485,47 +414,6 @@ private fun OnboardingWelcomeStep(
             Text(
                 text = stringResource(R.string.onboarding_start_cta),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            )
-        }
-    }
-}
-
-@Composable
-private fun WelcomeFeatureRow(
-    icon: ImageVector,
-    title: String,
-    description: String,
-) {
-    val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    Row(
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(shapes.medium)
-                .background(colors.accentContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.accent,
-                modifier = Modifier.size(19.dp),
-            )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onSurface,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceMuted,
             )
         }
     }

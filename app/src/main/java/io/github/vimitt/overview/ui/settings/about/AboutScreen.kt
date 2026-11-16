@@ -1,24 +1,17 @@
 package io.github.vimitt.overview.ui.settings.about
 
 import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.vimitt.overview.BuildConfig
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.ui.components.OverviewAppIcon
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
@@ -40,7 +34,6 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
     val githubUrl = stringResource(R.string.settings_about_github_url)
     val versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
@@ -56,21 +49,7 @@ fun AboutScreen(
                     .padding(vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(shapes.large)
-                        .background(colors.accent.copy(alpha = 0.16f))
-                        .border(1.5.dp, colors.accent.copy(alpha = 0.6f), shapes.large),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_settings_grid),
-                        contentDescription = stringResource(R.string.app_name),
-                        tint = colors.accent,
-                        modifier = Modifier.size(34.dp),
-                    )
-                }
+                OverviewAppIcon(size = 72.dp)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.app_name),

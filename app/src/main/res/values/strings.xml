@@ -444,15 +444,8 @@
 
     <!-- Boas-vindas (Onboarding) -->
     <string name="onboarding_preview_badge">Prévia (Debug)</string>
-    <string name="onboarding_intro_tagline">Seu launcher minimalista e expressivo</string>
     <string name="onboarding_welcome_title">Bem-vindo ao Overview</string>
-    <string name="onboarding_welcome_subtitle">Um ambiente limpo inspirado no GNOME para organizar seus aplicativos, widgets nativos e atalhos com fluidez.</string>
-    <string name="onboarding_feature_overview_title">Grade &amp; busca instantânea</string>
-    <string name="onboarding_feature_overview_desc">Deslize para cima para abrir o Overview, pesquisar apps e organizar pastas.</string>
-    <string name="onboarding_feature_dock_title">Dock personalizável</string>
-    <string name="onboarding_feature_dock_desc">Arraste seus aplicativos favoritos para o Dash e reorganize como preferir.</string>
-    <string name="onboarding_feature_widgets_title">Widgets nativos inteligentes</string>
-    <string name="onboarding_feature_widgets_desc">Clima, agenda, música, notas rápidas e tarefas integrados à tela inicial.</string>
+    <string name="onboarding_welcome_subtitle">Configure suas permissões e escolha o visual para começar.</string>
     <string name="onboarding_start_cta">Começar</string>
     <string name="onboarding_back">Voltar</string>
     <string name="onboarding_skip">Agora não</string>
