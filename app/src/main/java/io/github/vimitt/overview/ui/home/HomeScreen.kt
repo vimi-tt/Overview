@@ -369,8 +369,11 @@ fun HomeScreen(
                     backgroundAlpha = uiState.clockBackgroundAlpha,
                     isVisible = isVisible,
                     weather = uiState.nativeWidgets.weather,
+                    weatherLocation = uiState.nativeWidgets.weatherLocation,
+                    isWeatherLoading = uiState.nativeWidgets.isWeatherLoading,
                     showWeather = uiState.homeSettings.showClockWeather,
                     onWeatherClick = nativeEnvironment.onOpenWeatherCityPicker,
+                    onRefreshWeatherClick = { nativeWidgetActions.onRefreshWeather(true) },
                     onEnableLocationClick = nativeEnvironment.onRequestCoarseLocationOrUseGps,
                     modifier = Modifier
                         .graphicsLayer {

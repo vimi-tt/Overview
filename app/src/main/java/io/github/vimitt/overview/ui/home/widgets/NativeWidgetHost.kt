@@ -192,10 +192,10 @@ fun rememberNativeWidgetEnvironment(
         }
     }
 
-    // Clima Open-Meteo: atualiza apenas respeitando cache TTL (30 min) quando visível
+    // Clima Open-Meteo: força busca quando já existe localidade salva sem cache; caso contrário respeita TTL (30 min)
     LaunchedEffect(needsWeather, hasSavedWeatherLocation, hasWeatherCache, permissionRevision) {
         if (needsWeather && hasSavedWeatherLocation) {
-            actions.onRefreshWeather(false)
+            actions.onRefreshWeather(!hasWeatherCache)
         }
     }
 

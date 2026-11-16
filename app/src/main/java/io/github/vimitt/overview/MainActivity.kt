@@ -632,9 +632,18 @@ class MainActivity : ComponentActivity() {
             return
         }
         Toast.makeText(this, R.string.weather_location_resolving_notice, Toast.LENGTH_SHORT).show()
-        homeViewModel.useDeviceWeatherLocation { resolved ->
-            if (!resolved) {
-                Toast.makeText(this, R.string.weather_location_unavailable_notice, Toast.LENGTH_SHORT).show()
+        homeViewModel.useDeviceWeatherLocation { location, forecastUpdated ->
+            when {
+                location == null -> {
+                    Toast.makeText(this, R.string.weather_location_unavailable_notice, Toast.LENGTH_SHORT).show()
+                }
+                !forecastUpdated -> {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.weather_location_found_forecast_pending, location.name),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
         }
     }

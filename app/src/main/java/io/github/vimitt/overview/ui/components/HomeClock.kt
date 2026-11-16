@@ -28,8 +28,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -63,6 +65,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.domain.model.WeatherSnapshot
 import io.github.vimitt.overview.ui.home.widgets.WeatherGlyph
 import io.github.vimitt.overview.ui.theme.OverviewTheme
@@ -103,6 +106,14 @@ fun rememberIsLifecycleActive(): Boolean {
     return isStarted
 }
 
+private data class ClockWeatherMeta(
+    val savedLocation: WeatherLocation? = null,
+    val isLoading: Boolean = false,
+    val onRefreshWeatherClick: (() -> Unit)? = null,
+)
+
+private val LocalClockWeatherMeta = compositionLocalOf { ClockWeatherMeta() }
+
 /**
  * Relógio configurável da tela inicial e da pré-visualização nas configurações.
  * Só registra `BroadcastReceiver` e executa animações Expressive quando `isVisible` é verdadeiro.
@@ -116,8 +127,11 @@ fun HomeClock(
     backgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
     isVisible: Boolean = true,
     weather: WeatherSnapshot? = null,
+    weatherLocation: WeatherLocation? = null,
+    isWeatherLoading: Boolean = false,
     showWeather: Boolean = true,
     onWeatherClick: (() -> Unit)? = null,
+    onRefreshWeatherClick: (() -> Unit)? = null,
     onEnableLocationClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -278,8 +292,19 @@ fun HomeClock(
     val dateChipBorder = colors.accent.copy(alpha = 0.34f)
 
     val effectiveWeather = if (showWeather) weather else null
-    val canShowLocationAction = showWeather && effectiveWeather == null && onEnableLocationClick != null
+    val effectiveSavedLocation = if (showWeather) weatherLocation else null
+    val canShowLocationAction = showWeather &&
+        effectiveWeather == null &&
+        effectiveSavedLocation == null &&
+        onEnableLocationClick != null
 
+    CompositionLocalProvider(
+        LocalClockWeatherMeta provides ClockWeatherMeta(
+            savedLocation = effectiveSavedLocation,
+            isLoading = isWeatherLoading,
+            onRefreshWeatherClick = onRefreshWeatherClick,
+        ),
+    ) {
     when (style) {
         HomeClockStyle.GNOME -> GnomeClassicClock(
             timeText = timeText,
@@ -424,6 +449,7 @@ fun HomeClock(
             )
         }
     }
+    }
 }
 
 @Composable
@@ -467,19 +493,30 @@ private fun ClockWeatherBadge(
     onWeatherClick: (() -> Unit)?,
     onEnableLocationClick: (() -> Unit)?,
 ) {
-    if (weather == null && !showLocationCta) return
+    val weatherMeta = LocalClockWeatherMeta.current
+    val savedLocation = weatherMeta.savedLocation
+    if (weather == null && savedLocation == null && !showLocationCta) return
+
     val shape = OverviewTheme.shapes.pill
-    val clickAction = if (weather != null) onWeatherClick else onEnableLocationClick
+    val clickAction = when {
+        weather != null -> onWeatherClick
+        savedLocation != null -> weatherMeta.onRefreshWeatherClick ?: onWeatherClick
+        else -> onEnableLocationClick
+    }
     val clickModifier = if (clickAction != null) {
         Modifier.clickable(role = Role.Button, onClick = clickAction)
     } else {
         Modifier
     }
 
-    val badgeText = if (weather != null) {
-        "${weather.temperatureC.roundToInt()}°"
-    } else {
-        stringResource(R.string.clock_enable_location_cta)
+    val badgeText = when {
+        weather != null -> "${weather.temperatureC.roundToInt()}°"
+        savedLocation != null -> if (weatherMeta.isLoading) {
+            "${savedLocation.name}…"
+        } else {
+            savedLocation.name
+        }
+        else -> stringResource(R.string.clock_enable_location_cta)
     }
 
     if (isExpressive) {
@@ -500,6 +537,14 @@ private fun ClockWeatherBadge(
                 WeatherGlyph(
                     weatherCode = weather.weatherCode,
                     isDay = weather.isDay,
+                    tint = textColor,
+                    accent = accentColor,
+                    size = if (compact) 14.dp else 16.dp,
+                )
+            } else if (savedLocation != null) {
+                WeatherGlyph(
+                    weatherCode = 1,
+                    isDay = true,
                     tint = textColor,
                     accent = accentColor,
                     size = if (compact) 14.dp else 16.dp,
@@ -532,6 +577,14 @@ private fun ClockWeatherBadge(
                 WeatherGlyph(
                     weatherCode = weather.weatherCode,
                     isDay = weather.isDay,
+                    tint = textColor,
+                    accent = accentColor,
+                    size = if (compact) 15.dp else 17.dp,
+                )
+            } else if (savedLocation != null) {
+                WeatherGlyph(
+                    weatherCode = 1,
+                    isDay = true,
                     tint = textColor,
                     accent = accentColor,
                     size = if (compact) 15.dp else 17.dp,
@@ -651,7 +704,8 @@ private fun GnomeClassicClock(
                     color = secondaryColor,
                 )
             }
-            if (weather != null || showLocationCta) {
+            val weatherMeta = LocalClockWeatherMeta.current
+            if (weather != null || weatherMeta.savedLocation != null || showLocationCta) {
                 if (!isExpressive) {
                     Text(
                         text = "·",

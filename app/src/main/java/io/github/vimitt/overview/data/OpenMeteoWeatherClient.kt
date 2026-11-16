@@ -37,17 +37,27 @@ class OpenMeteoWeatherClient(
         location: WeatherLocation,
         nowMs: Long = System.currentTimeMillis(),
     ): Result<WeatherSnapshot> = withContext(ioDispatcher) {
+        val lat = String.format(Locale.US, "%.4f", location.latitude)
+        val lon = String.format(Locale.US, "%.4f", location.longitude)
+        val primaryEndpoint =
+            "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
+                "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m" +
+                "&hourly=temperature_2m,weather_code" +
+                "&daily=temperature_2m_max,temperature_2m_min" +
+                "&timezone=auto&forecast_days=2"
+        val primaryResult = runCatching {
+            parseOpenMeteoForecastJson(json = httpGet(primaryEndpoint), location = location, nowMs = nowMs)
+        }
+        if (primaryResult.isSuccess) return@withContext primaryResult
+
+        // Fallback enxuto caso campos horários/diários falhem temporariamente
+        val minimalEndpoint =
+            "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
+                "&current=temperature_2m,weather_code,is_day&timezone=auto"
         runCatching {
-            val lat = String.format(Locale.US, "%.4f", location.latitude)
-            val lon = String.format(Locale.US, "%.4f", location.longitude)
-            val endpoint =
-                "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
-                    "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m" +
-                    "&hourly=temperature_2m,weather_code" +
-                    "&daily=temperature_2m_max,temperature_2m_min" +
-                    "&timezone=auto&forecast_days=2"
-            val body = httpGet(endpoint)
-            parseOpenMeteoForecastJson(json = body, location = location, nowMs = nowMs)
+            parseOpenMeteoForecastJson(json = httpGet(minimalEndpoint), location = location, nowMs = nowMs)
+        }.recoverCatching {
+            throw (primaryResult.exceptionOrNull() ?: it)
         }
     }
 
@@ -76,8 +86,9 @@ class OpenMeteoWeatherClient(
     private fun httpGet(urlString: String): String {
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 9_000
-            readTimeout = 9_000
+            instanceFollowRedirects = true
+            connectTimeout = 10_000
+            readTimeout = 10_000
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "OverviewLauncher/1.0")
         }
@@ -122,17 +133,22 @@ class OpenMeteoWeatherClient(
         ): WeatherSnapshot {
             val root = JSONObject(json)
             val current = root.getJSONObject("current")
-            val temperatureC = current.getDouble("temperature_2m")
+            val temperatureC = current.getDouble("temperature_2m").takeIf { it.isFinite() }
+                ?: error("Temperatura atual ausente")
             val apparentTempC = current.optDouble("apparent_temperature", temperatureC)
+                .takeIf { it.isFinite() } ?: temperatureC
             val weatherCode = current.optInt("weather_code", 0)
             val isDay = current.optInt("is_day", 1) == 1
             val windSpeed = current.optDouble("wind_speed_10m", 0.0)
+                .takeIf { it.isFinite() } ?: 0.0
 
             val daily = root.optJSONObject("daily")
             val minArr = daily?.optJSONArray("temperature_2m_min")
             val maxArr = daily?.optJSONArray("temperature_2m_max")
-            val minTemp = if (minArr != null && minArr.length() > 0) minArr.optDouble(0, temperatureC) else temperatureC
-            val maxTemp = if (maxArr != null && maxArr.length() > 0) maxArr.optDouble(0, temperatureC) else temperatureC
+            val minTemp = (if (minArr != null && minArr.length() > 0) minArr.optDouble(0, temperatureC) else temperatureC)
+                .takeIf { it.isFinite() } ?: temperatureC
+            val maxTemp = (if (maxArr != null && maxArr.length() > 0) maxArr.optDouble(0, temperatureC) else temperatureC)
+                .takeIf { it.isFinite() } ?: temperatureC
 
             val hourlyObj = root.optJSONObject("hourly")
             val times = hourlyObj?.optJSONArray("time")
@@ -147,11 +163,12 @@ class OpenMeteoWeatherClient(
                         val timeIso = times.optString(i)
                         if (timeIso.isBlank() || timeIso <= currentHourIso) continue
                         val hourLabel = if (timeIso.length >= 16) timeIso.substring(11, 16) else timeIso
+                        val hourTemp = temps.optDouble(i, temperatureC).takeIf { it.isFinite() } ?: temperatureC
                         add(
                             HourlyWeatherPoint(
                                 timeIso = timeIso,
                                 hourLabel = hourLabel,
-                                temperatureC = temps.optDouble(i, temperatureC),
+                                temperatureC = hourTemp,
                                 weatherCode = codes.optInt(i, weatherCode),
                             ),
                         )

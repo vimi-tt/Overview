@@ -516,14 +516,16 @@ class HomeViewModel(
         }
     }
 
-    fun useDeviceWeatherLocation(onResult: (Boolean) -> Unit = {}) {
+    fun useDeviceWeatherLocation(
+        onResult: (location: WeatherLocation?, forecastUpdated: Boolean) -> Unit = { _, _ -> },
+    ) {
         viewModelScope.launch {
             val location = NativeWidgetSystemProviders.resolveCoarseWeatherLocation(appContext)
             if (location != null) {
-                nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
-                onResult(true)
+                val refreshed = nativeWidgetsRepository.setWeatherLocationAndRefresh(location)
+                onResult(location, refreshed)
             } else {
-                onResult(false)
+                onResult(null, false)
             }
         }
     }

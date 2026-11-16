@@ -155,6 +155,7 @@ fun HomeSettingsScreen(
                     showClock = settings.showClock,
                     showWeather = settings.showClockWeather,
                     weather = weather,
+                    weatherLocation = weatherLocation,
                     style = settings.clockStyle,
                     backgroundAlpha = settings.clockBackgroundAlpha,
                     onCycleStyle = {
@@ -268,6 +269,7 @@ private fun HomeClockPreview(
     showClock: Boolean,
     showWeather: Boolean,
     weather: WeatherSnapshot?,
+    weatherLocation: WeatherLocation?,
     style: HomeClockStyle,
     backgroundAlpha: Float,
     onCycleStyle: () -> Unit,
@@ -300,6 +302,7 @@ private fun HomeClockPreview(
                 backgroundAlpha = backgroundAlpha,
                 isVisible = rememberIsLifecycleActive() && showClock,
                 weather = weather,
+                weatherLocation = weatherLocation,
                 showWeather = showWeather,
                 modifier = Modifier.alpha(if (showClock) 1f else 0.32f),
             )

@@ -192,6 +192,7 @@
     <string name="weather_location_gps_disabled_notice">Ative a localização (GPS) do aparelho para buscar o clima automaticamente.</string>
     <string name="weather_location_resolving_notice">Buscando localização atual…</string>
     <string name="weather_location_unavailable_notice">Não foi possível obter a localização agora. Tente escolher a cidade.</string>
+    <string name="weather_location_found_forecast_pending">Localização %1$s salva. Toque no relógio para atualizar o clima.</string>
     <string name="settings_home_clock_style_gnome">GNOME Clássico</string>
     <string name="settings_home_clock_style_stacked">Empilhado</string>
     <string name="settings_home_clock_style_analog">Analógico Adwaita</string>

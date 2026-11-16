@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -41,6 +43,7 @@ class NativeWidgetsRepository(
 ) {
     private val weatherLoading = MutableStateFlow(false)
     private val weatherError = MutableStateFlow<String?>(null)
+    private val weatherRefreshMutex = Mutex()
 
     private val storedState: Flow<NativeWidgetsState> = context.nativeWidgetsDataStore.data
         .catch { exception ->
@@ -147,20 +150,19 @@ class NativeWidgetsRepository(
     suspend fun searchWeatherCities(query: String): Result<List<WeatherLocation>> =
         weatherClient.searchCities(query)
 
-    suspend fun setWeatherLocationAndRefresh(location: WeatherLocation) {
+    suspend fun setWeatherLocationAndRefresh(location: WeatherLocation): Boolean {
         context.nativeWidgetsDataStore.edit { prefs ->
             prefs[KEY_WEATHER_LOCATION] = encodeLocation(location)
         }
-        refreshWeather(force = true, explicitLocation = location)
+        return refreshWeather(force = true, explicitLocation = location)
     }
 
     suspend fun refreshWeather(
         force: Boolean = false,
         explicitLocation: WeatherLocation? = null,
-    ) {
-        if (weatherLoading.value) return
+    ): Boolean = weatherRefreshMutex.withLock {
         val current = storedState.first()
-        val targetLocation = explicitLocation ?: current.weatherLocation ?: return
+        val targetLocation = explicitLocation ?: current.weatherLocation ?: return@withLock false
         val cached = current.weather
         val now = System.currentTimeMillis()
         if (!force &&
@@ -169,24 +171,29 @@ class NativeWidgetsRepository(
             cached.location.longitude == targetLocation.longitude &&
             (now - cached.updatedAtMs) < WEATHER_TTL_MS
         ) {
-            return
+            return@withLock true
         }
 
         weatherLoading.value = true
         weatherError.value = null
-        val result = weatherClient.fetchForecast(location = targetLocation, nowMs = now)
-        result.fold(
-            onSuccess = { snapshot ->
-                context.nativeWidgetsDataStore.edit { prefs ->
-                    prefs[KEY_WEATHER_CACHE] = encodeWeather(snapshot)
-                }
-                weatherError.value = null
-            },
-            onFailure = { error ->
-                weatherError.value = error.localizedMessage ?: "Falha ao atualizar clima"
-            },
-        )
-        weatherLoading.value = false
+        return@withLock try {
+            val result = weatherClient.fetchForecast(location = targetLocation, nowMs = now)
+            result.fold(
+                onSuccess = { snapshot ->
+                    context.nativeWidgetsDataStore.edit { prefs ->
+                        prefs[KEY_WEATHER_CACHE] = encodeWeather(snapshot)
+                    }
+                    weatherError.value = null
+                    true
+                },
+                onFailure = { error ->
+                    weatherError.value = error.localizedMessage ?: "Falha ao atualizar clima"
+                    false
+                },
+            )
+        } finally {
+            weatherLoading.value = false
+        }
     }
 
     // --- Timer e Cronômetro ---
@@ -396,26 +403,27 @@ class NativeWidgetsRepository(
     }
 
     private fun encodeWeather(weather: WeatherSnapshot): String {
+        val safeTemp = weather.temperatureC.takeIf { it.isFinite() } ?: 0.0
         val hourlyArr = JSONArray()
         for (point in weather.hourlyForecast) {
             hourlyArr.put(
                 JSONObject().apply {
                     put("timeIso", point.timeIso)
                     put("hourLabel", point.hourLabel)
-                    put("temperatureC", point.temperatureC)
+                    put("temperatureC", point.temperatureC.takeIf { it.isFinite() } ?: safeTemp)
                     put("weatherCode", point.weatherCode)
                 },
             )
         }
         return JSONObject().apply {
             put("location", JSONObject(encodeLocation(weather.location)))
-            put("temperatureC", weather.temperatureC)
-            put("apparentTempC", weather.apparentTempC)
-            put("minTempC", weather.minTempC)
-            put("maxTempC", weather.maxTempC)
+            put("temperatureC", safeTemp)
+            put("apparentTempC", weather.apparentTempC.takeIf { it.isFinite() } ?: safeTemp)
+            put("minTempC", weather.minTempC.takeIf { it.isFinite() } ?: safeTemp)
+            put("maxTempC", weather.maxTempC.takeIf { it.isFinite() } ?: safeTemp)
             put("weatherCode", weather.weatherCode)
             put("isDay", weather.isDay)
-            put("windSpeedKmh", weather.windSpeedKmh)
+            put("windSpeedKmh", weather.windSpeedKmh.takeIf { it.isFinite() } ?: 0.0)
             put("hourly", hourlyArr)
             put("updatedAtMs", weather.updatedAtMs)
         }.toString()
