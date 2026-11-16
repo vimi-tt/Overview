@@ -104,6 +104,7 @@ class SettingsRepository(
     val preferences: Flow<LauncherPreferences> = rawData
         .map { prefs ->
             LauncherPreferences(
+                onboardingCompleted = prefs[KEY_ONBOARDING_COMPLETED] ?: false,
                 appearance = mapAppearance(prefs),
                 home = mapHome(prefs),
                 dock = mapDock(prefs),
@@ -115,6 +116,12 @@ class SettingsRepository(
             )
         }
         .distinctUntilChanged()
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_ONBOARDING_COMPLETED] = completed
+        }
+    }
 
     // region Aparência
 
@@ -902,6 +909,7 @@ class SettingsRepository(
 
     private companion object {
         // Chaves já existentes (compatibilidade garantida com overview_preferences)
+        val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_ACCENT_COLOR = longPreferencesKey("accent_color_argb")
         val KEY_BLUR_RADIUS = floatPreferencesKey("overview_blur_radius_dp")

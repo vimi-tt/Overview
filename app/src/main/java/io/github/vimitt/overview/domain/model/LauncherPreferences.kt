@@ -372,6 +372,7 @@ data class GestureSettings(
  */
 @Immutable
 data class LauncherPreferences(
+    val onboardingCompleted: Boolean = false,
     val appearance: AppearanceSettings = AppearanceSettings(),
     val home: HomeSettings = HomeSettings(),
     val dock: DockSettings = DockSettings(),

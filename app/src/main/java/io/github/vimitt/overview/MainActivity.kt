@@ -15,18 +15,28 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.SystemPanelHelper
 import io.github.vimitt.overview.data.WidgetEntry
@@ -39,8 +49,10 @@ import io.github.vimitt.overview.ui.LauncherRoot
 import io.github.vimitt.overview.ui.home.HomeViewModel
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
+import io.github.vimitt.overview.ui.onboarding.OnboardingScreen
 import io.github.vimitt.overview.ui.overview.OverviewViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+import kotlinx.coroutines.launch
 
 /**
  * Activity principal registrada como launcher (`HOME`) em modo `singleTask`.
@@ -89,6 +101,8 @@ class MainActivity : ComponentActivity() {
     private var isWidgetPickerOpen by mutableStateOf(false)
     private var selectedHomeItemId by mutableStateOf<String?>(null)
     private var permissionRevision by mutableIntStateOf(0)
+    private var isOnboardingPreviewOpen by mutableStateOf(false)
+    private var onboardingRunKey by mutableIntStateOf(0)
     private var requestedCalendarOnce = false
     private var requestedLocationOnce = false
     private var pendingLocationRetryAfterSettings = false
@@ -144,8 +158,9 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent, isNewIntent = false)
 
         setContent {
-            val preferences by appContainer.settingsRepository.preferences
-                .collectAsStateWithLifecycle(initialValue = LauncherPreferences())
+            val loadedPreferences by appContainer.settingsRepository.preferences
+                .collectAsStateWithLifecycle(initialValue = null)
+            val preferences = loadedPreferences ?: LauncherPreferences()
             SideEffect {
                 currentPreferences = preferences
             }
@@ -195,7 +210,9 @@ class MainActivity : ComponentActivity() {
                 typographyWeightMode = appearance.typographyWeightMode,
             ) {
                 val isDark = OverviewTheme.colors.isDark
-                val anyModalOpen = isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen || isOverviewOpen
+                val isOnboardingActive = loadedPreferences != null &&
+                    (!preferences.onboardingCompleted || isOnboardingPreviewOpen)
+                val anyModalOpen = isOnboardingActive || isSettingsOpen || isAppPickerOpen || isWidgetPickerOpen || isOverviewOpen
                 LaunchedEffect(anyModalOpen, isDark, wallpaperSupportsDarkText) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView)
                     val useLightBars = if (anyModalOpen) !isDark else wallpaperSupportsDarkText
@@ -255,102 +272,144 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                LauncherRoot(
-                    appContainer = appContainer,
-                    isOverviewOpen = isOverviewOpen,
-                    overviewFocusSearchTrigger = overviewFocusSearchTrigger,
-                    isHomeMenuOpen = isHomeMenuOpen,
-                    isSettingsOpen = isSettingsOpen,
-                    isAppPickerOpen = isAppPickerOpen,
-                    isWidgetPickerOpen = isWidgetPickerOpen,
-                    selectedHomeItem = selectedHomeItem,
-                    overviewSettings = preferences.overview,
-                    gestureSettings = preferences.gestures,
-                    appWidgetController = appContainer.appWidgetController,
-                    homeUiState = homeUiState,
-                    searchQuery = searchQuery,
-                    overviewUiState = overviewUiState,
-                    allApps = allApps,
-                    onOpenOverview = ::openOverview,
-                    onOpenOverviewSearch = ::openOverviewSearch,
-                    onCloseOverview = ::closeOverview,
-                    onExecuteGesture = ::executeGestureAction,
-                    onHomeLongPress = {
-                        selectedHomeItemId = null
-                        isHomeMenuOpen = true
-                    },
-                    onDismissHomeMenu = { isHomeMenuOpen = false },
-                    onOpenAppPicker = { isAppPickerOpen = true },
-                    onCloseAppPicker = { isAppPickerOpen = false },
-                    onOpenWidgetPicker = { isWidgetPickerOpen = true },
-                    onCloseWidgetPicker = { isWidgetPickerOpen = false },
-                    onSelectHomeAppToAdd = { app ->
-                        isAppPickerOpen = false
-                        addAppShortcutToHome(app)
-                    },
-                    onSelectNativeWidgetToAdd = { widgetType ->
-                        isWidgetPickerOpen = false
-                        addNativeWidgetToHome(widgetType)
-                    },
-                    onSelectWidgetToAdd = { entry ->
-                        isWidgetPickerOpen = false
-                        beginAddWidgetFlow(entry)
-                    },
-                    loadAvailableWidgets = homeViewModel::loadAvailableWidgets,
-                    nativeWidgetActions = nativeWidgetActions,
-                    permissionRevision = permissionRevision,
-                    onWorkspaceItemLongPress = { workspaceItem ->
-                        isHomeMenuOpen = false
-                        selectedHomeItemId = workspaceItem.item.id
-                    },
-                    onDismissHomeItemAction = { selectedHomeItemId = null },
-                    onStartMovingHomeItem = homeViewModel::startMovingItem,
-                    onStartResizingHomeItem = homeViewModel::startResizingItem,
-                    onCancelResizingHomeItem = homeViewModel::cancelResizingItem,
-                    onResizeWidgetBounds = homeViewModel::resizeWidgetBounds,
-                    onResizeWidget = homeViewModel::resizeWidget,
-                    onRemoveHomeItem = homeViewModel::removeHomeItem,
-                    canPlaceMovingItemAt = homeViewModel::canPlaceMovingItemAt,
-                    onPlaceMovingItemAt = homeViewModel::placeMovingItemAt,
-                    onCancelMovingItem = homeViewModel::cancelMovingItem,
-                    canPlaceDragItemAt = homeViewModel::canPlaceItemAt,
-                    onMoveHomeItemTo = homeViewModel::moveItemTo,
-                    onDropAppFromOverviewAt = { app, cellX, cellY ->
-                        addAppShortcutToHome(
-                            app = app,
-                            preferredCellX = cellX,
-                            preferredCellY = cellY,
-                        )
-                    },
-                    onDropAppOnDock = homeViewModel::dropAppOnDock,
-                    onRemoveAppFromDock = homeViewModel::removeAppFromDock,
-                    onOpenSettings = {
-                        isHomeMenuOpen = false
-                        isSettingsOpen = true
-                    },
-                    onCloseSettings = { isSettingsOpen = false },
-                    onOpenWallpaperPicker = ::openWallpaperPicker,
-                    onSearchQueryChange = overviewViewModel::onSearchQueryChange,
-                    onClearSearch = overviewViewModel::onClearSearch,
-                    onAddAppFromOverview = { app ->
-                        addAppShortcutToHome(app)
-                    },
-                    onMoveAppToFolder = overviewViewModel::moveAppToFolder,
-                    onCreateFolderWithApp = overviewViewModel::createFolderWithApp,
-                    onRemoveAppFromFolder = overviewViewModel::removeAppFromFolder,
-                    onOpenAppInfo = ::openAppInfo,
-                    onLaunchFromHome = { app, view, bounds, reducedMotion ->
-                        val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
-                        homeViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
-                    },
-                    onLaunchFromOverview = { app, view, bounds, reducedMotion ->
-                        val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
-                        val launched = overviewViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
-                        if (launched) {
-                            closeOverview()
+                if (loadedPreferences == null) {
+                    Box(modifier = Modifier.fillMaxSize())
+                } else {
+                    AnimatedContent(
+                        targetState = isOnboardingActive,
+                        transitionSpec = {
+                            fadeIn(tween(320)) togetherWith fadeOut(tween(240))
+                        },
+                        label = "rootOnboardingTransition",
+                    ) { showOnboarding ->
+                        if (showOnboarding) {
+                            key(onboardingRunKey) {
+                                OnboardingScreen(
+                                    currentVisualStyle = appearance.visualStyle,
+                                    permissionRevision = permissionRevision,
+                                    notificationBadgeRepository = appContainer.notificationBadgeRepository,
+                                    isDebugPreview = isOnboardingPreviewOpen,
+                                    onRequestCalendarPermission = ::requestCalendarPermission,
+                                    onRequestLocationPermission = ::requestWeatherLocation,
+                                    onSelectVisualStyle = { style ->
+                                        lifecycleScope.launch {
+                                            appContainer.settingsRepository.setVisualStyle(style)
+                                        }
+                                    },
+                                    onComplete = {
+                                        lifecycleScope.launch {
+                                            appContainer.settingsRepository.setOnboardingCompleted(true)
+                                        }
+                                    },
+                                    onDismissPreview = {
+                                        isOnboardingPreviewOpen = false
+                                    },
+                                )
+                            }
+                        } else {
+                            LauncherRoot(
+                                appContainer = appContainer,
+                                isOverviewOpen = isOverviewOpen,
+                                overviewFocusSearchTrigger = overviewFocusSearchTrigger,
+                                isHomeMenuOpen = isHomeMenuOpen,
+                                isSettingsOpen = isSettingsOpen,
+                                isAppPickerOpen = isAppPickerOpen,
+                                isWidgetPickerOpen = isWidgetPickerOpen,
+                                selectedHomeItem = selectedHomeItem,
+                                overviewSettings = preferences.overview,
+                                gestureSettings = preferences.gestures,
+                                appWidgetController = appContainer.appWidgetController,
+                                homeUiState = homeUiState,
+                                searchQuery = searchQuery,
+                                overviewUiState = overviewUiState,
+                                allApps = allApps,
+                                onOpenOverview = ::openOverview,
+                                onOpenOverviewSearch = ::openOverviewSearch,
+                                onCloseOverview = ::closeOverview,
+                                onExecuteGesture = ::executeGestureAction,
+                                onHomeLongPress = {
+                                    selectedHomeItemId = null
+                                    isHomeMenuOpen = true
+                                },
+                                onDismissHomeMenu = { isHomeMenuOpen = false },
+                                onOpenAppPicker = { isAppPickerOpen = true },
+                                onCloseAppPicker = { isAppPickerOpen = false },
+                                onOpenWidgetPicker = { isWidgetPickerOpen = true },
+                                onCloseWidgetPicker = { isWidgetPickerOpen = false },
+                                onSelectHomeAppToAdd = { app ->
+                                    isAppPickerOpen = false
+                                    addAppShortcutToHome(app)
+                                },
+                                onSelectNativeWidgetToAdd = { widgetType ->
+                                    isWidgetPickerOpen = false
+                                    addNativeWidgetToHome(widgetType)
+                                },
+                                onSelectWidgetToAdd = { entry ->
+                                    isWidgetPickerOpen = false
+                                    beginAddWidgetFlow(entry)
+                                },
+                                loadAvailableWidgets = homeViewModel::loadAvailableWidgets,
+                                nativeWidgetActions = nativeWidgetActions,
+                                permissionRevision = permissionRevision,
+                                onWorkspaceItemLongPress = { workspaceItem ->
+                                    isHomeMenuOpen = false
+                                    selectedHomeItemId = workspaceItem.item.id
+                                },
+                                onDismissHomeItemAction = { selectedHomeItemId = null },
+                                onStartMovingHomeItem = homeViewModel::startMovingItem,
+                                onStartResizingHomeItem = homeViewModel::startResizingItem,
+                                onCancelResizingHomeItem = homeViewModel::cancelResizingItem,
+                                onResizeWidgetBounds = homeViewModel::resizeWidgetBounds,
+                                onResizeWidget = homeViewModel::resizeWidget,
+                                onRemoveHomeItem = homeViewModel::removeHomeItem,
+                                canPlaceMovingItemAt = homeViewModel::canPlaceMovingItemAt,
+                                onPlaceMovingItemAt = homeViewModel::placeMovingItemAt,
+                                onCancelMovingItem = homeViewModel::cancelMovingItem,
+                                canPlaceDragItemAt = homeViewModel::canPlaceItemAt,
+                                onMoveHomeItemTo = homeViewModel::moveItemTo,
+                                onDropAppFromOverviewAt = { app, cellX, cellY ->
+                                    addAppShortcutToHome(
+                                        app = app,
+                                        preferredCellX = cellX,
+                                        preferredCellY = cellY,
+                                    )
+                                },
+                                onDropAppOnDock = homeViewModel::dropAppOnDock,
+                                onRemoveAppFromDock = homeViewModel::removeAppFromDock,
+                                onOpenSettings = {
+                                    isHomeMenuOpen = false
+                                    isSettingsOpen = true
+                                },
+                                onCloseSettings = { isSettingsOpen = false },
+                                onPreviewOnboarding = {
+                                    onboardingRunKey++
+                                    isOnboardingPreviewOpen = true
+                                },
+                                onOpenWallpaperPicker = ::openWallpaperPicker,
+                                onSearchQueryChange = overviewViewModel::onSearchQueryChange,
+                                onClearSearch = overviewViewModel::onClearSearch,
+                                onAddAppFromOverview = { app ->
+                                    addAppShortcutToHome(app)
+                                },
+                                onMoveAppToFolder = overviewViewModel::moveAppToFolder,
+                                onCreateFolderWithApp = overviewViewModel::createFolderWithApp,
+                                onRemoveAppFromFolder = overviewViewModel::removeAppFromFolder,
+                                onOpenAppInfo = ::openAppInfo,
+                                onLaunchFromHome = { app, view, bounds, reducedMotion ->
+                                    val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
+                                    homeViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
+                                },
+                                onLaunchFromOverview = { app, view, bounds, reducedMotion ->
+                                    val effectiveReducedMotion = reducedMotion || !preferences.overview.appLaunchAnimation
+                                    val launched = overviewViewModel.onAppClick(app, view, bounds, effectiveReducedMotion)
+                                    if (launched) {
+                                        closeOverview()
+                                    }
+                                },
+                            )
                         }
-                    },
-                )
+                    }
+                }
             }
         }
     }
@@ -362,9 +421,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        permissionRevision++
         if (pendingLocationRetryAfterSettings) {
             pendingLocationRetryAfterSettings = false
-            permissionRevision++
             if (NativeWidgetSystemProviders.hasCoarseLocationPermission(this) &&
                 NativeWidgetSystemProviders.isLocationEnabled(this)
             ) {

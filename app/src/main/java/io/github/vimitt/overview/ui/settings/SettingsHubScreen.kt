@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ fun SettingsHubScreen(
     onOpenFolders: () -> Unit,
     onOpenGestures: () -> Unit,
     onOpenAbout: () -> Unit,
+    onPreviewOnboarding: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -288,6 +290,26 @@ fun SettingsHubScreen(
                     },
                     onClick = onOpenAbout,
                 )
+            }
+        }
+
+        if (BuildConfig.DEBUG) {
+            item(key = "categories_debug") {
+                SettingsGroup(title = stringResource(R.string.settings_section_debug)) {
+                    NavigationRow(
+                        title = stringResource(R.string.settings_debug_replay_onboarding),
+                        subtitle = stringResource(R.string.settings_debug_replay_onboarding_subtitle),
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        onClick = onPreviewOnboarding,
+                    )
+                }
             }
         }
 

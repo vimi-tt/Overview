@@ -137,6 +137,7 @@ fun LauncherRoot(
     onRemoveAppFromDock: (appKey: String) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
+    onPreviewOnboarding: () -> Unit = {},
     onOpenWallpaperPicker: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
@@ -702,6 +703,7 @@ fun LauncherRoot(
                 onSearchWeatherCities = nativeWidgetActions.onSearchWeatherCities,
                 onSelectWeatherLocation = nativeWidgetActions.onSelectWeatherLocation,
                 onSelectWeatherProvider = nativeWidgetActions.onSelectWeatherProvider,
+                onPreviewOnboarding = onPreviewOnboarding,
                 onClose = onCloseSettings,
             )
         }

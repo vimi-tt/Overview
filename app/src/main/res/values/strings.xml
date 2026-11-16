@@ -436,4 +436,45 @@
     <string name="native_widget_timer_start">Iniciar</string>
     <string name="native_widget_timer_pause">Pausar</string>
     <string name="native_widget_timer_reset">Zerar</string>
+
+    <!-- Depuração (somente Debug) -->
+    <string name="settings_section_debug">Depuração</string>
+    <string name="settings_debug_replay_onboarding">Visualizar boas-vindas</string>
+    <string name="settings_debug_replay_onboarding_subtitle">Reproduz a animação inicial, permissões e escolha de tema</string>
+
+    <!-- Boas-vindas (Onboarding) -->
+    <string name="onboarding_preview_badge">Prévia (Debug)</string>
+    <string name="onboarding_intro_tagline">Seu launcher minimalista e expressivo</string>
+    <string name="onboarding_welcome_title">Bem-vindo ao Overview</string>
+    <string name="onboarding_welcome_subtitle">Um ambiente limpo inspirado no GNOME para organizar seus aplicativos, widgets nativos e atalhos com fluidez.</string>
+    <string name="onboarding_feature_overview_title">Grade &amp; busca instantânea</string>
+    <string name="onboarding_feature_overview_desc">Deslize para cima para abrir o Overview, pesquisar apps e organizar pastas.</string>
+    <string name="onboarding_feature_dock_title">Dock personalizável</string>
+    <string name="onboarding_feature_dock_desc">Arraste seus aplicativos favoritos para o Dash e reorganize como preferir.</string>
+    <string name="onboarding_feature_widgets_title">Widgets nativos inteligentes</string>
+    <string name="onboarding_feature_widgets_desc">Clima, agenda, música, notas rápidas e tarefas integrados à tela inicial.</string>
+    <string name="onboarding_start_cta">Começar</string>
+    <string name="onboarding_back">Voltar</string>
+    <string name="onboarding_skip">Agora não</string>
+    <string name="onboarding_continue">Continuar</string>
+    <string name="onboarding_finish">Concluir</string>
+
+    <string name="onboarding_requests_title">Permissões e recursos</string>
+    <string name="onboarding_requests_subtitle">Ative apenas o que quiser usar. Tudo é opcional e pode ser alterado depois.</string>
+    <string name="onboarding_req_notifications_title">Notificações e música</string>
+    <string name="onboarding_req_notifications_desc">Exibe emblemas nos ícones e controla músicas na tela inicial.</string>
+    <string name="onboarding_req_calendar_title">Agenda do celular</string>
+    <string name="onboarding_req_calendar_desc">Mostra próximos compromissos nos widgets de Agenda e Resumo.</string>
+    <string name="onboarding_req_location_title">Localização para o clima</string>
+    <string name="onboarding_req_location_desc">Atualiza automaticamente a previsão do tempo para a sua cidade.</string>
+    <string name="onboarding_req_default_home_title">Launcher padrão</string>
+    <string name="onboarding_req_default_home_desc">Define o Overview como sua tela inicial ao pressionar Início.</string>
+    <string name="onboarding_req_grant">Ativar</string>
+    <string name="onboarding_req_granted">Ativado</string>
+
+    <string name="onboarding_theme_title">Escolha seu estilo visual</string>
+    <string name="onboarding_theme_subtitle">Você pode alternar entre GNOME e Material Expressive a qualquer momento nas configurações.</string>
+    <string name="onboarding_theme_gnome_desc">Superfícies Adwaita calmas, cantos contidos e leitura direta.</string>
+    <string name="onboarding_theme_expressive_desc">Formas orgânicas, cores tonais vibrantes e animações com mola.</string>
+    <string name="onboarding_theme_preview_caption">Pré-visualização ao vivo</string>
 </resources>

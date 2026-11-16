@@ -68,6 +68,7 @@ fun SettingsNavHost(
     onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
     onSelectWeatherProvider: (WeatherProvider) -> Unit = {},
+    onPreviewOnboarding: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -179,6 +180,7 @@ fun SettingsNavHost(
                 onOpenFolders = { navController.navigate(SettingsRoute.FOLDERS) },
                 onOpenGestures = { navController.navigate(SettingsRoute.GESTURES) },
                 onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
+                onPreviewOnboarding = onPreviewOnboarding,
                 onClose = onClose,
             )
         }
