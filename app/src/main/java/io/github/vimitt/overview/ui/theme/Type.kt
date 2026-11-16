@@ -2,20 +2,53 @@ package io.github.vimitt.overview.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.TypographyWeightMode
 import io.github.vimitt.overview.domain.model.VisualStyle
 
+@OptIn(ExperimentalTextApi::class)
+private fun adwaitaVariableFont(
+    resId: Int,
+    weight: FontWeight,
+    style: FontStyle,
+): Font = Font(
+    resId = resId,
+    weight = weight,
+    style = style,
+    variationSettings = FontVariation.Settings(
+        FontVariation.weight(weight.weight),
+    ),
+)
+
 /**
- * Família tipográfica centralizada.
- *
- * Para usar a fonte Adwaita Sans (ou outra fonte variável customizada com licença compatível),
- * basta adicionar os arquivos `.ttf` em `res/font/` e substituir esta referência por `FontFamily(...)`.
+ * Família tipográfica centralizada baseada na fonte variável oficial **Adwaita Sans** (OFL-1.1).
  */
-val OverviewFontFamily: FontFamily = FontFamily.SansSerif
+val OverviewFontFamily: FontFamily = FontFamily(
+    listOf(
+        FontWeight.Thin,
+        FontWeight.ExtraLight,
+        FontWeight.Light,
+        FontWeight.Normal,
+        FontWeight.Medium,
+        FontWeight.SemiBold,
+        FontWeight.Bold,
+        FontWeight.ExtraBold,
+        FontWeight.Black,
+    ).flatMap { weight ->
+        listOf(
+            adwaitaVariableFont(R.font.adwaita_sans_regular, weight, FontStyle.Normal),
+            adwaitaVariableFont(R.font.adwaita_sans_italic, weight, FontStyle.Italic),
+        )
+    },
+)
 
 val OverviewTypography = Typography(
     displayLarge = TextStyle(
@@ -24,6 +57,37 @@ val OverviewTypography = Typography(
         fontSize = 54.sp,
         lineHeight = 60.sp,
         letterSpacing = (-0.5).sp,
+    ),
+    displayMedium = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 42.sp,
+        lineHeight = 48.sp,
+        letterSpacing = (-0.25).sp,
+    ),
+    displaySmall = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
     ),
     titleLarge = TextStyle(
         fontFamily = OverviewFontFamily,
@@ -37,6 +101,12 @@ val OverviewTypography = Typography(
         fontSize = 16.sp,
         lineHeight = 22.sp,
     ),
+    titleSmall = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
     bodyLarge = TextStyle(
         fontFamily = OverviewFontFamily,
         fontWeight = FontWeight.Normal,
@@ -49,11 +119,29 @@ val OverviewTypography = Typography(
         fontSize = 13.sp,
         lineHeight = 18.sp,
     ),
+    bodySmall = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
     labelMedium = TextStyle(
         fontFamily = OverviewFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = OverviewFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
     ),
 )
 
@@ -108,7 +196,7 @@ fun overviewTypographyTokens(
     val titleMediumSize = if (isExpressive) 16.5.sp else 16.sp
     val sectionHeaderSize = if (isExpressive) 13.sp else 12.sp
 
-    val resolvedTypography = Typography(
+    val resolvedTypography = OverviewTypography.copy(
         displayLarge = OverviewTypography.displayLarge.copy(
             fontWeight = displayWeight,
             fontSize = if (isExpressive) 56.sp else 54.sp,
