@@ -48,6 +48,8 @@ import kotlin.math.abs
 
 private class WidgetCoordinatesHolder {
     var coordinates: LayoutCoordinates? = null
+    var composeDragActive: Boolean = false
+    var viewDragActive: Boolean = false
 }
 
 /**
@@ -104,6 +106,8 @@ fun HomeWidgetView(
             .pointerInput(widgetItem.item.id) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { localOffset ->
+                        if (coordinatesHolder.viewDragActive) return@detectDragGesturesAfterLongPress
+                        coordinatesHolder.composeDragActive = true
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val coords = coordinatesHolder.coordinates
                         val windowPos = if (coords != null && coords.isAttached) {
@@ -114,6 +118,7 @@ fun HomeWidgetView(
                         currentOnDragStart(windowPos)
                     },
                     onDrag = { change, _ ->
+                        if (!coordinatesHolder.composeDragActive) return@detectDragGesturesAfterLongPress
                         change.consume()
                         val coords = coordinatesHolder.coordinates
                         val windowPos = if (coords != null && coords.isAttached) {
@@ -123,8 +128,18 @@ fun HomeWidgetView(
                         }
                         currentOnDragMove(windowPos)
                     },
-                    onDragEnd = { currentOnDragEnd() },
-                    onDragCancel = { currentOnDragCancel() },
+                    onDragEnd = {
+                        if (coordinatesHolder.composeDragActive) {
+                            coordinatesHolder.composeDragActive = false
+                            currentOnDragEnd()
+                        }
+                    },
+                    onDragCancel = {
+                        if (coordinatesHolder.composeDragActive) {
+                            coordinatesHolder.composeDragActive = false
+                            currentOnDragCancel()
+                        }
+                    },
                 )
             },
     ) {
@@ -136,17 +151,51 @@ fun HomeWidgetView(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     setHostView(hostView)
-                    onDragStartListener = { currentOnDragStart(it) }
-                    onDragMoveListener = { currentOnDragMove(it) }
-                    onDragEndListener = { currentOnDragEnd() }
-                    onDragCancelListener = { currentOnDragCancel() }
+                    onDragStartListener = {
+                        if (!coordinatesHolder.composeDragActive) {
+                            coordinatesHolder.viewDragActive = true
+                            currentOnDragStart(it)
+                        }
+                    }
+                    onDragMoveListener = {
+                        if (coordinatesHolder.viewDragActive) currentOnDragMove(it)
+                    }
+                    onDragEndListener = {
+                        if (coordinatesHolder.viewDragActive) {
+                            coordinatesHolder.viewDragActive = false
+                            currentOnDragEnd()
+                        }
+                    }
+                    onDragCancelListener = {
+                        if (coordinatesHolder.viewDragActive) {
+                            coordinatesHolder.viewDragActive = false
+                            currentOnDragCancel()
+                        }
+                    }
                 }
             },
             update = { container ->
-                container.onDragStartListener = { currentOnDragStart(it) }
-                container.onDragMoveListener = { currentOnDragMove(it) }
-                container.onDragEndListener = { currentOnDragEnd() }
-                container.onDragCancelListener = { currentOnDragCancel() }
+                container.onDragStartListener = {
+                    if (!coordinatesHolder.composeDragActive) {
+                        coordinatesHolder.viewDragActive = true
+                        currentOnDragStart(it)
+                    }
+                }
+                container.onDragMoveListener = {
+                    if (coordinatesHolder.viewDragActive) currentOnDragMove(it)
+                }
+                container.onDragEndListener = {
+                    if (coordinatesHolder.viewDragActive) {
+                        coordinatesHolder.viewDragActive = false
+                        currentOnDragEnd()
+                    }
+                }
+                container.onDragCancelListener = {
+                    if (coordinatesHolder.viewDragActive) {
+                        coordinatesHolder.viewDragActive = false
+                        currentOnDragCancel()
+                    }
+                }
                 container.setHostView(hostView)
                 updateWidgetDimensions(hostView, widthDp.value, heightDp.value)
             },

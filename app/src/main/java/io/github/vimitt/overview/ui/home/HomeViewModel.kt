@@ -51,14 +51,20 @@ class HomeViewModel(
     }
 
     private val movingItemId = MutableStateFlow<String?>(null)
+    private val resizingItemId = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<HomeUiState> = combine(
         appsRepository.apps,
         settingsRepository.preferences,
         homeWorkspaceRepository.items,
         nativeWidgetsRepository.state,
-        combine(movingItemId, notificationBadgeRepository.activeBadgePackages, ::Pair),
-    ) { apps, preferences, rawItems, nativeWidgets, (movingId, badgePackages) ->
+        combine(
+            movingItemId,
+            resizingItemId,
+            notificationBadgeRepository.activeBadgePackages,
+            ::Triple,
+        ),
+    ) { apps, preferences, rawItems, nativeWidgets, (movingId, resizingId, badgePackages) ->
         val dashApps = resolveDefaultDashAppsUseCase(
             apps = apps,
             pinnedKeys = preferences.pinnedDashKeys,
@@ -126,6 +132,18 @@ class HomeViewModel(
         } else {
             null
         }
+        val activeResizingId = if (
+            !preferences.home.lockLayout &&
+            activeMovingId == null &&
+            resizingId != null &&
+            rawItems.any {
+                it.id == resizingId && (it is HomeItem.Widget || it is HomeItem.NativeWidget)
+            }
+        ) {
+            resizingId
+        } else {
+            null
+        }
 
         HomeUiState(
             dashApps = dashApps,
@@ -134,6 +152,7 @@ class HomeViewModel(
             nativeWidgets = nativeWidgets,
             showClock = preferences.showClock,
             movingItemId = activeMovingId,
+            resizingItemId = activeResizingId,
             homeSettings = preferences.home,
             dockSettings = preferences.dock,
             showNotificationDots = preferences.appearance.notificationDotsEnabled,
@@ -252,11 +271,22 @@ class HomeViewModel(
 
     fun startMovingItem(itemId: String) {
         if (uiState.value.lockLayout) return
+        resizingItemId.value = null
         movingItemId.value = itemId
     }
 
     fun cancelMovingItem() {
         movingItemId.value = null
+    }
+
+    fun startResizingItem(itemId: String) {
+        if (uiState.value.lockLayout) return
+        movingItemId.value = null
+        resizingItemId.value = itemId
+    }
+
+    fun cancelResizingItem() {
+        resizingItemId.value = null
     }
 
     fun placeMovingItemAt(cellX: Int, cellY: Int) {
@@ -299,14 +329,26 @@ class HomeViewModel(
         val currentState = uiState.value
         if (currentState.lockLayout) return
         viewModelScope.launch {
-            val widget = currentState.workspaceItems
+            val item = currentState.workspaceItems
                 .firstOrNull { it.item.id == itemId }
-                ?.item as? HomeItem.Widget
+                ?.item
                 ?: return@launch
+            if (item !is HomeItem.Widget && item !is HomeItem.NativeWidget) return@launch
 
-            val nextX = (widget.spanX + deltaSpanX).coerceIn(1, currentState.gridColumns)
-            val nextY = (widget.spanY + deltaSpanY).coerceIn(1, currentState.gridRows)
-            if (nextX == widget.spanX && nextY == widget.spanY) return@launch
+            val minX = if (item is HomeItem.NativeWidget) {
+                item.widgetType.minSpanX.coerceAtMost(currentState.gridColumns)
+            } else {
+                1
+            }
+            val minY = if (item is HomeItem.NativeWidget) {
+                item.widgetType.minSpanY.coerceAtMost(currentState.gridRows)
+            } else {
+                1
+            }
+
+            val nextX = (item.spanX + deltaSpanX).coerceIn(minX, currentState.gridColumns)
+            val nextY = (item.spanY + deltaSpanY).coerceIn(minY, currentState.gridRows)
+            if (nextX == item.spanX && nextY == item.spanY) return@launch
 
             homeWorkspaceRepository.resizeWidget(
                 id = itemId,
@@ -318,11 +360,39 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * Aplica novo retângulo (`cellX`, `cellY`, `spanX`, `spanY`) após arraste dinâmico das bordas do widget.
+     */
+    fun resizeWidgetBounds(
+        itemId: String,
+        newCellX: Int,
+        newCellY: Int,
+        newSpanX: Int,
+        newSpanY: Int,
+    ) {
+        val currentState = uiState.value
+        if (currentState.lockLayout) return
+        viewModelScope.launch {
+            homeWorkspaceRepository.resizeWidget(
+                id = itemId,
+                newSpanX = newSpanX,
+                newSpanY = newSpanY,
+                newCellX = newCellX,
+                newCellY = newCellY,
+                columns = currentState.gridColumns,
+                rows = currentState.gridRows,
+            )
+        }
+    }
+
     fun removeHomeItem(itemId: String) {
         if (uiState.value.lockLayout) return
         viewModelScope.launch {
             if (movingItemId.value == itemId) {
                 movingItemId.value = null
+            }
+            if (resizingItemId.value == itemId) {
+                resizingItemId.value = null
             }
             val removed = homeWorkspaceRepository.removeItem(itemId)
             if (removed is HomeItem.Widget) {

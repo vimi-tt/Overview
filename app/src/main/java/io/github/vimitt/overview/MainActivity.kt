@@ -253,6 +253,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onDismissHomeItemAction = { selectedHomeItemId = null },
                     onStartMovingHomeItem = homeViewModel::startMovingItem,
+                    onStartResizingHomeItem = homeViewModel::startResizingItem,
+                    onCancelResizingHomeItem = homeViewModel::cancelResizingItem,
+                    onResizeWidgetBounds = homeViewModel::resizeWidgetBounds,
                     onResizeWidget = homeViewModel::resizeWidget,
                     onRemoveHomeItem = homeViewModel::removeHomeItem,
                     canPlaceMovingItemAt = homeViewModel::canPlaceMovingItemAt,
@@ -334,6 +337,7 @@ class MainActivity : ComponentActivity() {
     private fun openOverview() {
         isHomeMenuOpen = false
         selectedHomeItemId = null
+        homeViewModel.cancelResizingItem()
         isOverviewOpen = true
         if (currentPreferences.search.autoFocusOnOpen) {
             overviewFocusSearchTrigger++
@@ -343,6 +347,7 @@ class MainActivity : ComponentActivity() {
     private fun openOverviewSearch() {
         isHomeMenuOpen = false
         selectedHomeItemId = null
+        homeViewModel.cancelResizingItem()
         isOverviewOpen = true
         overviewFocusSearchTrigger++
     }
@@ -401,6 +406,7 @@ class MainActivity : ComponentActivity() {
                 selectedHomeItemId = null
                 isOverviewOpen = false
                 homeViewModel.cancelMovingItem()
+                homeViewModel.cancelResizingItem()
                 if (currentPreferences.search.clearOnClose) {
                     overviewViewModel.onClearSearch()
                 }
@@ -420,6 +426,7 @@ class MainActivity : ComponentActivity() {
                 selectedHomeItemId = null
                 isOverviewOpen = false
                 homeViewModel.cancelMovingItem()
+                homeViewModel.cancelResizingItem()
                 if (currentPreferences.search.clearOnClose) {
                     overviewViewModel.onClearSearch()
                 }

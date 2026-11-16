@@ -27,6 +27,10 @@
     <string name="home_layout_locked_notice">Layout bloqueado nas configurações</string>
     <string name="home_move_hint">Toque na nova posição</string>
     <string name="home_move_cancel">Cancelar</string>
+    <string name="home_resize_hint">Arraste as bordas</string>
+    <string name="home_resize_done">Concluir</string>
+    <string name="home_resize_move">Mover</string>
+    <string name="home_resize_remove">Remover</string>
     <string name="home_action_move">Mover posição</string>
     <string name="home_action_remove">Remover da tela inicial</string>
     <string name="home_widget_width">Largura</string>
@@ -325,11 +329,6 @@
     <string name="picker_android_widgets_section">Widgets de aplicativos</string>
     <string name="picker_widget_style_badge_gnome">Adaptado ao tema GNOME</string>
     <string name="picker_widget_style_badge_expressive">Adaptado ao Material Expressive</string>
-
-    <string name="native_widget_clock_alarm_title">Relógio e alarme</string>
-    <string name="native_widget_clock_alarm_desc">Hora, data e próximo alarme configurado</string>
-    <string name="native_widget_no_alarm">Sem alarme ativo</string>
-    <string name="native_widget_next_alarm_prefix">Próx. alarme</string>
 
     <string name="native_widget_daily_summary_title">Resumo do dia</string>
     <string name="native_widget_daily_summary_desc">Próximo evento, clima e alarme numa linha só</string>

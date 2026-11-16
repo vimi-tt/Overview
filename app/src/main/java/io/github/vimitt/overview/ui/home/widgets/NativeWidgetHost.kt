@@ -98,8 +98,7 @@ fun rememberNativeWidgetEnvironment(
     }
     val hasNativeWidgets = nativeTypes.isNotEmpty()
     val needsTime = isVisible && (
-        NativeWidgetType.CLOCK_ALARM in nativeTypes ||
-            NativeWidgetType.DAILY_SUMMARY in nativeTypes ||
+        NativeWidgetType.DAILY_SUMMARY in nativeTypes ||
             NativeWidgetType.AGENDA in nativeTypes
         )
     val needsCalendar = isVisible && (
@@ -374,19 +373,14 @@ fun NativeWidgetHost(
         modifier = modifier,
     ) {
         when (type) {
-            NativeWidgetType.CLOCK_ALARM -> ClockAlarmNativeWidget(
-                currentTimeMillis = environment.currentTimeMillis,
-                nextAlarmMillis = environment.nextAlarmMillis,
-                spanY = spanY,
-                isVisible = isVisible,
-                onOpenAlarms = { NativeWidgetSystemProviders.openAlarmsApp(context) },
-            )
-
             NativeWidgetType.DAILY_SUMMARY -> DailySummaryNativeWidget(
                 nextEvent = environment.upcomingEvents.firstOrNull(),
                 weather = nativeWidgetsState.weather,
                 nextAlarmMillis = environment.nextAlarmMillis,
                 currentTimeMillis = environment.currentTimeMillis,
+                spanX = spanX,
+                spanY = spanY,
+                isVisible = isVisible,
                 onOpenEvent = { ev ->
                     if (ev != null) {
                         NativeWidgetSystemProviders.openCalendarEvent(context, ev.id)
@@ -403,6 +397,7 @@ fun NativeWidgetHost(
             NativeWidgetType.AGENDA -> AgendaNativeWidget(
                 hasPermission = environment.hasCalendarPermission,
                 events = environment.upcomingEvents,
+                spanX = spanX,
                 spanY = spanY,
                 onRequestPermission = environment.onRequestCalendarPermission,
                 onOpenEvent = { ev -> NativeWidgetSystemProviders.openCalendarEvent(context, ev.id) },
@@ -413,7 +408,9 @@ fun NativeWidgetHost(
                 weather = nativeWidgetsState.weather,
                 isLoading = nativeWidgetsState.isWeatherLoading,
                 errorText = nativeWidgetsState.weatherError,
+                spanX = spanX,
                 spanY = spanY,
+                isVisible = isVisible,
                 onOpenCityPicker = environment.onOpenWeatherCityPicker,
                 onUseLocation = environment.onRequestCoarseLocationOrUseGps,
                 onRefresh = { actions.onRefreshWeather(true) },
@@ -421,6 +418,7 @@ fun NativeWidgetHost(
 
             NativeWidgetType.MEDIA_PLAYER -> MediaPlayerNativeWidget(
                 media = environment.mediaSession,
+                spanX = spanX,
                 spanY = spanY,
                 isVisible = isVisible,
                 onRequestNotificationAccess = actions.onOpenNotificationAccessSettings,
@@ -445,12 +443,15 @@ fun NativeWidgetHost(
 
             NativeWidgetType.DEVICE_STATUS -> DeviceStatusNativeWidget(
                 status = environment.deviceStatus,
+                spanX = spanX,
                 spanY = spanY,
+                isVisible = isVisible,
                 onOpenSettings = { NativeWidgetSystemProviders.openBatterySettings(context) },
             )
 
             NativeWidgetType.QUICK_NOTES -> QuickNotesNativeWidget(
                 notes = nativeWidgetsState.notes,
+                spanX = spanX,
                 spanY = spanY,
                 onCreateNote = { environment.onOpenNoteDialog(null) },
                 onEditNote = { note -> environment.onOpenNoteDialog(note) },
@@ -458,7 +459,9 @@ fun NativeWidgetHost(
 
             NativeWidgetType.TASKS -> TasksNativeWidget(
                 tasks = nativeWidgetsState.tasks,
+                spanX = spanX,
                 spanY = spanY,
+                isVisible = isVisible,
                 onToggleTask = actions.onToggleQuickTask,
                 onAddTask = environment.onOpenTaskDialog,
                 onClearCompleted = actions.onClearCompletedTasks,
@@ -475,6 +478,7 @@ fun NativeWidgetHost(
 
             NativeWidgetType.TIMER_STOPWATCH -> TimerStopwatchNativeWidget(
                 state = nativeWidgetsState.timerStopwatch,
+                spanX = spanX,
                 spanY = spanY,
                 isVisible = isVisible,
                 onSetMode = actions.onSetClockToolMode,
@@ -503,7 +507,7 @@ fun NativeWidgetPickerThumbnail(
     val isExpressive = OverviewTheme.components.isExpressive
     val cardShape = if (isExpressive) shapes.dash else shapes.medium
     val bg = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.24f)
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.30f)
     } else {
         colors.surfaceElevated
     }
@@ -514,8 +518,8 @@ fun NativeWidgetPickerThumbnail(
             .clip(cardShape)
             .background(bg)
             .border(
-                width = 1.dp,
-                color = if (isExpressive) colors.accent.copy(alpha = 0.28f) else colors.hairlineBorder,
+                width = if (isExpressive) 1.2.dp else 1.dp,
+                color = if (isExpressive) colors.accent.copy(alpha = 0.36f) else colors.hairlineBorder,
                 shape = cardShape,
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -526,13 +530,27 @@ fun NativeWidgetPickerThumbnail(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(type.titleRes),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold,
-                ),
-                color = colors.onSurface,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isExpressive) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(colors.accent),
+                    )
+                }
+                Text(
+                    text = stringResource(type.titleRes),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold,
+                    ),
+                    color = colors.onSurface,
+                )
+            }
             Box(
                 modifier = Modifier
                     .clip(if (isExpressive) shapes.pill else shapes.small)
@@ -541,7 +559,7 @@ fun NativeWidgetPickerThumbnail(
             ) {
                 Text(
                     text = "${type.defaultSpanX}×${type.defaultSpanY}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = if (isExpressive) colors.onAccentContainer else colors.onSurfaceMuted,
                 )
             }
@@ -551,7 +569,6 @@ fun NativeWidgetPickerThumbnail(
             style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceMuted,
         )
-        // Pequeno detalhe gráfico temático diferenciando os estilos
         Row(
             modifier = Modifier.padding(top = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -559,21 +576,21 @@ fun NativeWidgetPickerThumbnail(
         ) {
             Box(
                 modifier = Modifier
-                    .size(if (isExpressive) 10.dp else 6.dp)
+                    .size(if (isExpressive) 14.dp else 6.dp)
                     .clip(if (isExpressive) CircleShape else shapes.small)
                     .background(colors.accent),
             )
             Box(
                 modifier = Modifier
-                    .width(if (isExpressive) 54.dp else 44.dp)
-                    .height(if (isExpressive) 6.dp else 3.dp)
+                    .width(if (isExpressive) 62.dp else 44.dp)
+                    .height(if (isExpressive) 7.dp else 3.dp)
                     .clip(CircleShape)
-                    .background(colors.accent.copy(alpha = 0.45f)),
+                    .background(colors.accent.copy(alpha = if (isExpressive) 0.65f else 0.45f)),
             )
             Box(
                 modifier = Modifier
-                    .width(26.dp)
-                    .height(if (isExpressive) 6.dp else 3.dp)
+                    .width(30.dp)
+                    .height(if (isExpressive) 7.dp else 3.dp)
                     .clip(CircleShape)
                     .background(colors.onSurfaceMuted.copy(alpha = 0.25f)),
             )

@@ -48,6 +48,7 @@ data class HomeUiState(
     val nativeWidgets: NativeWidgetsState = NativeWidgetsState(),
     val showClock: Boolean = true,
     val movingItemId: String? = null,
+    val resizingItemId: String? = null,
     val homeSettings: HomeSettings = HomeSettings(),
     val dockSettings: DockSettings = DockSettings(),
     val showNotificationDots: Boolean = false,

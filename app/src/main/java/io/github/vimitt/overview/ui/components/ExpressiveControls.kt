@@ -178,12 +178,13 @@ fun ExpressiveWavyProgressBar(
     modifier: Modifier = Modifier,
     color: Color = OverviewTheme.colors.accent,
     trackColor: Color = OverviewTheme.colors.surfaceElevated,
+    animateWave: Boolean = true,
 ) {
     val reducedMotion = OverviewTheme.reducedMotion
     val clampedProgress = progress.coerceIn(0f, 1f)
     val wavePath = remember { Path() }
 
-    val phase = if (reducedMotion) {
+    val phase = if (reducedMotion || !animateWave) {
         0f
     } else {
         val transition = rememberInfiniteTransition(label = "wavyProgressTransition")
@@ -206,7 +207,7 @@ fun ExpressiveWavyProgressBar(
     ) {
         val centerY = size.height / 2f
         val strokePx = 3.dp.toPx()
-        val amplitudePx = if (reducedMotion) 0f else 2.4.dp.toPx()
+        val amplitudePx = if (reducedMotion || !animateWave) 0f else 2.4.dp.toPx()
         val activeEndX = size.width * clampedProgress
 
         // Trilha inativa

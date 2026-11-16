@@ -14,18 +14,20 @@ import org.junit.Test
 class NativeWidgetCatalogAndPlacementTest {
 
     @Test
-    fun `catalog exposes all 10 native widgets with valid spans`() {
-        assertEquals(10, NativeWidgetType.entries.size)
+    fun `catalog exposes all 9 native widgets with compact valid spans`() {
+        assertEquals(9, NativeWidgetType.entries.size)
         for (type in NativeWidgetType.entries) {
             assertTrue(type.defaultSpanX in type.minSpanX..HomeGridSpec.COLUMNS)
             assertTrue(type.defaultSpanY in type.minSpanY..HomeGridSpec.ROWS)
+            assertTrue(type.defaultSpanX <= 3)
+            assertTrue(type.defaultSpanY <= 2)
             assertNotEquals(0, type.titleRes)
             assertNotEquals(0, type.descriptionRes)
         }
     }
 
     @Test
-    fun `native widgets participate cleanly in workspace grid placement`() {
+    fun `native widgets participate cleanly in workspace grid placement and resizing`() {
         val placementUseCase = HomeGridPlacementUseCase(columns = 4, rows = 5)
         val summary = HomeItem.NativeWidget(
             id = "nw_1",
@@ -43,7 +45,11 @@ class NativeWidgetCatalogAndPlacementTest {
             desiredSpanX = NativeWidgetType.WEATHER.defaultSpanX,
             desiredSpanY = NativeWidgetType.WEATHER.defaultSpanY,
         )
-        assertEquals(GridPlacement(cellX = 0, cellY = 1, spanX = 4, spanY = 2), weatherSlot)
+        assertEquals(GridPlacement(cellX = 0, cellY = 1, spanX = 2, spanY = 1), weatherSlot)
+
+        // Permite expandir dinamicamente para 4x2 ou reduzir para 1x1 quando livre
+        assertTrue(placementUseCase.canPlace(listOf(summary), cellX = 0, cellY = 1, spanX = 4, spanY = 2))
+        assertTrue(placementUseCase.canPlace(listOf(summary), cellX = 3, cellY = 0, spanX = 1, spanY = 1))
     }
 
     @Test

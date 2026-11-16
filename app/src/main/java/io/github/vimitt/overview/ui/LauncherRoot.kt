@@ -121,6 +121,9 @@ fun LauncherRoot(
     onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
     onDismissHomeItemAction: () -> Unit,
     onStartMovingHomeItem: (String) -> Unit,
+    onStartResizingHomeItem: (String) -> Unit = {},
+    onCancelResizingHomeItem: () -> Unit = {},
+    onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit = { _, _, _, _, _ -> },
     onResizeWidget: (itemId: String, deltaX: Int, deltaY: Int) -> Unit,
     onRemoveHomeItem: (String) -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
@@ -322,14 +325,26 @@ fun LauncherRoot(
             onOverviewDragEnd = {
                 interactiveDragFraction = null
             },
-            onLongPress = onHomeLongPress,
+            onLongPress = {
+                if (activeDrag == null && selectedHomeItem == null && homeUiState.resizingItemId == null) {
+                    onHomeLongPress()
+                }
+            },
             canPlaceMovingItemAt = canPlaceMovingItemAt,
             onPlaceMovingItemAt = onPlaceMovingItemAt,
             onCancelMovingItem = onCancelMovingItem,
+            canPlaceDragItemAt = canPlaceDragItemAt,
+            onResizeWidgetBounds = onResizeWidgetBounds,
+            onStartMovingResizedItem = onStartMovingHomeItem,
+            onRemoveResizedItem = onRemoveHomeItem,
+            onCancelResizingItem = onCancelResizingHomeItem,
             onGridBoundsChanged = { bounds -> homeGridBounds = bounds },
             onDockBoundsChanged = { bounds -> dockBounds = bounds },
             onRemoveZoneBoundsChanged = { bounds -> removeZoneBounds = bounds },
             onStartItemDrag = { item, startPos ->
+                onDismissHomeMenu()
+                onDismissHomeItemAction()
+                onCancelResizingHomeItem()
                 if (homeUiState.lockLayout) {
                     showLockedToast()
                 } else {
@@ -350,7 +365,14 @@ fun LauncherRoot(
                 if (finished != null && finished.payload is DragPayload.FromHome) {
                     val draggedShortcutApp = finished.payload.draggedApp
                     if (!finished.hasMovedPastSlop) {
-                        onWorkspaceItemLongPress(finished.payload.item)
+                        onDismissHomeMenu()
+                        when (val item = finished.payload.item) {
+                            is HomeWorkspaceItem.Widget,
+                            is HomeWorkspaceItem.NativeWidget,
+                            -> onStartResizingHomeItem(item.item.id)
+
+                            is HomeWorkspaceItem.Shortcut -> onWorkspaceItemLongPress(item)
+                        }
                     } else if (dockTarget != null && draggedShortcutApp != null) {
                         onDropAppOnDock(draggedShortcutApp, dockTarget.targetIndex)
                     } else if (target != null && target.isOverRemoveZone) {

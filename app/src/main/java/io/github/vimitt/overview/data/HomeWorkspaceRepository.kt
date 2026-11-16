@@ -194,6 +194,8 @@ class HomeWorkspaceRepository(
         id: String,
         newSpanX: Int,
         newSpanY: Int,
+        newCellX: Int? = null,
+        newCellY: Int? = null,
         columns: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.COLUMNS,
         rows: Int = io.github.vimitt.overview.domain.model.HomeGridSpec.ROWS,
     ): Boolean {
@@ -216,11 +218,13 @@ class HomeWorkspaceRepository(
                 newSpanY.coerceIn(1, rows)
             }
 
-            // Se expandir além da borda direita/inferior, tenta recuar a origem automaticamente.
-            val candidateX = item.cellX.coerceAtMost(
+            // Se expandir além da borda direita/inferior, ou se vier nova origem das alças, ajusta os limites.
+            val candidateX = (newCellX ?: item.cellX).coerceIn(
+                0,
                 (columns - safeSpanX).coerceAtLeast(0),
             )
-            val candidateY = item.cellY.coerceAtMost(
+            val candidateY = (newCellY ?: item.cellY).coerceIn(
+                0,
                 (rows - safeSpanY).coerceAtLeast(0),
             )
 

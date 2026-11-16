@@ -1,6 +1,7 @@
 package io.github.vimitt.overview.ui.home
 
 import android.graphics.Rect
+import android.os.SystemClock
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -29,9 +30,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,7 +42,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,11 +68,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
 import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.GestureSettings
+import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.LauncherGestureAction
 import io.github.vimitt.overview.ui.ActiveDragState
 import io.github.vimitt.overview.ui.DockDropTarget
@@ -98,6 +106,11 @@ fun HomeScreen(
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
     onCancelMovingItem: () -> Unit,
+    canPlaceDragItemAt: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean = { _, _, _, _, _ -> false },
+    onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit = { _, _, _, _, _ -> },
+    onStartMovingResizedItem: (String) -> Unit = {},
+    onRemoveResizedItem: (String) -> Unit = {},
+    onCancelResizingItem: () -> Unit = {},
     onGridBoundsChanged: (ComposeRect) -> Unit,
     onRemoveZoneBoundsChanged: (ComposeRect?) -> Unit,
     onStartItemDrag: (HomeWorkspaceItem, Offset) -> Unit,
@@ -137,10 +150,31 @@ fun HomeScreen(
     val velocityTracker = remember { VelocityTracker() }
     val hasWorkspaceItems = uiState.workspaceItems.isNotEmpty()
     val isMoving = uiState.movingItemId != null
+    val resizingItem = remember(uiState.workspaceItems, uiState.resizingItemId) {
+        val targetId = uiState.resizingItemId ?: return@remember null
+        uiState.workspaceItems.firstOrNull {
+            it.item.id == targetId && (it.item is HomeItem.Widget || it.item is HomeItem.NativeWidget)
+        }
+    }
+    val isResizing = resizingItem != null
     val isDragInProgress = activeDrag != null
     val isDraggingOverGrid = activeDrag?.hasMovedPastSlop == true
     val isDraggingRemovable = isDraggingOverGrid &&
         (activeDrag.payload is DragPayload.FromHome || activeDrag.payload is DragPayload.FromDock)
+
+    var lastDragActiveEndUptimeMs by remember { mutableLongStateOf(0L) }
+    var wasDragging by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(isDragInProgress) {
+        if (isDragInProgress) {
+            wasDragging = 1L
+        } else if (wasDragging == 1L) {
+            wasDragging = 0L
+            lastDragActiveEndUptimeMs = SystemClock.uptimeMillis()
+        }
+    }
+    val currentDragInProgress by rememberUpdatedState(isDragInProgress)
+    val currentIsMoving by rememberUpdatedState(isMoving)
+    val currentIsResizing by rememberUpdatedState(isResizing)
 
     LaunchedEffect(isDraggingRemovable) {
         if (!isDraggingRemovable) {
@@ -148,28 +182,43 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(isMoving, isDragInProgress) {
-        if (isMoving || isDragInProgress) {
+    LaunchedEffect(isMoving, isResizing, isDragInProgress) {
+        if (isMoving || isResizing || isDragInProgress) {
             onOverviewDragEnd(false)
         }
     }
 
     if (isMoving) {
         BackHandler(onBack = onCancelMovingItem)
+    } else if (isResizing) {
+        BackHandler(onBack = onCancelResizingItem)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        Column(
+        // Fundo vazio recebe toque longo/duplo apenas fora de widgets, atalhos e dock.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(onLongPress, doubleTapAction, isMoving, isDragInProgress) {
+                .pointerInput(onLongPress, doubleTapAction, isMoving, isResizing, isDragInProgress) {
                     if (isMoving || isDragInProgress) return@pointerInput
                     detectTapGestures(
-                        onLongPress = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onLongPress()
+                        onTap = if (isResizing) {
+                            { onCancelResizingItem() }
+                        } else {
+                            null
                         },
-                        onDoubleTap = if (doubleTapAction != LauncherGestureAction.NONE) {
+                        onLongPress = if (!isResizing) {
+                            {
+                                val sinceDrag = SystemClock.uptimeMillis() - lastDragActiveEndUptimeMs
+                                if (!currentDragInProgress && !currentIsMoving && !currentIsResizing && sinceDrag > 400L) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onLongPress()
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                        onDoubleTap = if (!isResizing && doubleTapAction != LauncherGestureAction.NONE) {
                             {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onExecuteGesture(doubleTapAction)
@@ -178,7 +227,12 @@ fun HomeScreen(
                             null
                         },
                     )
-                }
+                },
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
                 .pointerInput(
                     dragRangePx,
                     dragTriggerPx,
@@ -187,9 +241,10 @@ fun HomeScreen(
                     swipeUpAction,
                     swipeDownAction,
                     isMoving,
+                    isResizing,
                     isDragInProgress,
                 ) {
-                    if (isMoving || isDragInProgress) return@pointerInput
+                    if (isMoving || isResizing || isDragInProgress) return@pointerInput
                     var totalDragY = 0f
                     detectVerticalDragGestures(
                         onDragStart = {
@@ -197,6 +252,12 @@ fun HomeScreen(
                             velocityTracker.resetTracking()
                         },
                         onDragEnd = {
+                            val sinceDrag = SystemClock.uptimeMillis() - lastDragActiveEndUptimeMs
+                            if (currentDragInProgress || currentIsMoving || currentIsResizing || sinceDrag < 400L) {
+                                totalDragY = 0f
+                                onOverviewDragEnd(false)
+                                return@detectVerticalDragGestures
+                            }
                             val velocityY = velocityTracker.calculateVelocity().y
                             val swipeUpTriggered = totalDragY <= -dragTriggerPx ||
                                 (velocityY <= -velocityThreshold && totalDragY <= -minFlingDistancePx)
@@ -225,6 +286,10 @@ fun HomeScreen(
                             onOverviewDragEnd(false)
                         },
                         onVerticalDrag = { change, dragAmount ->
+                            val sinceDrag = SystemClock.uptimeMillis() - lastDragActiveEndUptimeMs
+                            if (currentDragInProgress || currentIsMoving || currentIsResizing || sinceDrag < 400L) {
+                                return@detectVerticalDragGestures
+                            }
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
                             totalDragY += dragAmount
                             if (swipeUpAction == LauncherGestureAction.OPEN_OVERVIEW && totalDragY < 0f) {
@@ -243,6 +308,19 @@ fun HomeScreen(
             if (isMoving) {
                 MoveModeBanner(
                     onCancel = onCancelMovingItem,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                )
+            } else if (resizingItem != null) {
+                val label = when (resizingItem) {
+                    is HomeWorkspaceItem.Widget -> resizingItem.label
+                    is HomeWorkspaceItem.NativeWidget -> resizingItem.label
+                    is HomeWorkspaceItem.Shortcut -> resizingItem.app.label
+                }
+                ResizeModeBanner(
+                    title = label,
+                    onMove = { onStartMovingResizedItem(resizingItem.item.id) },
+                    onRemove = { onRemoveResizedItem(resizingItem.item.id) },
+                    onDone = onCancelResizingItem,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 )
             } else if (uiState.showClock) {
@@ -286,12 +364,15 @@ fun HomeScreen(
                         showNotificationDots = uiState.showNotificationDots,
                         badgePackages = uiState.badgePackages,
                         movingItemId = uiState.movingItemId,
+                        resizingItem = resizingItem,
                         activeDrag = activeDrag,
                         dropTarget = dropTarget,
                         appWidgetController = appWidgetController,
                         onAppClick = onAppClick,
                         canPlaceMovingItemAt = canPlaceMovingItemAt,
                         onPlaceMovingItemAt = onPlaceMovingItemAt,
+                        canPlaceItem = canPlaceDragItemAt,
+                        onResizeWidgetBounds = onResizeWidgetBounds,
                         onStartItemDrag = onStartItemDrag,
                         onItemDragMove = onItemDragMove,
                         onItemDragEnd = onItemDragEnd,
@@ -370,12 +451,15 @@ private fun HomeWorkspaceGrid(
     showNotificationDots: Boolean,
     badgePackages: Set<String>,
     movingItemId: String?,
+    resizingItem: HomeWorkspaceItem?,
     activeDrag: ActiveDragState?,
     dropTarget: HomeDropTarget?,
     appWidgetController: AppWidgetController,
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     canPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Boolean,
     onPlaceMovingItemAt: (cellX: Int, cellY: Int) -> Unit,
+    canPlaceItem: (cellX: Int, cellY: Int, spanX: Int, spanY: Int, ignoreItemId: String?) -> Boolean,
+    onResizeWidgetBounds: (itemId: String, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit,
     onStartItemDrag: (HomeWorkspaceItem, Offset) -> Unit,
     onItemDragMove: (Offset) -> Unit,
     onItemDragEnd: () -> Unit,
@@ -398,6 +482,8 @@ private fun HomeWorkspaceGrid(
     BoxWithConstraints(modifier = modifier) {
         val cellWidth = maxWidth / safeColumns
         val cellHeight = maxHeight / safeRows
+        val cellWidthPx = constraints.maxWidth.toFloat() / safeColumns
+        val cellHeightPx = constraints.maxHeight.toFloat() / safeRows
 
         if (isDraggingOverGrid) {
             val cellShape = OverviewTheme.shapes.medium
@@ -573,6 +659,20 @@ private fun HomeWorkspaceGrid(
                 }
             }
         }
+
+        if (resizingItem != null && !isDraggingOverGrid) {
+            WidgetResizeOverlayFrame(
+                workspaceItem = resizingItem,
+                gridColumns = safeColumns,
+                gridRows = safeRows,
+                cellWidthPx = cellWidthPx,
+                cellHeightPx = cellHeightPx,
+                canPlaceItem = canPlaceItem,
+                onCommitBounds = { cellX, cellY, spanX, spanY ->
+                    onResizeWidgetBounds(resizingItem.item.id, cellX, cellY, spanX, spanY)
+                },
+            )
+        }
     }
 }
 
@@ -615,6 +715,85 @@ private fun RemoveDropZonePill(
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = if (isActive) Color.White else colors.onSurface,
         )
+    }
+}
+
+@Composable
+private fun ResizeModeBanner(
+    title: String,
+    onMove: () -> Unit,
+    onRemove: () -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OverviewTheme.colors
+    val shape = OverviewTheme.shapes.pill
+    val isExpressive = OverviewTheme.components.isExpressive
+    val dangerColor = Color(0xFFE01B24)
+
+    Row(
+        modifier = modifier
+            .widthIn(max = 460.dp)
+            .clip(shape)
+            .background(
+                if (isExpressive) {
+                    lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.25f)
+                } else {
+                    colors.dashBackground
+                },
+            )
+            .border(1.dp, if (isExpressive) colors.accent.copy(alpha = 0.35f) else colors.hairlineBorder, shape)
+            .padding(start = 14.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.home_resize_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        TextButton(onClick = onMove) {
+            Text(
+                text = stringResource(R.string.home_resize_move),
+                color = colors.onSurface,
+            )
+        }
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(36.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.home_resize_remove),
+                tint = dangerColor,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        IconButton(
+            onClick = onDone,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(colors.accent),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = stringResource(R.string.home_resize_done),
+                tint = colors.onAccent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
