@@ -180,7 +180,8 @@
     <string name="settings_home_clock_alpha">Opacidade do fundo</string>
     <string name="settings_home_clock_alpha_subtitle">Ajusta a transparência dos estilos com fundo</string>
     <string name="settings_home_clock_weather">Clima nos relógios</string>
-    <string name="settings_home_clock_weather_subtitle">Mostra temperatura e condição atual junto ao relógio</string>
+    <string name="settings_home_clock_weather_subtitle">Exibe temperatura e clima junto ao relógio; desative para exibir só hora e data</string>
+    <string name="clock_weather_hide_action">Não mostrar no relógio</string>
     <string name="settings_home_clock_location">Localização do clima</string>
     <string name="settings_home_clock_location_active">Localização ativa: %1$s</string>
     <string name="settings_home_clock_location_enable">Ativar localização para obter o clima automaticamente</string>

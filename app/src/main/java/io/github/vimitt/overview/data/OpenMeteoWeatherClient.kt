@@ -30,7 +30,7 @@ class OpenMeteoWeatherClient(
         val primary = runCatching {
             val endpoint =
                 "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=6&language=pt&format=json"
-            parseGeocodingJson(httpGet(endpoint))
+            parseGeocodingJson(httpGet(endpoint, "Open-Meteo Geocoding"))
         }
         if (primary.isSuccess && primary.getOrNull().orEmpty().isNotEmpty()) {
             return@withContext primary
@@ -38,7 +38,7 @@ class OpenMeteoWeatherClient(
         runCatching<List<WeatherLocation>> {
             val nominatim =
                 "https://nominatim.openstreetmap.org/search?q=$encoded&format=jsonv2&limit=6&accept-language=pt&addressdetails=1"
-            parseNominatimSearchJson(httpGet(nominatim))
+            parseNominatimSearchJson(httpGet(nominatim, "Nominatim"))
         }.recoverCatching { err ->
             primary.getOrNull() ?: throw (primary.exceptionOrNull() ?: err)
         }
@@ -81,7 +81,7 @@ class OpenMeteoWeatherClient(
                 "&daily=temperature_2m_max,temperature_2m_min" +
                 "&timezone=auto&forecast_days=2"
         val primaryResult = runCatching {
-            parseOpenMeteoForecastJson(json = httpGet(primaryEndpoint), location = location, nowMs = nowMs)
+            parseOpenMeteoForecastJson(json = httpGet(primaryEndpoint, "Open-Meteo"), location = location, nowMs = nowMs)
         }
         if (primaryResult.isSuccess) return primaryResult
 
@@ -89,7 +89,7 @@ class OpenMeteoWeatherClient(
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                 "&current=temperature_2m,weather_code,is_day&timezone=UTC"
         return runCatching {
-            parseOpenMeteoForecastJson(json = httpGet(minimalEndpoint), location = location, nowMs = nowMs)
+            parseOpenMeteoForecastJson(json = httpGet(minimalEndpoint, "Open-Meteo"), location = location, nowMs = nowMs)
         }.recoverCatching {
             throw (primaryResult.exceptionOrNull() ?: it)
         }
@@ -102,7 +102,7 @@ class OpenMeteoWeatherClient(
         nowMs: Long,
     ): Result<WeatherSnapshot> = runCatching {
         val endpoint = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=$lat&lon=$lon"
-        parseMetNorwayCompactJson(json = httpGet(endpoint), location = location, nowMs = nowMs)
+        parseMetNorwayCompactJson(json = httpGet(endpoint, "MET Norway"), location = location, nowMs = nowMs)
     }
 
     private fun fetchWttrIn(
@@ -112,7 +112,7 @@ class OpenMeteoWeatherClient(
         nowMs: Long,
     ): Result<WeatherSnapshot> = runCatching {
         val endpoint = "https://wttr.in/$lat,$lon?format=j1"
-        parseWttrInJson(json = httpGet(endpoint), location = location, nowMs = nowMs)
+        parseWttrInJson(json = httpGet(endpoint, "wttr.in"), location = location, nowMs = nowMs)
     }
 
     /**
@@ -137,7 +137,7 @@ class OpenMeteoWeatherClient(
         }.getOrNull()
     }
 
-    private fun httpGet(urlString: String): String {
+    private fun httpGet(urlString: String, serviceName: String = "serviço de clima"): String {
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             instanceFollowRedirects = true
@@ -150,7 +150,7 @@ class OpenMeteoWeatherClient(
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use(BufferedReader::readText).orEmpty()
-            check(code in 200..299) { "HTTP $code ao consultar Open-Meteo" }
+            check(code in 200..299) { "HTTP $code ao consultar $serviceName" }
             text
         } finally {
             connection.disconnect()

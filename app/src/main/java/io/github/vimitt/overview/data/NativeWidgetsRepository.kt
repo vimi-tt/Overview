@@ -45,6 +45,8 @@ class NativeWidgetsRepository(
     private val weatherLoading = MutableStateFlow(false)
     private val weatherError = MutableStateFlow<String?>(null)
     private val weatherRefreshMutex = Mutex()
+    private var lastAutoFailureMs = 0L
+    private var lastAttemptedProvider: WeatherProvider? = null
 
     private val storedState: Flow<NativeWidgetsState> = context.nativeWidgetsDataStore.data
         .catch { exception ->
@@ -182,9 +184,18 @@ class NativeWidgetsRepository(
         ) {
             return@withLock true
         }
+        // Evita repetir chamadas em segundo plano ao voltar para a Home quando a rede falhou recentemente
+        if (!force &&
+            lastAttemptedProvider == provider &&
+            lastAutoFailureMs > 0L &&
+            (now - lastAutoFailureMs) < WEATHER_FAILURE_COOLDOWN_MS
+        ) {
+            return@withLock false
+        }
 
         weatherLoading.value = true
         weatherError.value = null
+        lastAttemptedProvider = provider
         return@withLock try {
             val result = weatherClient.fetchForecast(
                 location = targetLocation,
@@ -196,10 +207,12 @@ class NativeWidgetsRepository(
                     context.nativeWidgetsDataStore.edit { prefs ->
                         prefs[KEY_WEATHER_CACHE] = encodeWeather(snapshot)
                     }
+                    lastAutoFailureMs = 0L
                     weatherError.value = null
                     true
                 },
                 onFailure = { error ->
+                    lastAutoFailureMs = now
                     weatherError.value = error.localizedMessage ?: "Falha ao atualizar clima"
                     false
                 },
@@ -550,5 +563,6 @@ class NativeWidgetsRepository(
         const val MAX_NOTES = 12
         const val MAX_TASKS = 30
         const val WEATHER_TTL_MS = 30 * 60_000L
+        const val WEATHER_FAILURE_COOLDOWN_MS = 10 * 60_000L
     }
 }

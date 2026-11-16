@@ -219,19 +219,25 @@ class MainActivity : ComponentActivity() {
                         onToggleQuickTask = homeViewModel::toggleQuickTask,
                         onClearCompletedTasks = homeViewModel::clearCompletedTasks,
                         onRefreshWeather = { force ->
+                            homeViewModel.refreshWeather(force = force)
+                        },
+                        onManualRefreshWeather = {
                             homeViewModel.refreshWeather(
-                                force = force,
+                                force = true,
                                 onError = { err ->
-                                    if (force) {
-                                        Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
-                                    }
+                                    Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
                                 },
                             )
                         },
                         onSearchWeatherCities = homeViewModel::searchWeatherCities,
                         onSelectWeatherLocation = homeViewModel::selectWeatherLocation,
-                        onSelectWeatherProvider = homeViewModel::selectWeatherProvider,
+                        onSelectWeatherProvider = { provider ->
+                            homeViewModel.selectWeatherProvider(provider) { err ->
+                                Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         onUseDeviceWeatherLocation = ::fetchDeviceWeatherLocationOrOpenGps,
+                        onHideClockWeather = homeViewModel::hideClockWeather,
                         onRequestCalendarPermission = ::requestCalendarPermission,
                         onRequestLocationPermission = ::requestWeatherLocation,
                         onSetClockToolMode = homeViewModel::setClockToolMode,

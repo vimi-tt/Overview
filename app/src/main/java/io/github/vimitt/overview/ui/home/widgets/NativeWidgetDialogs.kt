@@ -214,6 +214,7 @@ fun WeatherCityPickerDialog(
     onSearchCities: suspend (String) -> Result<List<WeatherLocation>>,
     onSelectLocation: (WeatherLocation) -> Unit,
     onUseGpsLocation: () -> Unit,
+    onHideClockWeather: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     val colors = OverviewTheme.colors
@@ -374,6 +375,25 @@ fun WeatherCityPickerDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceMuted,
                 )
+            }
+
+            if (onHideClockWeather != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    TextButton(
+                        onClick = {
+                            onHideClockWeather()
+                            onDismiss()
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.clock_weather_hide_action),
+                            color = colors.onSurfaceMuted,
+                        )
+                    }
+                }
             }
 
             Row(

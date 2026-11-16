@@ -193,10 +193,10 @@ fun rememberNativeWidgetEnvironment(
         }
     }
 
-    // Clima Open-Meteo: força busca quando já existe localidade salva sem cache; caso contrário respeita TTL (30 min)
-    LaunchedEffect(needsWeather, hasSavedWeatherLocation, hasWeatherCache, permissionRevision) {
+    // Clima: atualiza silenciosamente respeitando TTL (30 min) e intervalo de espera após falha (10 min)
+    LaunchedEffect(needsWeather, hasSavedWeatherLocation) {
         if (needsWeather && hasSavedWeatherLocation) {
-            actions.onRefreshWeather(!hasWeatherCache)
+            actions.onRefreshWeather(false)
         }
     }
 
@@ -306,6 +306,7 @@ fun NativeWidgetDialogsOverlay(
     environment: NativeWidgetLiveEnvironment,
     actions: NativeWidgetActions,
     selectedWeatherProvider: WeatherProvider = WeatherProvider.AUTO,
+    showClockWeather: Boolean = true,
 ) {
     when (val dialog = environment.activeDialog) {
         is NativeWidgetActiveDialog.QuickNote -> QuickNoteDialog(
@@ -326,6 +327,7 @@ fun NativeWidgetDialogsOverlay(
             onSearchCities = actions.onSearchWeatherCities,
             onSelectLocation = actions.onSelectWeatherLocation,
             onUseGpsLocation = environment.onRequestCoarseLocationOrUseGps,
+            onHideClockWeather = if (showClockWeather) actions.onHideClockWeather else null,
             onDismiss = environment.onDismissDialog,
         )
 
@@ -411,7 +413,7 @@ fun NativeWidgetHost(
                 isVisible = isVisible,
                 onOpenCityPicker = environment.onOpenWeatherCityPicker,
                 onUseLocation = environment.onRequestCoarseLocationOrUseGps,
-                onRefresh = { actions.onRefreshWeather(true) },
+                onRefresh = actions.onManualRefreshWeather,
             )
 
             NativeWidgetType.MEDIA_PLAYER -> MediaPlayerNativeWidget(

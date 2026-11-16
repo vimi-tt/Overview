@@ -373,7 +373,7 @@ fun HomeScreen(
                     isWeatherLoading = uiState.nativeWidgets.isWeatherLoading,
                     showWeather = uiState.homeSettings.showClockWeather,
                     onWeatherClick = nativeEnvironment.onOpenWeatherCityPicker,
-                    onRefreshWeatherClick = { nativeWidgetActions.onRefreshWeather(true) },
+                    onRefreshWeatherClick = nativeWidgetActions.onManualRefreshWeather,
                     onEnableLocationClick = nativeEnvironment.onRequestCoarseLocationOrUseGps,
                     modifier = Modifier
                         .graphicsLayer {
@@ -487,6 +487,7 @@ fun HomeScreen(
             environment = nativeEnvironment,
             actions = nativeWidgetActions,
             selectedWeatherProvider = uiState.homeSettings.weatherProvider,
+            showClockWeather = uiState.homeSettings.showClockWeather,
         )
     }
 }

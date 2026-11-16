@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -506,7 +507,7 @@ class HomeViewModel(
         onError: ((String) -> Unit)? = null,
     ) {
         viewModelScope.launch {
-            val provider = uiState.value.homeSettings.weatherProvider
+            val provider = settingsRepository.homeSettings.first().weatherProvider
             val ok = nativeWidgetsRepository.refreshWeather(force = force, provider = provider)
             if (!ok && onError != null) {
                 val err = nativeWidgetsRepository.currentWeatherError
@@ -523,15 +524,30 @@ class HomeViewModel(
 
     fun selectWeatherLocation(location: WeatherLocation) {
         viewModelScope.launch {
-            val provider = uiState.value.homeSettings.weatherProvider
+            val provider = settingsRepository.homeSettings.first().weatherProvider
             nativeWidgetsRepository.setWeatherLocationAndRefresh(location, provider = provider)
         }
     }
 
-    fun selectWeatherProvider(provider: WeatherProvider) {
+    fun selectWeatherProvider(
+        provider: WeatherProvider,
+        onError: ((String) -> Unit)? = null,
+    ) {
         viewModelScope.launch {
             settingsRepository.setWeatherProvider(provider)
-            nativeWidgetsRepository.refreshWeather(force = true, provider = provider)
+            val ok = nativeWidgetsRepository.refreshWeather(force = true, provider = provider)
+            if (!ok && onError != null) {
+                val err = nativeWidgetsRepository.currentWeatherError
+                if (!err.isNullOrBlank()) {
+                    onError(err)
+                }
+            }
+        }
+    }
+
+    fun hideClockWeather() {
+        viewModelScope.launch {
+            settingsRepository.setShowClockWeather(false)
         }
     }
 
@@ -541,7 +557,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val location = NativeWidgetSystemProviders.resolveCoarseWeatherLocation(appContext)
             if (location != null) {
-                val provider = uiState.value.homeSettings.weatherProvider
+                val provider = settingsRepository.homeSettings.first().weatherProvider
                 val refreshed = nativeWidgetsRepository.setWeatherLocationAndRefresh(location, provider = provider)
                 onResult(location, refreshed)
             } else {
