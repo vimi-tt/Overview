@@ -13,6 +13,7 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.location.Geocoder
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -25,6 +26,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.CancellationSignal
 import android.os.Environment
+import android.os.Looper
 import android.os.StatFs
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -37,12 +39,13 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.CalendarEventItem
 import io.github.vimitt.overview.domain.model.DeviceStatusSnapshot
 import io.github.vimitt.overview.domain.model.WeatherLocation
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
-import kotlin.coroutines.resume
 
 @Immutable
 data class MediaSessionSnapshot(
@@ -87,6 +90,16 @@ object NativeWidgetSystemProviders {
         ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasFineLocationPermission(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
 
     fun isLocationEnabled(context: Context): Boolean {
@@ -217,59 +230,114 @@ object NativeWidgetSystemProviders {
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun resolveCoarseWeatherLocation(context: Context): WeatherLocation? =
-        withContext(Dispatchers.IO) {
-            if (!hasCoarseLocationPermission(context)) return@withContext null
-            val lm = context.getSystemService(LocationManager::class.java) ?: return@withContext null
-            val providers = listOf(
-                LocationManager.NETWORK_PROVIDER,
-                LocationManager.PASSIVE_PROVIDER,
-                LocationManager.GPS_PROVIDER,
-            )
-            var best = providers.firstNotNullOfOrNull { provider ->
-                runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
-            }
+    suspend fun resolveCoarseWeatherLocation(
+        context: Context,
+        weatherClient: OpenMeteoWeatherClient = OpenMeteoWeatherClient(),
+    ): WeatherLocation? = withContext(Dispatchers.IO) {
+        if (!hasCoarseLocationPermission(context)) return@withContext null
 
-            if (best == null && lm.isLocationEnabled) {
-                best = requestSingleCurrentLocation(context, lm)
-            }
-            val resolved = best ?: return@withContext null
+        val lm = context.getSystemService(LocationManager::class.java)
+        val cachedLocation = lm?.let { readMostRecentLastKnownLocation(context, it) }
+        val nowMs = System.currentTimeMillis()
+        val isCachedFresh = cachedLocation != null && (nowMs - cachedLocation.time) <= 20 * 60_000L
 
-            val resolvedCity = resolveCityLabel(context, resolved.latitude, resolved.longitude)
-            WeatherLocation(
+        val hardwareLocation = when {
+            isCachedFresh -> cachedLocation
+            lm != null && isLocationEnabled(context) ->
+                requestCurrentLocationAcrossProviders(context, lm) ?: cachedLocation
+            else -> cachedLocation
+        }
+
+        if (hardwareLocation != null) {
+            val resolvedCity = resolveCityLabel(context, hardwareLocation.latitude, hardwareLocation.longitude)
+                ?: weatherClient.reverseGeocodeCity(hardwareLocation.latitude, hardwareLocation.longitude)
+            return@withContext WeatherLocation(
                 name = resolvedCity ?: context.getString(R.string.native_widget_weather_current_location),
-                latitude = resolved.latitude,
-                longitude = resolved.longitude,
+                latitude = hardwareLocation.latitude,
+                longitude = hardwareLocation.longitude,
             )
         }
 
+        // Último recurso se os provedores do dispositivo não responderem (ex.: ambiente interno / sem Play Services)
+        weatherClient.fetchApproximateIpLocation()
+    }
+
     @SuppressLint("MissingPermission")
-    private suspend fun requestSingleCurrentLocation(
+    private fun readMostRecentLastKnownLocation(
         context: Context,
         lm: LocationManager,
     ): Location? {
-        val provider = when {
-            lm.isProviderEnabled(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
-            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            else -> return null
+        val candidateProviders = buildSet {
+            add(LocationManager.FUSED_PROVIDER)
+            add(LocationManager.NETWORK_PROVIDER)
+            add(LocationManager.PASSIVE_PROVIDER)
+            if (hasFineLocationPermission(context) || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(LocationManager.GPS_PROVIDER)
+            }
+            runCatching { lm.getProviders(true) }.getOrNull()?.forEach { add(it) }
         }
-        return withTimeoutOrNull(4_500L) {
-            suspendCancellableCoroutine { cont ->
-                val signal = CancellationSignal()
-                cont.invokeOnCancellation { signal.cancel() }
-                runCatching {
-                    lm.getCurrentLocation(
-                        provider,
-                        signal,
-                        ContextCompat.getMainExecutor(context),
-                    ) { loc ->
-                        if (cont.isActive) {
-                            cont.resume(loc)
+        return candidateProviders
+            .mapNotNull { provider -> runCatching { lm.getLastKnownLocation(provider) }.getOrNull() }
+            .maxByOrNull { it.time }
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun requestCurrentLocationAcrossProviders(
+        context: Context,
+        lm: LocationManager,
+    ): Location? {
+        val enabledProviders = buildList {
+            val discovered = runCatching { lm.getProviders(true) }.getOrNull().orEmpty()
+            listOf(
+                LocationManager.FUSED_PROVIDER,
+                LocationManager.NETWORK_PROVIDER,
+                LocationManager.GPS_PROVIDER,
+            ).forEach { p ->
+                if (runCatching { lm.isProviderEnabled(p) }.getOrDefault(false)) add(p)
+            }
+            discovered.forEach { p ->
+                if (p != LocationManager.PASSIVE_PROVIDER && p !in this) add(p)
+            }
+        }
+        if (enabledProviders.isEmpty()) return null
+
+        return withTimeoutOrNull(6_500L) {
+            coroutineScope {
+                val winner = CompletableDeferred<Location>()
+                val executor = ContextCompat.getMainExecutor(context)
+                val signals = mutableListOf<CancellationSignal>()
+                val listeners = mutableListOf<LocationListener>()
+
+                for (provider in enabledProviders) {
+                    val signal = CancellationSignal()
+                    signals += signal
+                    launch {
+                        runCatching {
+                            lm.getCurrentLocation(provider, signal, executor) { loc ->
+                                if (loc != null) {
+                                    winner.complete(loc)
+                                }
+                            }
                         }
                     }
-                }.onFailure {
-                    if (cont.isActive) cont.resume(null)
+
+                    // Fallback paralelo via LocationListener caso getCurrentLocation retorne null neste provedor
+                    val listener = object : LocationListener {
+                        override fun onLocationChanged(location: Location) {
+                            winner.complete(location)
+                        }
+                    }
+                    listeners += listener
+                    runCatching {
+                        lm.requestLocationUpdates(provider, 500L, 0f, listener, Looper.getMainLooper())
+                    }
+                }
+
+                try {
+                    winner.await()
+                } finally {
+                    signals.forEach { runCatching { it.cancel() } }
+                    listeners.forEach { runCatching { lm.removeUpdates(it) } }
                 }
             }
         }

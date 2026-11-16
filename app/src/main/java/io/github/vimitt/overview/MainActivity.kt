@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
     private var permissionRevision by mutableIntStateOf(0)
     private var requestedCalendarOnce = false
     private var requestedLocationOnce = false
+    private var pendingLocationRetryAfterSettings = false
     private var pendingWidgetRequest: PendingWidgetRequest? = null
     private var currentPreferences: LauncherPreferences = LauncherPreferences()
 
@@ -105,13 +106,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private val locationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
         permissionRevision++
+        val granted = results[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            NativeWidgetSystemProviders.hasCoarseLocationPermission(this)
         if (granted) {
             fetchDeviceWeatherLocationOrOpenGps()
         } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
             Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            pendingLocationRetryAfterSettings = true
             NativeWidgetSystemProviders.openAppPermissionSettings(this)
         }
     }
@@ -337,6 +342,19 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         appContainer.appWidgetController.startListening()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (pendingLocationRetryAfterSettings) {
+            pendingLocationRetryAfterSettings = false
+            permissionRevision++
+            if (NativeWidgetSystemProviders.hasCoarseLocationPermission(this) &&
+                NativeWidgetSystemProviders.isLocationEnabled(this)
+            ) {
+                fetchDeviceWeatherLocationOrOpenGps()
+            }
+        }
     }
 
     override fun onStop() {
@@ -587,14 +605,21 @@ class MainActivity : ComponentActivity() {
             !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)
         ) {
             Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            pendingLocationRetryAfterSettings = true
             NativeWidgetSystemProviders.openAppPermissionSettings(this)
             return
         }
         requestedLocationOnce = true
         runCatching {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                ),
+            )
         }.onFailure {
             Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            pendingLocationRetryAfterSettings = true
             NativeWidgetSystemProviders.openAppPermissionSettings(this)
         }
     }
@@ -602,6 +627,7 @@ class MainActivity : ComponentActivity() {
     private fun fetchDeviceWeatherLocationOrOpenGps() {
         if (!NativeWidgetSystemProviders.isLocationEnabled(this)) {
             Toast.makeText(this, R.string.weather_location_gps_disabled_notice, Toast.LENGTH_SHORT).show()
+            pendingLocationRetryAfterSettings = true
             NativeWidgetSystemProviders.openLocationSourceSettings(this)
             return
         }

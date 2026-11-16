@@ -51,6 +51,28 @@ class OpenMeteoWeatherClient(
         }
     }
 
+    /**
+     * Fallback leve por IP aproximado (sem chave de API) usado apenas quando os provedores
+     * de localização do Android não conseguem obter fix em ambientes internos ou sem Play Services.
+     */
+    suspend fun fetchApproximateIpLocation(): WeatherLocation? = withContext(ioDispatcher) {
+        runCatching { parseIpWhoIsJson(httpGet("https://ipwho.is/")) }.getOrNull()
+            ?: runCatching { parseGeoJsJson(httpGet("https://get.geojs.io/v1/ip/geo.json")) }.getOrNull()
+    }
+
+    /**
+     * Resolve o nome legível da cidade via geocodificação reversa sem chave quando `Geocoder` está indisponível.
+     */
+    suspend fun reverseGeocodeCity(latitude: Double, longitude: Double): String? = withContext(ioDispatcher) {
+        val lat = String.format(Locale.US, "%.4f", latitude)
+        val lon = String.format(Locale.US, "%.4f", longitude)
+        runCatching {
+            val endpoint =
+                "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lon&localityLanguage=pt"
+            parseReverseGeocodeCityJson(httpGet(endpoint))
+        }.getOrNull()
+    }
+
     private fun httpGet(urlString: String): String {
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -150,6 +172,54 @@ class OpenMeteoWeatherClient(
                 hourlyForecast = hourlyPoints,
                 updatedAtMs = nowMs,
             )
+        }
+
+        fun parseIpWhoIsJson(json: String): WeatherLocation? {
+            if (json.isBlank()) return null
+            val root = JSONObject(json)
+            if (!root.optBoolean("success", true)) return null
+            val lat = root.optDouble("latitude", Double.NaN)
+            val lon = root.optDouble("longitude", Double.NaN)
+            if (lat.isNaN() || lon.isNaN()) return null
+            val city = root.optString("city").trim()
+                .ifBlank { root.optString("region").trim() }
+            if (city.isBlank()) return null
+            return WeatherLocation(
+                name = city,
+                region = root.optString("region").trim(),
+                country = root.optString("country").trim(),
+                latitude = lat,
+                longitude = lon,
+            )
+        }
+
+        fun parseGeoJsJson(json: String): WeatherLocation? {
+            if (json.isBlank()) return null
+            val root = JSONObject(json)
+            val lat = root.optString("latitude").toDoubleOrNull()
+                ?: root.optDouble("latitude", Double.NaN)
+            val lon = root.optString("longitude").toDoubleOrNull()
+                ?: root.optDouble("longitude", Double.NaN)
+            if (lat.isNaN() || lon.isNaN()) return null
+            val city = root.optString("city").trim()
+                .ifBlank { root.optString("region").trim() }
+            if (city.isBlank()) return null
+            return WeatherLocation(
+                name = city,
+                region = root.optString("region").trim(),
+                country = root.optString("country").trim(),
+                latitude = lat,
+                longitude = lon,
+            )
+        }
+
+        fun parseReverseGeocodeCityJson(json: String): String? {
+            if (json.isBlank()) return null
+            val root = JSONObject(json)
+            return root.optString("city").trim()
+                .ifBlank { root.optString("locality").trim() }
+                .ifBlank { root.optString("principalSubdivision").trim() }
+                .ifBlank { null }
         }
     }
 }
