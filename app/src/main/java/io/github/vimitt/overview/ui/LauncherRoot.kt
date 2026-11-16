@@ -118,6 +118,7 @@ fun LauncherRoot(
     onSelectWidgetToAdd: (WidgetEntry) -> Unit,
     loadAvailableWidgets: suspend () -> List<WidgetAppGroup>,
     nativeWidgetActions: NativeWidgetActions = NativeWidgetActions(),
+    permissionRevision: Int = 0,
     onWorkspaceItemLongPress: (HomeWorkspaceItem) -> Unit,
     onDismissHomeItemAction: () -> Unit,
     onStartMovingHomeItem: (String) -> Unit,
@@ -312,6 +313,7 @@ fun LauncherRoot(
             isVisible = isHomeVisible,
             dockDropTarget = currentDockTarget,
             nativeWidgetActions = nativeWidgetActions,
+            permissionRevision = permissionRevision,
             gestureSettings = gestureSettings,
             onExecuteGesture = onExecuteGesture,
             onAppClick = { app, view, bounds ->
@@ -696,6 +698,9 @@ fun LauncherRoot(
             SettingsNavHost(
                 appContainer = appContainer,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
+                onActivateWeatherLocation = nativeWidgetActions.onRequestLocationPermission,
+                onSearchWeatherCities = nativeWidgetActions.onSearchWeatherCities,
+                onSelectWeatherLocation = nativeWidgetActions.onSelectWeatherLocation,
                 onClose = onCloseSettings,
             )
         }

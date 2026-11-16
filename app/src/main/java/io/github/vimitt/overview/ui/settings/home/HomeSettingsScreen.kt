@@ -18,18 +18,27 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
+import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.domain.model.WeatherLocation
+import io.github.vimitt.overview.domain.model.WeatherSnapshot
 import io.github.vimitt.overview.ui.components.HomeClock
 import io.github.vimitt.overview.ui.components.rememberIsLifecycleActive
+import io.github.vimitt.overview.ui.home.widgets.WeatherCityPickerDialog
 import io.github.vimitt.overview.ui.settings.components.NavigationRow
 import io.github.vimitt.overview.ui.settings.components.SettingsDivider
 import io.github.vimitt.overview.ui.settings.components.SettingsGroup
@@ -43,6 +52,8 @@ import kotlin.math.roundToInt
 @Composable
 fun HomeSettingsScreen(
     uiState: HomeSettingsUiState,
+    weather: WeatherSnapshot? = null,
+    weatherLocation: WeatherLocation? = null,
     onGridColumnsChange: (Int) -> Unit,
     onGridRowsChange: (Int) -> Unit,
     onIconScaleChange: (Float) -> Unit,
@@ -50,20 +61,26 @@ fun HomeSettingsScreen(
     onLabelScaleChange: (Float) -> Unit,
     onLockLayoutChange: (Boolean) -> Unit,
     onShowClockChange: (Boolean) -> Unit,
+    onShowClockWeatherChange: (Boolean) -> Unit = {},
     onClockStyleChange: (HomeClockStyle) -> Unit,
     onClockBackgroundAlphaChange: (Float) -> Unit,
+    onActivateWeatherLocation: () -> Unit = {},
+    onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
+    onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
     onOpenWallpaperPicker: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val colors = OverviewTheme.colors
     val settings = uiState.settings
+    var showCityPicker by remember { mutableStateOf(false) }
 
-    SettingsScaffold(
-        title = stringResource(R.string.settings_hub_home),
-        onBack = onBack,
-        modifier = modifier,
-    ) {
+    Box(modifier = modifier) {
+        SettingsScaffold(
+            title = stringResource(R.string.settings_hub_home),
+            onBack = onBack,
+        ) {
         item(key = "home_grid_group") {
             SettingsGroup(title = stringResource(R.string.settings_section_home_grid)) {
                 HomeGridPreview(
@@ -136,6 +153,8 @@ fun HomeSettingsScreen(
             SettingsGroup(title = stringResource(R.string.settings_section_home_clock)) {
                 HomeClockPreview(
                     showClock = settings.showClock,
+                    showWeather = settings.showClockWeather,
+                    weather = weather,
                     style = settings.clockStyle,
                     backgroundAlpha = settings.clockBackgroundAlpha,
                     onCycleStyle = {
@@ -169,6 +188,38 @@ fun HomeSettingsScreen(
                     enabled = settings.showClock && settings.clockStyle.hasBackground,
                     onValueChange = onClockBackgroundAlphaChange,
                 )
+                SettingsDivider()
+                SwitchRow(
+                    title = stringResource(R.string.settings_home_clock_weather),
+                    subtitle = stringResource(R.string.settings_home_clock_weather_subtitle),
+                    checked = settings.showClockWeather,
+                    enabled = settings.showClock,
+                    onCheckedChange = onShowClockWeatherChange,
+                )
+                SettingsDivider()
+                val hasLocPerm = NativeWidgetSystemProviders.hasCoarseLocationPermission(context)
+                val isGpsOn = NativeWidgetSystemProviders.isLocationEnabled(context)
+                val locationSubtitle = when {
+                    weatherLocation != null -> stringResource(
+                        R.string.settings_home_clock_location_active,
+                        weatherLocation.displayLabel,
+                    )
+                    hasLocPerm && !isGpsOn -> stringResource(R.string.settings_home_clock_location_gps_off)
+                    else -> stringResource(R.string.settings_home_clock_location_enable)
+                }
+                NavigationRow(
+                    title = stringResource(R.string.settings_home_clock_location),
+                    subtitle = locationSubtitle,
+                    enabled = settings.showClock && settings.showClockWeather,
+                    onClick = onActivateWeatherLocation,
+                )
+                SettingsDivider()
+                NavigationRow(
+                    title = stringResource(R.string.settings_home_clock_city),
+                    subtitle = weatherLocation?.displayLabel,
+                    enabled = settings.showClock && settings.showClockWeather,
+                    onClick = { showCityPicker = true },
+                )
             }
         }
 
@@ -200,11 +251,23 @@ fun HomeSettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+        if (showCityPicker) {
+            WeatherCityPickerDialog(
+                onSearchCities = onSearchWeatherCities,
+                onSelectLocation = onSelectWeatherLocation,
+                onUseGpsLocation = onActivateWeatherLocation,
+                onDismiss = { showCityPicker = false },
+            )
+        }
+    }
 }
 
 @Composable
 private fun HomeClockPreview(
     showClock: Boolean,
+    showWeather: Boolean,
+    weather: WeatherSnapshot?,
     style: HomeClockStyle,
     backgroundAlpha: Float,
     onCycleStyle: () -> Unit,
@@ -236,6 +299,8 @@ private fun HomeClockPreview(
                 useWallpaperColors = false,
                 backgroundAlpha = backgroundAlpha,
                 isVisible = rememberIsLifecycleActive() && showClock,
+                weather = weather,
+                showWeather = showWeather,
                 modifier = Modifier.alpha(if (showClock) 1f else 0.32f),
             )
         }

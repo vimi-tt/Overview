@@ -281,6 +281,7 @@ data class HomeSettings(
     val labelScale: Float = SettingsDefaults.DEFAULT_LABEL_SCALE,
     val lockLayout: Boolean = false,
     val showClock: Boolean = true,
+    val showClockWeather: Boolean = true,
     val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
     val clockBackgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
 )

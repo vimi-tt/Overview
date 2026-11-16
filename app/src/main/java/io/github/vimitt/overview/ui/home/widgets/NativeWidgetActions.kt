@@ -18,6 +18,8 @@ data class NativeWidgetActions(
     val onSearchWeatherCities: suspend (query: String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     val onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
     val onUseDeviceWeatherLocation: () -> Unit = {},
+    val onRequestCalendarPermission: () -> Unit = {},
+    val onRequestLocationPermission: () -> Unit = {},
     val onSetClockToolMode: (ClockToolMode) -> Unit = {},
     val onSetTimerDuration: (durationMs: Long) -> Unit = {},
     val onToggleTimer: () -> Unit = {},

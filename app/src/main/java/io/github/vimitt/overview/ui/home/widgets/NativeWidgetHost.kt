@@ -1,6 +1,5 @@
 package io.github.vimitt.overview.ui.home.widgets
 
-import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -12,8 +11,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.view.View
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +56,15 @@ import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
 /**
+ * Modal leve ativo dos widgets nativos e clima do relógio, exibido na camada superior da Home.
+ */
+sealed interface NativeWidgetActiveDialog {
+    data class QuickNote(val note: QuickNoteItem?) : NativeWidgetActiveDialog
+    data object QuickTask : NativeWidgetActiveDialog
+    data object WeatherCityPicker : NativeWidgetActiveDialog
+}
+
+/**
  * Estado em memória dos provedores do sistema mantido apenas enquanto há widgets visíveis na Home.
  */
 class NativeWidgetLiveEnvironment(
@@ -68,6 +74,8 @@ class NativeWidgetLiveEnvironment(
     val upcomingEvents: List<CalendarEventItem>,
     val deviceStatus: DeviceStatusSnapshot,
     val mediaSession: MediaSessionSnapshot,
+    val activeDialog: NativeWidgetActiveDialog?,
+    val onDismissDialog: () -> Unit,
     val onRequestCalendarPermission: () -> Unit,
     val onRequestCoarseLocationOrUseGps: () -> Unit,
     val onOpenWeatherCityPicker: () -> Unit,
@@ -76,8 +84,8 @@ class NativeWidgetLiveEnvironment(
 )
 
 /**
- * Coordena receptores/listeners do sistema sob demanda (somente quando há widgets nativos visíveis
- * na tela inicial) e gerencia os diálogos leves de nota rápida, tarefa e seleção de cidade.
+ * Coordena receptores/listeners do sistema sob demanda (somente quando há widgets nativos
+ * ou clima do relógio visíveis na tela inicial) sem emitir UI bloqueando a ordem Z da Home.
  */
 @Composable
 fun rememberNativeWidgetEnvironment(
@@ -86,6 +94,8 @@ fun rememberNativeWidgetEnvironment(
     hasWeatherCache: Boolean,
     actions: NativeWidgetActions,
     isVisible: Boolean,
+    includeClockWeather: Boolean = false,
+    permissionRevision: Int = 0,
 ): NativeWidgetLiveEnvironment {
     val context = LocalContext.current
 
@@ -96,7 +106,6 @@ fun rememberNativeWidgetEnvironment(
             .map { it.item.widgetType }
             .toSet()
     }
-    val hasNativeWidgets = nativeTypes.isNotEmpty()
     val needsTime = isVisible && (
         NativeWidgetType.DAILY_SUMMARY in nativeTypes ||
             NativeWidgetType.AGENDA in nativeTypes
@@ -106,7 +115,8 @@ fun rememberNativeWidgetEnvironment(
             NativeWidgetType.DAILY_SUMMARY in nativeTypes
         )
     val needsWeather = isVisible && (
-        NativeWidgetType.WEATHER in nativeTypes ||
+        includeClockWeather ||
+            NativeWidgetType.WEATHER in nativeTypes ||
             NativeWidgetType.DAILY_SUMMARY in nativeTypes
         )
     val needsDevice = isVisible && NativeWidgetType.DEVICE_STATUS in nativeTypes
@@ -117,28 +127,12 @@ fun rememberNativeWidgetEnvironment(
     var hasCalendarPerm by remember {
         mutableStateOf(NativeWidgetSystemProviders.hasCalendarPermission(context))
     }
-    var calendarReloadTick by remember { mutableIntStateOf(0) }
     var upcomingEvents by remember { mutableStateOf<List<CalendarEventItem>>(emptyList()) }
     var deviceStatus by remember {
         mutableStateOf(NativeWidgetSystemProviders.readDeviceStatusSnapshot(context))
     }
     var mediaSnapshot by remember {
         mutableStateOf(MediaSessionSnapshot())
-    }
-
-    val calendarPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        hasCalendarPerm = granted
-        calendarReloadTick++
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            actions.onUseDeviceWeatherLocation()
-        }
     }
 
     // Relógio + Alarme somente quando visível e necessário
@@ -158,8 +152,10 @@ fun rememberNativeWidgetEnvironment(
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
             addAction("android.app.action.NEXT_ALARM_CLOCK_CHANGED")
         }
-        context.registerReceiver(receiver, filter)
-        onDispose { context.unregisterReceiver(receiver) }
+        runCatching {
+            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
 
     // Bateria / Armazenamento / Rede somente quando o widget de dispositivo está visível
@@ -178,12 +174,14 @@ fun rememberNativeWidgetEnvironment(
             addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction("android.net.conn.CONNECTIVITY_CHANGE")
         }
-        context.registerReceiver(receiver, filter)
-        onDispose { context.unregisterReceiver(receiver) }
+        runCatching {
+            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
 
-    // Agenda do calendário sob demanda ao ficar visível
-    LaunchedEffect(needsCalendar, calendarReloadTick, currentTimeMillis / 60_000L) {
+    // Agenda do calendário sob demanda ao ficar visível ou atualizar permissões
+    LaunchedEffect(needsCalendar, permissionRevision, currentTimeMillis / 60_000L) {
         if (!needsCalendar) return@LaunchedEffect
         val perm = NativeWidgetSystemProviders.hasCalendarPermission(context)
         hasCalendarPerm = perm
@@ -195,7 +193,7 @@ fun rememberNativeWidgetEnvironment(
     }
 
     // Clima Open-Meteo: atualiza apenas respeitando cache TTL (30 min) quando visível
-    LaunchedEffect(needsWeather, hasSavedWeatherLocation, hasWeatherCache) {
+    LaunchedEffect(needsWeather, hasSavedWeatherLocation, hasWeatherCache, permissionRevision) {
         if (needsWeather && hasSavedWeatherLocation) {
             actions.onRefreshWeather(false)
         }
@@ -260,45 +258,7 @@ fun rememberNativeWidgetEnvironment(
         }
     }
 
-    // Diálogos leves locais dos widgets nativos
-    var editingNote by remember { mutableStateOf<QuickNoteItem?>(null) }
-    var showNoteDialog by remember { mutableStateOf(false) }
-    var showTaskDialog by remember { mutableStateOf(false) }
-    var showWeatherCityDialog by remember { mutableStateOf(false) }
-
-    if (hasNativeWidgets && showNoteDialog) {
-        QuickNoteDialog(
-            initialNote = editingNote,
-            onSave = actions.onSaveQuickNote,
-            onDelete = actions.onDeleteQuickNote,
-            onDismiss = {
-                showNoteDialog = false
-                editingNote = null
-            },
-        )
-    }
-
-    if (hasNativeWidgets && showTaskDialog) {
-        QuickTaskDialog(
-            onAdd = actions.onAddQuickTask,
-            onDismiss = { showTaskDialog = false },
-        )
-    }
-
-    if (hasNativeWidgets && showWeatherCityDialog) {
-        WeatherCityPickerDialog(
-            onSearchCities = actions.onSearchWeatherCities,
-            onSelectLocation = actions.onSelectWeatherLocation,
-            onUseGpsLocation = {
-                if (NativeWidgetSystemProviders.hasCoarseLocationPermission(context)) {
-                    actions.onUseDeviceWeatherLocation()
-                } else {
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                }
-            },
-            onDismiss = { showWeatherCityDialog = false },
-        )
-    }
+    var activeDialog by remember { mutableStateOf<NativeWidgetActiveDialog?>(null) }
 
     return remember(
         currentTimeMillis,
@@ -307,6 +267,8 @@ fun rememberNativeWidgetEnvironment(
         upcomingEvents,
         deviceStatus,
         mediaSnapshot,
+        activeDialog,
+        actions,
     ) {
         NativeWidgetLiveEnvironment(
             currentTimeMillis = currentTimeMillis,
@@ -315,23 +277,55 @@ fun rememberNativeWidgetEnvironment(
             upcomingEvents = upcomingEvents,
             deviceStatus = deviceStatus,
             mediaSession = mediaSnapshot,
-            onRequestCalendarPermission = {
-                calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-            },
+            activeDialog = activeDialog,
+            onDismissDialog = { activeDialog = null },
+            onRequestCalendarPermission = actions.onRequestCalendarPermission,
             onRequestCoarseLocationOrUseGps = {
-                if (NativeWidgetSystemProviders.hasCoarseLocationPermission(context)) {
+                if (NativeWidgetSystemProviders.hasCoarseLocationPermission(context) &&
+                    NativeWidgetSystemProviders.isLocationEnabled(context)
+                ) {
                     actions.onUseDeviceWeatherLocation()
                 } else {
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    actions.onRequestLocationPermission()
                 }
             },
-            onOpenWeatherCityPicker = { showWeatherCityDialog = true },
-            onOpenNoteDialog = { note ->
-                editingNote = note
-                showNoteDialog = true
-            },
-            onOpenTaskDialog = { showTaskDialog = true },
+            onOpenWeatherCityPicker = { activeDialog = NativeWidgetActiveDialog.WeatherCityPicker },
+            onOpenNoteDialog = { note -> activeDialog = NativeWidgetActiveDialog.QuickNote(note) },
+            onOpenTaskDialog = { activeDialog = NativeWidgetActiveDialog.QuickTask },
         )
+    }
+}
+
+/**
+ * Renderiza os diálogos modais de notas, tarefas e escolha de cidade acima de toda a Home,
+ * evitando interceptação de toque pela grade ou coluna principal.
+ */
+@Composable
+fun NativeWidgetDialogsOverlay(
+    environment: NativeWidgetLiveEnvironment,
+    actions: NativeWidgetActions,
+) {
+    when (val dialog = environment.activeDialog) {
+        is NativeWidgetActiveDialog.QuickNote -> QuickNoteDialog(
+            initialNote = dialog.note,
+            onSave = actions.onSaveQuickNote,
+            onDelete = actions.onDeleteQuickNote,
+            onDismiss = environment.onDismissDialog,
+        )
+
+        NativeWidgetActiveDialog.QuickTask -> QuickTaskDialog(
+            onAdd = actions.onAddQuickTask,
+            onDismiss = environment.onDismissDialog,
+        )
+
+        NativeWidgetActiveDialog.WeatherCityPicker -> WeatherCityPickerDialog(
+            onSearchCities = actions.onSearchWeatherCities,
+            onSelectLocation = actions.onSelectWeatherLocation,
+            onUseGpsLocation = environment.onRequestCoarseLocationOrUseGps,
+            onDismiss = environment.onDismissDialog,
+        )
+
+        null -> Unit
     }
 }
 

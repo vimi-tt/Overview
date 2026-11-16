@@ -494,6 +494,12 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setShowClockWeather(show: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_SHOW_CLOCK_WEATHER] = show
+        }
+    }
+
     suspend fun setHomeClockStyle(style: HomeClockStyle) {
         context.overviewSettingsDataStore.edit { prefs ->
             prefs[KEY_HOME_CLOCK_STYLE] = style.name
@@ -708,6 +714,7 @@ class SettingsRepository(
 
         val lockLayout = prefs[KEY_HOME_LOCK_LAYOUT] ?: false
         val showClock = prefs[KEY_SHOW_CLOCK] ?: true
+        val showClockWeather = prefs[KEY_SHOW_CLOCK_WEATHER] ?: true
         val clockStyle = prefs[KEY_HOME_CLOCK_STYLE]?.let { saved ->
             runCatching { HomeClockStyle.valueOf(saved) }.getOrNull()
         } ?: HomeClockStyle.GNOME
@@ -722,6 +729,7 @@ class SettingsRepository(
             labelScale = labelScale,
             lockLayout = lockLayout,
             showClock = showClock,
+            showClockWeather = showClockWeather,
             clockStyle = clockStyle,
             clockBackgroundAlpha = clockBackgroundAlpha,
         )
@@ -910,6 +918,7 @@ class SettingsRepository(
         val KEY_HOME_SHOW_LABELS = booleanPreferencesKey("home_show_labels")
         val KEY_HOME_LABEL_SCALE = floatPreferencesKey("home_label_scale")
         val KEY_HOME_LOCK_LAYOUT = booleanPreferencesKey("home_lock_layout")
+        val KEY_SHOW_CLOCK_WEATHER = booleanPreferencesKey("home_show_clock_weather")
         val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
         val KEY_HOME_CLOCK_BG_ALPHA = floatPreferencesKey("home_clock_bg_alpha")
 

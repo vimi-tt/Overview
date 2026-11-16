@@ -46,6 +46,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
@@ -61,6 +63,8 @@ import io.github.vimitt.overview.domain.model.AppInfo
 import io.github.vimitt.overview.domain.model.QuickNoteItem
 import io.github.vimitt.overview.domain.model.QuickTaskItem
 import io.github.vimitt.overview.ui.components.AppIconItem
+import io.github.vimitt.overview.ui.components.OverviewPolygonFactory
+import io.github.vimitt.overview.ui.components.RoundedPolygonShape
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import kotlin.math.PI
 import kotlin.math.abs
@@ -103,36 +107,61 @@ fun MediaPlayerNativeWidget(
         label = "media_art_scale",
     )
 
+    val animateSpin = media.isPlaying && isVisible && !motion.reducedMotion
+    val playButtonSpinAngle = if (animateSpin) {
+        val spinTransition = rememberInfiniteTransition(label = "mediaPlaySpinTransition")
+        val angle by spinTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 5200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "mediaPlaySpinAngle",
+        )
+        angle
+    } else {
+        0f
+    }
+    val playScallopShape = androidx.compose.runtime.remember(isExpressive) {
+        if (isExpressive) RoundedPolygonShape(OverviewPolygonFactory.clockScallopPolygon()) else null
+    }
+
     if (!media.hasNotificationAccess) {
         Column(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             NativeWidgetHeader(title = stringResource(R.string.native_widget_media_title))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = stringResource(R.string.native_widget_media_access_title),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceMuted,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                )
-                NativeWidgetActionPill(
-                    label = stringResource(R.string.native_widget_media_access_cta),
-                    onClick = onRequestNotificationAccess,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.native_widget_media_access_title),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceMuted,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    NativeWidgetActionPill(
+                        label = stringResource(R.string.native_widget_media_access_cta),
+                        onClick = onRequestNotificationAccess,
+                    )
+                }
             }
         }
         return
     }
 
     val hasSession = media.controller != null
-    val artSize = if (spanY <= 1) 40.dp else 58.dp
+    val artSize = if (spanY <= 1) 40.dp else 56.dp
     val artShape = if (isExpressive) shapes.large else shapes.medium
 
     Column(
@@ -153,11 +182,17 @@ fun MediaPlayerNativeWidget(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center,
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
             Box(
                 modifier = Modifier
                     .size(artSize)
@@ -250,36 +285,70 @@ fun MediaPlayerNativeWidget(
                     }
                 }
 
+                val playButtonSize = if (spanY <= 1) 38.dp else 44.dp
+                val playContainerShape = if (isExpressive && media.isPlaying && playScallopShape != null) {
+                    playScallopShape
+                } else {
+                    RoundedCornerShape(playButtonCorner)
+                }
+                val playContainerBg = when {
+                    !hasSession -> colors.surfaceContainerHigh.copy(alpha = 0.55f)
+                    isExpressive && media.isPlaying -> colors.accent
+                    isExpressive -> colors.accentContainer
+                    else -> colors.surfaceElevated
+                }
+                val playGlyphTint = when {
+                    !hasSession -> colors.onSurfaceMuted
+                    isExpressive && media.isPlaying -> colors.onAccent
+                    isExpressive -> colors.onAccentContainer
+                    else -> colors.accent
+                }
+
                 Box(
                     modifier = Modifier
-                        .size(if (spanY <= 1) 36.dp else 42.dp)
-                        .clip(RoundedCornerShape(playButtonCorner))
-                        .background(
-                            when {
-                                !hasSession -> colors.surfaceContainerHigh.copy(alpha = 0.55f)
-                                isExpressive && media.isPlaying -> colors.accent
-                                isExpressive -> colors.accentContainer
-                                else -> colors.surfaceElevated
-                            },
-                        )
-                        .then(
-                            if (!isExpressive) {
-                                Modifier.border(1.dp, colors.hairlineBorder, RoundedCornerShape(playButtonCorner))
-                            } else {
-                                Modifier
-                            },
-                        )
+                        .size(playButtonSize)
                         .clickable(enabled = hasSession, role = Role.Button, onClick = onPlayPause),
                     contentAlignment = Alignment.Center,
                 ) {
+                    // Fundo ou anel giratório durante reprodução sem rotacionar o ícone central
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                rotationZ = playButtonSpinAngle
+                            }
+                            .clip(playContainerShape)
+                            .background(playContainerBg)
+                            .then(
+                                if (!isExpressive) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = if (media.isPlaying && hasSession) {
+                                            colors.accent.copy(alpha = 0.65f)
+                                        } else {
+                                            colors.hairlineBorder
+                                        },
+                                        shape = playContainerShape,
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    )
+                    if (animateSpin && !isExpressive) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            drawArc(
+                                color = colors.accent,
+                                startAngle = playButtonSpinAngle - 90f,
+                                sweepAngle = 150f,
+                                useCenter = false,
+                                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+                            )
+                        }
+                    }
                     PlayPauseGlyph(
                         isPlaying = media.isPlaying,
-                        tint = when {
-                            !hasSession -> colors.onSurfaceMuted
-                            isExpressive && media.isPlaying -> colors.onAccent
-                            isExpressive -> colors.onAccentContainer
-                            else -> colors.accent
-                        },
+                        tint = playGlyphTint,
                         size = 17.dp,
                     )
                 }
@@ -298,6 +367,7 @@ fun MediaPlayerNativeWidget(
                     )
                 }
             }
+        }
         }
     }
 }
@@ -681,7 +751,7 @@ fun FrequentAppsNativeWidget(
         if (visibleApps.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.CenterStart,
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(R.string.native_widget_frequent_apps_empty),
@@ -693,37 +763,45 @@ fun FrequentAppsNativeWidget(
             }
         } else {
             val rows = visibleApps.chunked(columns)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center,
             ) {
-                for (rowApps in rows) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (isExpressive) {
-                                    Modifier
-                                        .clip(shapes.large)
-                                        .background(lerp(colors.surfaceContainer, colors.accentContainer, 0.25f))
-                                        .border(1.dp, colors.accent.copy(alpha = 0.20f), shapes.large)
-                                        .padding(vertical = 4.dp)
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (app in rowApps) {
-                            AppIconItem(
-                                app = app,
-                                onClick = onAppClick,
-                                iconSize = if (spanY <= 1) 40.dp else 44.dp,
-                                showLabel = spanY >= 2,
-                                showNotificationDot = showNotificationDots && app.packageName in badgePackages,
-                                modifier = Modifier.weight(1f),
-                            )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    for (rowApps in rows) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (isExpressive) {
+                                        Modifier
+                                            .clip(shapes.large)
+                                            .background(lerp(colors.surfaceContainer, colors.accentContainer, 0.25f))
+                                            .border(1.dp, colors.accent.copy(alpha = 0.20f), shapes.large)
+                                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            for (app in rowApps) {
+                                AppIconItem(
+                                    app = app,
+                                    onClick = onAppClick,
+                                    iconSize = if (spanY <= 1) 40.dp else 44.dp,
+                                    showLabel = spanY >= 2,
+                                    showNotificationDot = showNotificationDots && app.packageName in badgePackages,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }

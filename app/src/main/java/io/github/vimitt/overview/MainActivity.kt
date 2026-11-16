@@ -1,5 +1,6 @@
 package io.github.vimitt.overview
 
+import android.Manifest
 import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.content.Intent
@@ -23,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.SystemPanelHelper
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.domain.model.AppInfo
@@ -85,8 +88,33 @@ class MainActivity : ComponentActivity() {
     private var isAppPickerOpen by mutableStateOf(false)
     private var isWidgetPickerOpen by mutableStateOf(false)
     private var selectedHomeItemId by mutableStateOf<String?>(null)
+    private var permissionRevision by mutableIntStateOf(0)
+    private var requestedCalendarOnce = false
+    private var requestedLocationOnce = false
     private var pendingWidgetRequest: PendingWidgetRequest? = null
     private var currentPreferences: LauncherPreferences = LauncherPreferences()
+
+    private val calendarPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        permissionRevision++
+        if (!granted && !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CALENDAR)) {
+            Toast.makeText(this, R.string.permission_calendar_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+        }
+    }
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        permissionRevision++
+        if (granted) {
+            fetchDeviceWeatherLocationOrOpenGps()
+        } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+        }
+    }
 
     private val bindWidgetLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -188,7 +216,9 @@ class MainActivity : ComponentActivity() {
                         onRefreshWeather = homeViewModel::refreshWeather,
                         onSearchWeatherCities = homeViewModel::searchWeatherCities,
                         onSelectWeatherLocation = homeViewModel::selectWeatherLocation,
-                        onUseDeviceWeatherLocation = homeViewModel::useDeviceWeatherLocation,
+                        onUseDeviceWeatherLocation = ::fetchDeviceWeatherLocationOrOpenGps,
+                        onRequestCalendarPermission = ::requestCalendarPermission,
+                        onRequestLocationPermission = ::requestWeatherLocation,
                         onSetClockToolMode = homeViewModel::setClockToolMode,
                         onSetTimerDuration = homeViewModel::setTimerDuration,
                         onToggleTimer = homeViewModel::toggleTimer,
@@ -247,6 +277,7 @@ class MainActivity : ComponentActivity() {
                     },
                     loadAvailableWidgets = homeViewModel::loadAvailableWidgets,
                     nativeWidgetActions = nativeWidgetActions,
+                    permissionRevision = permissionRevision,
                     onWorkspaceItemLongPress = { workspaceItem ->
                         isHomeMenuOpen = false
                         selectedHomeItemId = workspaceItem.item.id
@@ -523,6 +554,63 @@ class MainActivity : ComponentActivity() {
             data = Uri.fromParts("package", app.packageName, null)
         }
         runCatching { startActivity(detailsIntent) }
+    }
+
+    private fun requestCalendarPermission() {
+        if (NativeWidgetSystemProviders.hasCalendarPermission(this)) {
+            permissionRevision++
+            return
+        }
+        if (requestedCalendarOnce &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CALENDAR)
+        ) {
+            Toast.makeText(this, R.string.permission_calendar_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+            return
+        }
+        requestedCalendarOnce = true
+        runCatching {
+            calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+        }.onFailure {
+            Toast.makeText(this, R.string.permission_calendar_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+        }
+    }
+
+    private fun requestWeatherLocation() {
+        if (NativeWidgetSystemProviders.hasCoarseLocationPermission(this)) {
+            permissionRevision++
+            fetchDeviceWeatherLocationOrOpenGps()
+            return
+        }
+        if (requestedLocationOnce &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+        ) {
+            Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+            return
+        }
+        requestedLocationOnce = true
+        runCatching {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }.onFailure {
+            Toast.makeText(this, R.string.permission_location_settings_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openAppPermissionSettings(this)
+        }
+    }
+
+    private fun fetchDeviceWeatherLocationOrOpenGps() {
+        if (!NativeWidgetSystemProviders.isLocationEnabled(this)) {
+            Toast.makeText(this, R.string.weather_location_gps_disabled_notice, Toast.LENGTH_SHORT).show()
+            NativeWidgetSystemProviders.openLocationSourceSettings(this)
+            return
+        }
+        Toast.makeText(this, R.string.weather_location_resolving_notice, Toast.LENGTH_SHORT).show()
+        homeViewModel.useDeviceWeatherLocation { resolved ->
+            if (!resolved) {
+                Toast.makeText(this, R.string.weather_location_unavailable_notice, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private companion object {

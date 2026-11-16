@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,14 +30,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.QuickNoteItem
 import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -49,6 +56,12 @@ fun QuickNoteDialog(
 ) {
     val colors = OverviewTheme.colors
     var text by remember(initialNote) { mutableStateOf(initialNote?.content.orEmpty()) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { focusRequester.requestFocus() }
+    }
 
     OverviewPopupSurface(
         onDismiss = onDismiss,
@@ -73,7 +86,9 @@ fun QuickNoteDialog(
                 placeholder = { Text(stringResource(R.string.native_widget_notes_placeholder)) },
                 minLines = 3,
                 maxLines = 6,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
             )
 
             Row(
@@ -123,6 +138,19 @@ fun QuickTaskDialog(
 ) {
     val colors = OverviewTheme.colors
     var title by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { focusRequester.requestFocus() }
+    }
+
+    val submitTask = {
+        if (title.isNotBlank()) {
+            onAdd(title)
+            onDismiss()
+        }
+    }
 
     OverviewPopupSurface(
         onDismiss = onDismiss,
@@ -146,7 +174,11 @@ fun QuickTaskDialog(
                 onValueChange = { title = it },
                 placeholder = { Text(stringResource(R.string.native_widget_tasks_placeholder)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submitTask() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
             )
 
             Row(
@@ -159,10 +191,7 @@ fun QuickTaskDialog(
                 }
                 Button(
                     enabled = title.isNotBlank(),
-                    onClick = {
-                        onAdd(title)
-                        onDismiss()
-                    },
+                    onClick = submitTask,
                 ) {
                     Text(text = stringResource(R.string.native_widget_tasks_add))
                 }
@@ -188,6 +217,23 @@ fun WeatherCityPickerDialog(
     var searching by remember { mutableStateOf(false) }
     var hasSearched by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<WeatherLocation>>(emptyList()) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(80)
+        runCatching { focusRequester.requestFocus() }
+    }
+
+    val runSearch = {
+        if (!searching && query.isNotBlank()) {
+            scope.launch {
+                searching = true
+                hasSearched = true
+                results = onSearchCities(query).getOrDefault(emptyList())
+                searching = false
+            }
+        }
+    }
 
     OverviewPopupSurface(
         onDismiss = onDismiss,
@@ -216,18 +262,15 @@ fun WeatherCityPickerDialog(
                     onValueChange = { query = it },
                     placeholder = { Text(stringResource(R.string.native_widget_weather_city_hint)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { runSearch() }),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
                 )
                 Button(
                     enabled = !searching && query.isNotBlank(),
-                    onClick = {
-                        scope.launch {
-                            searching = true
-                            hasSearched = true
-                            results = onSearchCities(query).getOrDefault(emptyList())
-                            searching = false
-                        }
-                    },
+                    onClick = runSearch,
                 ) {
                     Text(text = stringResource(R.string.native_widget_weather_search))
                 }

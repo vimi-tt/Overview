@@ -75,6 +75,12 @@ class HomeSettingsViewModel(
         }
     }
 
+    fun onShowClockWeatherChange(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowClockWeather(show)
+        }
+    }
+
     fun onClockStyleChange(style: HomeClockStyle) {
         viewModelScope.launch {
             settingsRepository.setHomeClockStyle(style)

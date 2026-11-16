@@ -13,6 +13,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,23 +50,28 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.HomeClockStyle
 import io.github.vimitt.overview.domain.model.SettingsDefaults
+import io.github.vimitt.overview.domain.model.WeatherSnapshot
+import io.github.vimitt.overview.ui.home.widgets.WeatherGlyph
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -109,6 +115,10 @@ fun HomeClock(
     useWallpaperColors: Boolean = true,
     backgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
     isVisible: Boolean = true,
+    weather: WeatherSnapshot? = null,
+    showWeather: Boolean = true,
+    onWeatherClick: (() -> Unit)? = null,
+    onEnableLocationClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
@@ -129,9 +139,11 @@ fun HomeClock(
             addAction(Intent.ACTION_TIME_CHANGED)
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
-        context.registerReceiver(receiver, filter)
+        runCatching {
+            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
         onDispose {
-            context.unregisterReceiver(receiver)
+            runCatching { context.unregisterReceiver(receiver) }
         }
     }
 
@@ -265,6 +277,9 @@ fun HomeClock(
     val dateChipText = if (useWallpaperColors) colors.onSurface else colors.onAccentContainer
     val dateChipBorder = colors.accent.copy(alpha = 0.34f)
 
+    val effectiveWeather = if (showWeather) weather else null
+    val canShowLocationAction = showWeather && effectiveWeather == null && onEnableLocationClick != null
+
     when (style) {
         HomeClockStyle.GNOME -> GnomeClassicClock(
             timeText = timeText,
@@ -273,10 +288,15 @@ fun HomeClock(
             isExpressive = isExpressive,
             primaryColor = primaryForeground,
             secondaryColor = secondaryForeground,
+            accentColor = colors.accent,
             chipFill = dateChipFill,
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
+            weather = effectiveWeather,
+            showLocationCta = canShowLocationAction,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
             modifier = clockModifier,
         )
 
@@ -293,6 +313,10 @@ fun HomeClock(
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
+            weather = effectiveWeather,
+            showLocationCta = canShowLocationAction,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
             modifier = clockModifier,
         )
 
@@ -317,6 +341,10 @@ fun HomeClock(
             chipTextColor = dateChipText,
             chipBorder = dateChipBorder,
             shadow = textShadow,
+            weather = effectiveWeather,
+            showLocationCta = canShowLocationAction,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
             modifier = clockModifier,
         )
 
@@ -331,7 +359,14 @@ fun HomeClock(
             accentColor = colors.accent,
             accentContainer = colors.accentContainer,
             onAccentContainer = colors.onAccentContainer,
+            chipFill = dateChipFill,
+            chipTextColor = dateChipText,
+            chipBorder = dateChipBorder,
             shadow = textShadow,
+            weather = effectiveWeather,
+            showLocationCta = canShowLocationAction,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
             modifier = clockModifier,
         )
 
@@ -348,6 +383,10 @@ fun HomeClock(
             containerColor = cardFill,
             borderColor = cardBorder,
             shadowAlpha = clampedAlpha,
+            weather = effectiveWeather,
+            showLocationCta = canShowLocationAction,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
             modifier = clockModifier,
         )
 
@@ -377,6 +416,10 @@ fun HomeClock(
                 containerColor = cardFill,
                 borderColor = cardBorder,
                 shadowAlpha = clampedAlpha,
+                weather = effectiveWeather,
+                showLocationCta = canShowLocationAction,
+                onWeatherClick = onWeatherClick,
+                onEnableLocationClick = onEnableLocationClick,
                 modifier = clockModifier,
             )
         }
@@ -411,6 +454,139 @@ private fun ClockDateChip(
 }
 
 @Composable
+private fun ClockWeatherBadge(
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    compact: Boolean,
+    isExpressive: Boolean,
+    textColor: Color,
+    accentColor: Color,
+    fillColor: Color,
+    borderColor: Color,
+    shadow: Shadow?,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
+) {
+    if (weather == null && !showLocationCta) return
+    val shape = OverviewTheme.shapes.pill
+    val clickAction = if (weather != null) onWeatherClick else onEnableLocationClick
+    val clickModifier = if (clickAction != null) {
+        Modifier.clickable(role = Role.Button, onClick = clickAction)
+    } else {
+        Modifier
+    }
+
+    val badgeText = if (weather != null) {
+        "${weather.temperatureC.roundToInt()}°"
+    } else {
+        stringResource(R.string.clock_enable_location_cta)
+    }
+
+    if (isExpressive) {
+        Row(
+            modifier = Modifier
+                .clip(shape)
+                .background(fillColor)
+                .border(width = 1.dp, color = borderColor, shape = shape)
+                .then(clickModifier)
+                .padding(
+                    horizontal = if (compact) 8.dp else 11.dp,
+                    vertical = if (compact) 3.dp else 4.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            if (weather != null) {
+                WeatherGlyph(
+                    weatherCode = weather.weatherCode,
+                    isDay = weather.isDay,
+                    tint = textColor,
+                    accent = accentColor,
+                    size = if (compact) 14.dp else 16.dp,
+                )
+            } else {
+                ClockLocationGlyph(tint = accentColor, size = if (compact) 12.dp else 14.dp)
+            }
+            Text(
+                text = badgeText,
+                style = (if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge)
+                    .copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .clip(shape)
+                .then(clickModifier)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            if (weather != null) {
+                WeatherGlyph(
+                    weatherCode = weather.weatherCode,
+                    isDay = weather.isDay,
+                    tint = textColor,
+                    accent = accentColor,
+                    size = if (compact) 15.dp else 17.dp,
+                )
+            } else {
+                ClockLocationGlyph(tint = accentColor, size = if (compact) 13.dp else 15.dp)
+            }
+            Text(
+                text = badgeText,
+                style = (if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleSmall)
+                    .copy(
+                        fontWeight = FontWeight.Medium,
+                        fontFeatureSettings = "tnum",
+                        shadow = shadow,
+                    ),
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ClockLocationGlyph(
+    tint: Color,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = Modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = (w * 0.12f).coerceAtLeast(1.4f)
+        val center = Offset(w * 0.5f, h * 0.42f)
+        drawCircle(
+            color = tint,
+            radius = w * 0.28f,
+            center = center,
+            style = Stroke(width = stroke),
+        )
+        drawCircle(
+            color = tint,
+            radius = w * 0.10f,
+            center = center,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.5f, h * 0.70f),
+            end = Offset(w * 0.5f, h * 0.90f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
 private fun GnomeClassicClock(
     timeText: String,
     dateText: String,
@@ -418,10 +594,15 @@ private fun GnomeClassicClock(
     isExpressive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
+    accentColor: Color,
     chipFill: Color,
     chipTextColor: Color,
     chipBorder: Color,
     shadow: Shadow?,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -450,21 +631,49 @@ private fun GnomeClassicClock(
             color = primaryColor,
         )
         Spacer(modifier = Modifier.height(if (isExpressive) 6.dp else 2.dp))
-        if (isExpressive) {
-            ClockDateChip(
-                text = dateText,
-                compact = compact,
-                fillColor = chipFill,
-                textColor = chipTextColor,
-                borderColor = chipBorder,
-            )
-        } else {
-            Text(
-                text = dateText,
-                style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
-                    .copy(shadow = shadow),
-                color = secondaryColor,
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (isExpressive) {
+                ClockDateChip(
+                    text = dateText,
+                    compact = compact,
+                    fillColor = chipFill,
+                    textColor = chipTextColor,
+                    borderColor = chipBorder,
+                )
+            } else {
+                Text(
+                    text = dateText,
+                    style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+                        .copy(shadow = shadow),
+                    color = secondaryColor,
+                )
+            }
+            if (weather != null || showLocationCta) {
+                if (!isExpressive) {
+                    Text(
+                        text = "·",
+                        style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+                            .copy(shadow = shadow),
+                        color = secondaryColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
+                    compact = compact,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else secondaryColor,
+                    accentColor = accentColor,
+                    fillColor = chipFill,
+                    borderColor = chipBorder,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
+                )
+            }
         }
     }
 }
@@ -483,6 +692,10 @@ private fun StackedClock(
     chipTextColor: Color,
     chipBorder: Color,
     shadow: Shadow?,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val rawHour = if (is24Hour) {
@@ -539,19 +752,37 @@ private fun StackedClock(
                     color = accentColor,
                 )
             }
-            if (isExpressive) {
-                ClockDateChip(
-                    text = shortDateText,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                if (isExpressive) {
+                    ClockDateChip(
+                        text = shortDateText,
+                        compact = true,
+                        fillColor = chipFill,
+                        textColor = chipTextColor,
+                        borderColor = chipBorder,
+                    )
+                } else {
+                    Text(
+                        text = shortDateText,
+                        style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow),
+                        color = secondaryColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
                     compact = true,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else secondaryColor,
+                    accentColor = accentColor,
                     fillColor = chipFill,
-                    textColor = chipTextColor,
                     borderColor = chipBorder,
-                )
-            } else {
-                Text(
-                    text = shortDateText,
-                    style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow),
-                    color = secondaryColor,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
                 )
             }
         }
@@ -585,19 +816,37 @@ private fun StackedClock(
                 color = accentColor,
             )
             Spacer(modifier = Modifier.height(if (isExpressive) 8.dp else 6.dp))
-            if (isExpressive) {
-                ClockDateChip(
-                    text = shortDateText,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (isExpressive) {
+                    ClockDateChip(
+                        text = shortDateText,
+                        compact = false,
+                        fillColor = chipFill,
+                        textColor = chipTextColor,
+                        borderColor = chipBorder,
+                    )
+                } else {
+                    Text(
+                        text = shortDateText,
+                        style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
+                        color = secondaryColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
                     compact = false,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else secondaryColor,
+                    accentColor = accentColor,
                     fillColor = chipFill,
-                    textColor = chipTextColor,
                     borderColor = chipBorder,
-                )
-            } else {
-                Text(
-                    text = shortDateText,
-                    style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                    color = secondaryColor,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
                 )
             }
         }
@@ -620,6 +869,10 @@ private fun AnalogClock(
     chipTextColor: Color,
     chipBorder: Color,
     shadow: Shadow?,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val dialSize: Dp = if (compact) 74.dp else 132.dp
@@ -645,19 +898,37 @@ private fun AnalogClock(
                 dialFill = dialFill,
                 dialBorder = dialBorder,
             )
-            if (isExpressive) {
-                ClockDateChip(
-                    text = dateText,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                if (isExpressive) {
+                    ClockDateChip(
+                        text = dateText,
+                        compact = true,
+                        fillColor = chipFill,
+                        textColor = chipTextColor,
+                        borderColor = chipBorder,
+                    )
+                } else {
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
+                        color = dateColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
                     compact = true,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else dateColor,
+                    accentColor = accentColor,
                     fillColor = chipFill,
-                    textColor = chipTextColor,
                     borderColor = chipBorder,
-                )
-            } else {
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
-                    color = dateColor,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
                 )
             }
         }
@@ -678,19 +949,37 @@ private fun AnalogClock(
                 dialBorder = dialBorder,
             )
             Spacer(modifier = Modifier.height(10.dp))
-            if (isExpressive) {
-                ClockDateChip(
-                    text = dateText,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (isExpressive) {
+                    ClockDateChip(
+                        text = dateText,
+                        compact = false,
+                        fillColor = chipFill,
+                        textColor = chipTextColor,
+                        borderColor = chipBorder,
+                    )
+                } else {
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
+                        color = dateColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
                     compact = false,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else dateColor,
+                    accentColor = accentColor,
                     fillColor = chipFill,
-                    textColor = chipTextColor,
                     borderColor = chipBorder,
-                )
-            } else {
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                    color = dateColor,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
                 )
             }
         }
@@ -869,7 +1158,14 @@ private fun SideBySideClock(
     accentColor: Color,
     accentContainer: Color,
     onAccentContainer: Color,
+    chipFill: Color,
+    chipTextColor: Color,
+    chipBorder: Color,
     shadow: Shadow?,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -893,36 +1189,54 @@ private fun SideBySideClock(
         Box(
             modifier = Modifier
                 .width(if (isExpressive) 5.dp else 3.dp)
-                .height(if (compact) 32.dp else 46.dp)
+                .height(if (compact) 34.dp else 52.dp)
                 .clip(OverviewTheme.shapes.pill)
                 .background(accentColor),
         )
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(if (isExpressive) 3.dp else 0.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isExpressive) 3.dp else 1.dp),
         ) {
-            if (isExpressive) {
-                Text(
-                    text = weekdayText,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.1.sp,
-                    ),
-                    color = onAccentContainer,
-                    modifier = Modifier
-                        .clip(OverviewTheme.shapes.pill)
-                        .background(accentContainer)
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            } else {
-                Text(
-                    text = weekdayText,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.1.sp,
-                        shadow = shadow,
-                    ),
-                    color = accentColor,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (isExpressive) {
+                    Text(
+                        text = weekdayText,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.1.sp,
+                        ),
+                        color = onAccentContainer,
+                        modifier = Modifier
+                            .clip(OverviewTheme.shapes.pill)
+                            .background(accentContainer)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                } else {
+                    Text(
+                        text = weekdayText,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.1.sp,
+                            shadow = shadow,
+                        ),
+                        color = accentColor,
+                    )
+                }
+                ClockWeatherBadge(
+                    weather = weather,
+                    showLocationCta = showLocationCta,
+                    compact = true,
+                    isExpressive = isExpressive,
+                    textColor = if (isExpressive) chipTextColor else secondaryColor,
+                    accentColor = accentColor,
+                    fillColor = chipFill,
+                    borderColor = chipBorder,
+                    shadow = shadow,
+                    onWeatherClick = onWeatherClick,
+                    onEnableLocationClick = onEnableLocationClick,
                 )
             }
             Text(
@@ -952,6 +1266,10 @@ private fun PillClock(
     containerColor: Color,
     borderColor: Color,
     shadowAlpha: Float,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val shape = OverviewTheme.shapes.pill
@@ -1001,7 +1319,8 @@ private fun PillClock(
                 style = (if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
                     .copy(fontWeight = FontWeight.Medium),
                 color = primaryColor,
-                modifier = Modifier.padding(end = 4.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         } else {
             Box(
@@ -1028,8 +1347,23 @@ private fun PillClock(
                 text = shortDateText,
                 style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                 color = secondaryColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+        ClockWeatherBadge(
+            weather = weather,
+            showLocationCta = showLocationCta,
+            compact = true,
+            isExpressive = isExpressive,
+            textColor = if (isExpressive) primaryColor else secondaryColor,
+            accentColor = accentColor,
+            fillColor = accentContainer.copy(alpha = 0.72f),
+            borderColor = borderColor,
+            shadow = null,
+            onWeatherClick = onWeatherClick,
+            onEnableLocationClick = onEnableLocationClick,
+        )
     }
 }
 
@@ -1048,6 +1382,10 @@ private fun FullPillSummaryClock(
     containerColor: Color,
     borderColor: Color,
     shadowAlpha: Float,
+    weather: WeatherSnapshot?,
+    showLocationCta: Boolean,
+    onWeatherClick: (() -> Unit)?,
+    onEnableLocationClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val shape = OverviewTheme.shapes.pill
@@ -1079,7 +1417,7 @@ private fun FullPillSummaryClock(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 12.dp),
+                .padding(end = 10.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
@@ -1100,45 +1438,70 @@ private fun FullPillSummaryClock(
                         .clip(CircleShape)
                         .background(accentColor),
                 )
+                val summarySubtitle = if (weather != null && !compact) {
+                    "$greeting · ${weather.location.displayLabel}"
+                } else {
+                    greeting
+                }
                 Text(
-                    text = greeting,
+                    text = summarySubtitle,
                     style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                     color = secondaryColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
         }
 
-        if (isExpressive) {
-            Text(
-                text = timeText,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = if (compact) 20.sp else 26.sp,
-                    lineHeight = if (compact) 24.sp else 30.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFeatureSettings = "tnum",
-                ),
-                color = onAccentContainer,
-                modifier = Modifier
-                    .clip(shape)
-                    .background(accentContainer)
-                    .padding(
-                        horizontal = if (compact) 12.dp else 16.dp,
-                        vertical = if (compact) 5.dp else 8.dp,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ClockWeatherBadge(
+                weather = weather,
+                showLocationCta = showLocationCta,
+                compact = compact,
+                isExpressive = isExpressive,
+                textColor = if (isExpressive) onAccentContainer else primaryColor,
+                accentColor = accentColor,
+                fillColor = accentContainer.copy(alpha = 0.72f),
+                borderColor = borderColor,
+                shadow = null,
+                onWeatherClick = onWeatherClick,
+                onEnableLocationClick = onEnableLocationClick,
+            )
+
+            if (isExpressive) {
+                Text(
+                    text = timeText,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = if (compact) 20.sp else 26.sp,
+                        lineHeight = if (compact) 24.sp else 30.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFeatureSettings = "tnum",
                     ),
-            )
-        } else {
-            Text(
-                text = timeText,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = if (compact) 22.sp else 28.sp,
-                    lineHeight = if (compact) 26.sp else 32.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFeatureSettings = "tnum",
-                ),
-                color = primaryColor,
-            )
+                    color = onAccentContainer,
+                    modifier = Modifier
+                        .clip(shape)
+                        .background(accentContainer)
+                        .padding(
+                            horizontal = if (compact) 12.dp else 16.dp,
+                            vertical = if (compact) 5.dp else 8.dp,
+                        ),
+                )
+            } else {
+                Text(
+                    text = timeText,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = if (compact) 22.sp else 28.sp,
+                        lineHeight = if (compact) 26.sp else 32.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                    color = primaryColor,
+                )
+            }
         }
     }
 }

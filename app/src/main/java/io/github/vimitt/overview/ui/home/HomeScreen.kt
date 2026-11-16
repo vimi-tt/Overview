@@ -87,6 +87,7 @@ import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.components.HomeClock
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
+import io.github.vimitt.overview.ui.home.widgets.NativeWidgetDialogsOverlay
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetHost
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetLiveEnvironment
 import io.github.vimitt.overview.ui.home.widgets.rememberNativeWidgetEnvironment
@@ -155,6 +156,7 @@ fun HomeScreen(
     onDockDragEnd: () -> Unit = {},
     onDockDragCancel: () -> Unit = {},
     nativeWidgetActions: NativeWidgetActions = NativeWidgetActions(),
+    permissionRevision: Int = 0,
     gestureSettings: GestureSettings = GestureSettings(),
     onExecuteGesture: (LauncherGestureAction) -> Unit = {},
     onOverviewDragProgress: (Float) -> Unit = {},
@@ -166,6 +168,8 @@ fun HomeScreen(
         hasWeatherCache = uiState.nativeWidgets.weather != null,
         actions = nativeWidgetActions,
         isVisible = isVisible,
+        includeClockWeather = uiState.showClock && uiState.homeSettings.showClockWeather,
+        permissionRevision = permissionRevision,
     )
     val density = LocalDensity.current
     val dragRangePx = with(density) { 180.dp.toPx() }
@@ -364,6 +368,10 @@ fun HomeScreen(
                     compact = hasWorkspaceItems,
                     backgroundAlpha = uiState.clockBackgroundAlpha,
                     isVisible = isVisible,
+                    weather = uiState.nativeWidgets.weather,
+                    showWeather = uiState.homeSettings.showClockWeather,
+                    onWeatherClick = nativeEnvironment.onOpenWeatherCityPicker,
+                    onEnableLocationClick = nativeEnvironment.onRequestCoarseLocationOrUseGps,
                     modifier = Modifier
                         .graphicsLayer {
                             alpha = if (isDraggingRemovable) 0f else 1f
@@ -470,6 +478,12 @@ fun HomeScreen(
                     },
             )
         }
+
+        // Diálogos de notas, tarefas e cidade renderizados no topo da pilha da Home para receber todos os toques.
+        NativeWidgetDialogsOverlay(
+            environment = nativeEnvironment,
+            actions = nativeWidgetActions,
+        )
     }
 }
 

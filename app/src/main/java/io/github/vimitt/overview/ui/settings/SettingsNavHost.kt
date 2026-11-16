@@ -19,6 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.vimitt.overview.di.AppContainer
+import io.github.vimitt.overview.domain.model.NativeWidgetsState
+import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.ui.settings.about.AboutScreen
 import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsScreen
 import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsViewModel
@@ -61,6 +63,9 @@ private object SettingsRoute {
 fun SettingsNavHost(
     appContainer: AppContainer,
     onOpenWallpaperPicker: () -> Unit,
+    onActivateWeatherLocation: () -> Unit = {},
+    onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
+    onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -213,9 +218,13 @@ fun SettingsNavHost(
                 factory = HomeSettingsViewModel.Factory(appContainer.settingsRepository),
             )
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val nativeWidgetsState by appContainer.nativeWidgetsRepository.state
+                .collectAsStateWithLifecycle(initialValue = NativeWidgetsState())
 
             HomeSettingsScreen(
                 uiState = uiState,
+                weather = nativeWidgetsState.weather,
+                weatherLocation = nativeWidgetsState.weatherLocation,
                 onGridColumnsChange = viewModel::onGridColumnsChange,
                 onGridRowsChange = viewModel::onGridRowsChange,
                 onIconScaleChange = viewModel::onIconScaleChange,
@@ -223,8 +232,12 @@ fun SettingsNavHost(
                 onLabelScaleChange = viewModel::onLabelScaleChange,
                 onLockLayoutChange = viewModel::onLockLayoutChange,
                 onShowClockChange = viewModel::onShowClockChange,
+                onShowClockWeatherChange = viewModel::onShowClockWeatherChange,
                 onClockStyleChange = viewModel::onClockStyleChange,
                 onClockBackgroundAlphaChange = viewModel::onClockBackgroundAlphaChange,
+                onActivateWeatherLocation = onActivateWeatherLocation,
+                onSearchWeatherCities = onSearchWeatherCities,
+                onSelectWeatherLocation = onSelectWeatherLocation,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
                 onBack = { navController.popBackStack() },
             )
