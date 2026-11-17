@@ -456,93 +456,101 @@ fun OverviewScreen(
 
             val iconSize = remember(uiState.iconScale) { (54f * uiState.iconScale).dp }
 
-            when {
-                isSearching && uiState.apps.isEmpty() -> {
-                    EmptyOverviewState(
-                        isSearching = true,
-                        searchQuery = searchQuery,
-                        searchSettings = uiState.searchSettings,
-                        onWebSearch = openWebSearch,
-                        modifier = Modifier.weight(1f),
-                    )
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 960.dp)
+                    .fillMaxWidth(),
+            ) {
+                val effectiveColumns = when {
+                    maxWidth >= 840.dp -> (uiState.gridColumns + 2).coerceIn(5, 7)
+                    maxWidth >= 600.dp -> (uiState.gridColumns + 1).coerceIn(4, 6)
+                    else -> uiState.gridColumns.coerceIn(3, 6)
                 }
 
-                isSearching -> {
-                    SearchResultsGrid(
-                        apps = uiState.apps,
-                        columns = uiState.gridColumns,
-                        iconSize = iconSize,
-                        showNotificationDots = uiState.showNotificationDots,
-                        badgePackages = uiState.badgePackages,
-                        searchQuery = searchQuery,
-                        searchSettings = uiState.searchSettings,
-                        onWebSearch = openWebSearch,
-                        scrollEnabled = isActive && !isDraggingToHome,
-                        onAppClick = handleAppClick,
-                        onAppDragStart = handleAppDragStart,
-                        onAppDragMove = onAppDragMove,
-                        onAppDragEnd = handleAppDragEnd,
-                        onAppDragCancel = handleAppDragCancel,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    )
-                }
+                when {
+                    isSearching && uiState.apps.isEmpty() -> {
+                        EmptyOverviewState(
+                            isSearching = true,
+                            searchQuery = searchQuery,
+                            searchSettings = uiState.searchSettings,
+                            onWebSearch = openWebSearch,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                uiState.gridEntries.isEmpty() -> {
-                    EmptyOverviewState(
-                        isSearching = false,
-                        searchQuery = "",
-                        searchSettings = uiState.searchSettings,
-                        onWebSearch = openWebSearch,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                    isSearching -> {
+                        SearchResultsGrid(
+                            apps = uiState.apps,
+                            columns = effectiveColumns,
+                            iconSize = iconSize,
+                            showNotificationDots = uiState.showNotificationDots,
+                            badgePackages = uiState.badgePackages,
+                            searchQuery = searchQuery,
+                            searchSettings = uiState.searchSettings,
+                            onWebSearch = openWebSearch,
+                            scrollEnabled = isActive && !isDraggingToHome,
+                            onAppClick = handleAppClick,
+                            onAppDragStart = handleAppDragStart,
+                            onAppDragMove = onAppDragMove,
+                            onAppDragEnd = handleAppDragEnd,
+                            onAppDragCancel = handleAppDragCancel,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                uiState.gridLayoutMode == AppGridLayoutMode.CONTINUOUS -> {
-                    ContinuousAppGrid(
-                        gridState = continuousGridState,
-                        entries = uiState.gridEntries,
-                        columns = uiState.gridColumns,
-                        iconSize = iconSize,
-                        showNotificationDots = uiState.showNotificationDots,
-                        badgePackages = uiState.badgePackages,
-                        folderPreviewStyle = uiState.folderSettings.previewStyle,
-                        scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
-                        onAppClick = handleAppClick,
-                        onFolderClick = handleFolderClick,
-                        onAppDragStart = handleAppDragStart,
-                        onAppDragMove = onAppDragMove,
-                        onAppDragEnd = handleAppDragEnd,
-                        onAppDragCancel = handleAppDragCancel,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .nestedScroll(continuousCloseConnection),
-                    )
-                }
+                    uiState.gridEntries.isEmpty() -> {
+                        EmptyOverviewState(
+                            isSearching = false,
+                            searchQuery = "",
+                            searchSettings = uiState.searchSettings,
+                            onWebSearch = openWebSearch,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                else -> {
-                    PaginatedAppGrid(
-                        entries = uiState.gridEntries,
-                        columns = uiState.gridColumns,
-                        iconScale = uiState.iconScale,
-                        iconSize = iconSize,
-                        showNotificationDots = uiState.showNotificationDots,
-                        badgePackages = uiState.badgePackages,
-                        folderPreviewStyle = uiState.folderSettings.previewStyle,
-                        animationDurationScale = animationDurationScale,
-                        scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
-                        onAppClick = handleAppClick,
-                        onFolderClick = handleFolderClick,
-                        onAppDragStart = handleAppDragStart,
-                        onAppDragMove = onAppDragMove,
-                        onAppDragEnd = handleAppDragEnd,
-                        onAppDragCancel = handleAppDragCancel,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    )
+                    uiState.gridLayoutMode == AppGridLayoutMode.CONTINUOUS -> {
+                        ContinuousAppGrid(
+                            gridState = continuousGridState,
+                            entries = uiState.gridEntries,
+                            columns = effectiveColumns,
+                            iconSize = iconSize,
+                            showNotificationDots = uiState.showNotificationDots,
+                            badgePackages = uiState.badgePackages,
+                            folderPreviewStyle = uiState.folderSettings.previewStyle,
+                            scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
+                            onAppClick = handleAppClick,
+                            onFolderClick = handleFolderClick,
+                            onAppDragStart = handleAppDragStart,
+                            onAppDragMove = onAppDragMove,
+                            onAppDragEnd = handleAppDragEnd,
+                            onAppDragCancel = handleAppDragCancel,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(continuousCloseConnection),
+                        )
+                    }
+
+                    else -> {
+                        PaginatedAppGrid(
+                            entries = uiState.gridEntries,
+                            columns = effectiveColumns,
+                            iconScale = uiState.iconScale,
+                            iconSize = iconSize,
+                            showNotificationDots = uiState.showNotificationDots,
+                            badgePackages = uiState.badgePackages,
+                            folderPreviewStyle = uiState.folderSettings.previewStyle,
+                            animationDurationScale = animationDurationScale,
+                            scrollEnabled = isActive && !isDraggingToHome && openFolderEntry == null,
+                            onAppClick = handleAppClick,
+                            onFolderClick = handleFolderClick,
+                            onAppDragStart = handleAppDragStart,
+                            onAppDragMove = onAppDragMove,
+                            onAppDragEnd = handleAppDragEnd,
+                            onAppDragCancel = handleAppDragCancel,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }
@@ -655,7 +663,7 @@ private fun SearchResultsGrid(
     modifier: Modifier = Modifier,
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val safeColumns = columns.coerceIn(3, 6)
+    val safeColumns = columns.coerceIn(3, 7)
     val showWebPill = searchSettings.showWebSearchSuggestion && searchQuery.isNotBlank()
 
     LazyVerticalGrid(
@@ -724,7 +732,7 @@ private fun ContinuousAppGrid(
     modifier: Modifier = Modifier,
 ) {
     val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val safeColumns = columns.coerceIn(3, 6)
+    val safeColumns = columns.coerceIn(3, 7)
     val contentPadding = remember(imeBottom) { PaddingValues(bottom = imeBottom + 16.dp) }
 
     LazyVerticalGrid(
@@ -780,7 +788,7 @@ private fun PaginatedAppGrid(
     modifier: Modifier = Modifier,
 ) {
     val motion = OverviewTheme.motion
-    val safeColumns = columns.coerceIn(3, 6)
+    val safeColumns = columns.coerceIn(3, 7)
 
     BoxWithConstraints(modifier = modifier) {
         // Reserva espaço inferior para os indicadores de página.

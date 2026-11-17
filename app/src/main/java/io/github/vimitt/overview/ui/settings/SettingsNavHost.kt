@@ -4,20 +4,35 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -26,7 +41,6 @@ import androidx.navigation.compose.rememberNavController
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.LauncherBackupHelper
 import io.github.vimitt.overview.di.AppContainer
-import kotlinx.coroutines.launch
 import io.github.vimitt.overview.domain.model.NativeWidgetsState
 import io.github.vimitt.overview.domain.model.WeatherLocation
 import io.github.vimitt.overview.domain.model.WeatherProvider
@@ -36,6 +50,7 @@ import io.github.vimitt.overview.ui.settings.appgrid.AppGridSettingsViewModel
 import io.github.vimitt.overview.ui.settings.appgrid.HiddenAppsScreen
 import io.github.vimitt.overview.ui.settings.appearance.AppearanceSettingsScreen
 import io.github.vimitt.overview.ui.settings.appearance.AppearanceViewModel
+import io.github.vimitt.overview.ui.settings.components.LocalSettingsDualPane
 import io.github.vimitt.overview.ui.settings.dock.DockSettingsScreen
 import io.github.vimitt.overview.ui.settings.dock.DockSettingsViewModel
 import io.github.vimitt.overview.ui.settings.folders.FoldersSettingsScreen
@@ -49,6 +64,7 @@ import io.github.vimitt.overview.ui.settings.overview.OverviewSettingsViewModel
 import io.github.vimitt.overview.ui.settings.search.SearchSettingsScreen
 import io.github.vimitt.overview.ui.settings.search.SearchSettingsViewModel
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+import kotlinx.coroutines.launch
 
 private object SettingsRoute {
     const val HUB = "settings_hub"
@@ -80,163 +96,318 @@ fun SettingsNavHost(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val navController = rememberNavController()
+    val colors = OverviewTheme.colors
     val motion = OverviewTheme.motion
     val reducedMotion = OverviewTheme.reducedMotion
 
-    val enterAnim = if (reducedMotion) {
-        fadeIn(motion.effectSpec())
-    } else if (motion.usesSprings) {
-        fadeIn(motion.effectSpec(durationMillis = 190)) +
-            scaleIn(
-                initialScale = 0.96f,
-                transformOrigin = TransformOrigin(0.8f, 0.5f),
-                animationSpec = motion.expressiveSpec(durationMillis = 240),
-            ) +
-            slideInHorizontally(
-                motion.expressiveSpec(
-                    durationMillis = 240,
-                    visibilityThreshold = IntOffset.VisibilityThreshold,
-                ),
-            ) { it / 5 }
-    } else {
-        fadeIn(motion.effectSpec(durationMillis = 180)) +
-            slideInHorizontally(
-                motion.spatialSpec(
-                    durationMillis = 200,
-                    visibilityThreshold = IntOffset.VisibilityThreshold,
-                ),
-            ) { it / 8 }
-    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val useDualPane = maxWidth >= 840.dp
+        if (useDualPane) {
+            var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.APPEARANCE) }
+            var isHiddenAppsOpen by rememberSaveable { mutableStateOf(false) }
 
-    val exitAnim = if (reducedMotion) {
-        fadeOut(motion.effectSpec())
-    } else if (motion.usesSprings) {
-        fadeOut(motion.effectSpec(durationMillis = 140)) +
-            scaleOut(
-                targetScale = 0.97f,
-                transformOrigin = TransformOrigin(0.2f, 0.5f),
-                animationSpec = motion.spatialSpec(durationMillis = 170),
-            )
-    } else {
-        fadeOut(motion.effectSpec(durationMillis = 140))
-    }
-
-    val popEnterAnim = if (reducedMotion) {
-        fadeIn(motion.effectSpec())
-    } else if (motion.usesSprings) {
-        fadeIn(motion.effectSpec(durationMillis = 170)) +
-            scaleIn(
-                initialScale = 0.97f,
-                transformOrigin = TransformOrigin(0.2f, 0.5f),
-                animationSpec = motion.spatialSpec(durationMillis = 200),
-            )
-    } else {
-        fadeIn(motion.effectSpec(durationMillis = 160))
-    }
-
-    val popExitAnim = if (reducedMotion) {
-        fadeOut(motion.effectSpec())
-    } else if (motion.usesSprings) {
-        fadeOut(motion.effectSpec(durationMillis = 150)) +
-            scaleOut(
-                targetScale = 0.95f,
-                transformOrigin = TransformOrigin(0.8f, 0.5f),
-                animationSpec = motion.spatialSpec(durationMillis = 190),
-            ) +
-            slideOutHorizontally(
-                motion.spatialSpec(
-                    durationMillis = 190,
-                    visibilityThreshold = IntOffset.VisibilityThreshold,
-                ),
-            ) { it / 5 }
-    } else {
-        fadeOut(motion.effectSpec(durationMillis = 140)) +
-            slideOutHorizontally(
-                motion.spatialSpec(
-                    durationMillis = 160,
-                    visibilityThreshold = IntOffset.VisibilityThreshold,
-                ),
-            ) { it / 8 }
-    }
-
-    NavHost(
-        navController = navController,
-        startDestination = SettingsRoute.HUB,
-        enterTransition = { enterAnim },
-        exitTransition = { exitAnim },
-        popEnterTransition = { popEnterAnim },
-        popExitTransition = { popExitAnim },
-        modifier = modifier,
-    ) {
-        composable(SettingsRoute.HUB) {
-            BackHandler(onBack = onClose)
-
-            val hubViewModel: SettingsHubViewModel = viewModel(
-                factory = SettingsHubViewModel.Factory(appContainer.settingsRepository),
-            )
-            val uiState by hubViewModel.uiState.collectAsStateWithLifecycle()
-            val context = LocalContext.current
-            val scope = rememberCoroutineScope()
-            val exportLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.CreateDocument("application/json"),
-            ) { uri ->
-                if (uri == null) return@rememberLauncherForActivityResult
-                scope.launch {
-                    LauncherBackupHelper.exportToUri(
-                        context = context,
-                        uri = uri,
-                        settingsRepository = appContainer.settingsRepository,
-                        homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
-                    ).onSuccess {
-                        Toast.makeText(context, R.string.backup_export_success, Toast.LENGTH_SHORT).show()
-                    }.onFailure {
-                        Toast.makeText(context, R.string.backup_export_error, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            val importLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.OpenDocument(),
-            ) { uri ->
-                if (uri == null) return@rememberLauncherForActivityResult
-                scope.launch {
-                    LauncherBackupHelper.importFromUri(
-                        context = context,
-                        uri = uri,
-                        settingsRepository = appContainer.settingsRepository,
-                        homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
-                        appWidgetController = appContainer.appWidgetController,
-                    ).onSuccess {
-                        Toast.makeText(context, R.string.backup_import_success, Toast.LENGTH_SHORT).show()
-                    }.onFailure {
-                        Toast.makeText(context, R.string.backup_import_error, Toast.LENGTH_SHORT).show()
-                    }
+            BackHandler {
+                if (isHiddenAppsOpen) {
+                    isHiddenAppsOpen = false
+                } else {
+                    onClose()
                 }
             }
 
-            SettingsHubScreen(
-                uiState = uiState,
-                onOpenAppearance = { navController.navigate(SettingsRoute.APPEARANCE) },
-                onOpenHome = { navController.navigate(SettingsRoute.HOME) },
-                onOpenDock = { navController.navigate(SettingsRoute.DOCK) },
-                onOpenAppGrid = { navController.navigate(SettingsRoute.APP_GRID) },
-                onOpenOverview = { navController.navigate(SettingsRoute.OVERVIEW) },
-                onOpenSearch = { navController.navigate(SettingsRoute.SEARCH) },
-                onOpenFolders = { navController.navigate(SettingsRoute.FOLDERS) },
-                onOpenGestures = { navController.navigate(SettingsRoute.GESTURES) },
-                onOpenAbout = { navController.navigate(SettingsRoute.ABOUT) },
-                onExportBackup = {
-                    exportLauncher.launch(context.getString(R.string.backup_default_filename))
-                },
-                onImportBackup = {
-                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
-                },
-                onPreviewOnboarding = onPreviewOnboarding,
-                onClose = onClose,
-            )
+            val selectCategory: (SettingsCategory) -> Unit = { category ->
+                selectedCategory = category
+                isHiddenAppsOpen = false
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.windowBackground),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(min = 320.dp, max = 380.dp)
+                        .weight(0.36f)
+                        .fillMaxHeight(),
+                ) {
+                    SettingsHubDestination(
+                        appContainer = appContainer,
+                        selectedCategory = selectedCategory,
+                        onOpenCategory = selectCategory,
+                        onPreviewOnboarding = onPreviewOnboarding,
+                        onClose = onClose,
+                    )
+                }
+                VerticalDivider(thickness = 1.dp, color = colors.outlineVariant)
+                Box(
+                    modifier = Modifier
+                        .weight(0.64f)
+                        .fillMaxHeight(),
+                ) {
+                    val detailRoute = if (isHiddenAppsOpen) {
+                        SettingsRoute.HIDDEN_APPS
+                    } else {
+                        selectedCategory.toRoute()
+                    }
+                    CompositionLocalProvider(LocalSettingsDualPane provides !isHiddenAppsOpen) {
+                        AnimatedContent(
+                            targetState = detailRoute,
+                            transitionSpec = {
+                                fadeIn(motion.effectSpec(durationMillis = 150)) togetherWith
+                                    fadeOut(motion.effectSpec(durationMillis = 120))
+                            },
+                            label = "settingsDualPaneDetail",
+                        ) { route ->
+                            SettingsDetailDestination(
+                                route = route,
+                                appContainer = appContainer,
+                                onOpenWallpaperPicker = onOpenWallpaperPicker,
+                                onActivateWeatherLocation = onActivateWeatherLocation,
+                                onSearchWeatherCities = onSearchWeatherCities,
+                                onSelectWeatherLocation = onSelectWeatherLocation,
+                                onSelectWeatherProvider = onSelectWeatherProvider,
+                                onOpenHiddenApps = { isHiddenAppsOpen = true },
+                                onBack = {
+                                    if (isHiddenAppsOpen) {
+                                        isHiddenAppsOpen = false
+                                    } else {
+                                        onClose()
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            return@BoxWithConstraints
         }
 
-        composable(SettingsRoute.APPEARANCE) {
+        val navController = rememberNavController()
+        val enterAnim = if (reducedMotion) {
+            fadeIn(motion.effectSpec())
+        } else if (motion.usesSprings) {
+            fadeIn(motion.effectSpec(durationMillis = 190)) +
+                scaleIn(
+                    initialScale = 0.96f,
+                    transformOrigin = TransformOrigin(0.8f, 0.5f),
+                    animationSpec = motion.spatialSpec(durationMillis = 240),
+                ) +
+                slideInHorizontally(
+                    motion.spatialSpec(
+                        durationMillis = 240,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                ) { it / 5 }
+        } else {
+            fadeIn(motion.effectSpec(durationMillis = 180)) +
+                slideInHorizontally(
+                    motion.spatialSpec(
+                        durationMillis = 200,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                ) { it / 8 }
+        }
+
+        val exitAnim = if (reducedMotion) {
+            fadeOut(motion.effectSpec())
+        } else if (motion.usesSprings) {
+            fadeOut(motion.effectSpec(durationMillis = 140)) +
+                scaleOut(
+                    targetScale = 0.97f,
+                    transformOrigin = TransformOrigin(0.2f, 0.5f),
+                    animationSpec = motion.spatialSpec(durationMillis = 170),
+                )
+        } else {
+            fadeOut(motion.effectSpec(durationMillis = 140))
+        }
+
+        val popEnterAnim = if (reducedMotion) {
+            fadeIn(motion.effectSpec())
+        } else if (motion.usesSprings) {
+            fadeIn(motion.effectSpec(durationMillis = 170)) +
+                scaleIn(
+                    initialScale = 0.97f,
+                    transformOrigin = TransformOrigin(0.2f, 0.5f),
+                    animationSpec = motion.spatialSpec(durationMillis = 200),
+                )
+        } else {
+            fadeIn(motion.effectSpec(durationMillis = 160))
+        }
+
+        val popExitAnim = if (reducedMotion) {
+            fadeOut(motion.effectSpec())
+        } else if (motion.usesSprings) {
+            fadeOut(motion.effectSpec(durationMillis = 150)) +
+                scaleOut(
+                    targetScale = 0.95f,
+                    transformOrigin = TransformOrigin(0.8f, 0.5f),
+                    animationSpec = motion.spatialSpec(durationMillis = 190),
+                ) +
+                slideOutHorizontally(
+                    motion.spatialSpec(
+                        durationMillis = 190,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                ) { it / 5 }
+        } else {
+            fadeOut(motion.effectSpec(durationMillis = 140)) +
+                slideOutHorizontally(
+                    motion.spatialSpec(
+                        durationMillis = 160,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+                ) { it / 8 }
+        }
+
+        NavHost(
+            navController = navController,
+            startDestination = SettingsRoute.HUB,
+            enterTransition = { enterAnim },
+            exitTransition = { exitAnim },
+            popEnterTransition = { popEnterAnim },
+            popExitTransition = { popExitAnim },
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            composable(SettingsRoute.HUB) {
+                BackHandler(onBack = onClose)
+                SettingsHubDestination(
+                    appContainer = appContainer,
+                    selectedCategory = null,
+                    onOpenCategory = { category -> navController.navigate(category.toRoute()) },
+                    onPreviewOnboarding = onPreviewOnboarding,
+                    onClose = onClose,
+                )
+            }
+
+            listOf(
+                SettingsRoute.APPEARANCE,
+                SettingsRoute.HOME,
+                SettingsRoute.DOCK,
+                SettingsRoute.APP_GRID,
+                SettingsRoute.HIDDEN_APPS,
+                SettingsRoute.OVERVIEW,
+                SettingsRoute.SEARCH,
+                SettingsRoute.FOLDERS,
+                SettingsRoute.GESTURES,
+                SettingsRoute.ABOUT,
+            ).forEach { route ->
+                composable(route) {
+                    SettingsDetailDestination(
+                        route = route,
+                        appContainer = appContainer,
+                        onOpenWallpaperPicker = onOpenWallpaperPicker,
+                        onActivateWeatherLocation = onActivateWeatherLocation,
+                        onSearchWeatherCities = onSearchWeatherCities,
+                        onSelectWeatherLocation = onSelectWeatherLocation,
+                        onSelectWeatherProvider = onSelectWeatherProvider,
+                        onOpenHiddenApps = { navController.navigate(SettingsRoute.HIDDEN_APPS) },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun SettingsCategory.toRoute(): String = when (this) {
+    SettingsCategory.APPEARANCE -> SettingsRoute.APPEARANCE
+    SettingsCategory.HOME -> SettingsRoute.HOME
+    SettingsCategory.DOCK -> SettingsRoute.DOCK
+    SettingsCategory.APP_GRID -> SettingsRoute.APP_GRID
+    SettingsCategory.OVERVIEW -> SettingsRoute.OVERVIEW
+    SettingsCategory.SEARCH -> SettingsRoute.SEARCH
+    SettingsCategory.FOLDERS -> SettingsRoute.FOLDERS
+    SettingsCategory.GESTURES -> SettingsRoute.GESTURES
+    SettingsCategory.ABOUT -> SettingsRoute.ABOUT
+}
+
+@Composable
+private fun SettingsHubDestination(
+    appContainer: AppContainer,
+    selectedCategory: SettingsCategory?,
+    onOpenCategory: (SettingsCategory) -> Unit,
+    onPreviewOnboarding: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val hubViewModel: SettingsHubViewModel = viewModel(
+        factory = SettingsHubViewModel.Factory(appContainer.settingsRepository),
+    )
+    val uiState by hubViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            LauncherBackupHelper.exportToUri(
+                context = context,
+                uri = uri,
+                settingsRepository = appContainer.settingsRepository,
+                homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
+            ).onSuccess {
+                Toast.makeText(context, R.string.backup_export_success, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, R.string.backup_export_error, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            LauncherBackupHelper.importFromUri(
+                context = context,
+                uri = uri,
+                settingsRepository = appContainer.settingsRepository,
+                homeWorkspaceRepository = appContainer.homeWorkspaceRepository,
+                appWidgetController = appContainer.appWidgetController,
+            ).onSuccess {
+                Toast.makeText(context, R.string.backup_import_success, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, R.string.backup_import_error, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    SettingsHubScreen(
+        uiState = uiState,
+        selectedCategory = selectedCategory,
+        onOpenAppearance = { onOpenCategory(SettingsCategory.APPEARANCE) },
+        onOpenHome = { onOpenCategory(SettingsCategory.HOME) },
+        onOpenDock = { onOpenCategory(SettingsCategory.DOCK) },
+        onOpenAppGrid = { onOpenCategory(SettingsCategory.APP_GRID) },
+        onOpenOverview = { onOpenCategory(SettingsCategory.OVERVIEW) },
+        onOpenSearch = { onOpenCategory(SettingsCategory.SEARCH) },
+        onOpenFolders = { onOpenCategory(SettingsCategory.FOLDERS) },
+        onOpenGestures = { onOpenCategory(SettingsCategory.GESTURES) },
+        onOpenAbout = { onOpenCategory(SettingsCategory.ABOUT) },
+        onExportBackup = {
+            exportLauncher.launch(context.getString(R.string.backup_default_filename))
+        },
+        onImportBackup = {
+            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        },
+        onPreviewOnboarding = onPreviewOnboarding,
+        onClose = onClose,
+    )
+}
+
+@Composable
+private fun SettingsDetailDestination(
+    route: String,
+    appContainer: AppContainer,
+    onOpenWallpaperPicker: () -> Unit,
+    onActivateWeatherLocation: () -> Unit,
+    onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>>,
+    onSelectWeatherLocation: (WeatherLocation) -> Unit,
+    onSelectWeatherProvider: (WeatherProvider) -> Unit,
+    onOpenHiddenApps: () -> Unit,
+    onBack: () -> Unit,
+) {
+    when (route) {
+        SettingsRoute.APPEARANCE -> {
             val viewModel: AppearanceViewModel = viewModel(
                 factory = AppearanceViewModel.Factory(
                     settingsRepository = appContainer.settingsRepository,
@@ -264,11 +435,11 @@ fun SettingsNavHost(
                 onRefreshNotificationAccess = viewModel::refreshNotificationAccess,
                 onOverviewBlurEnabledChange = viewModel::onOverviewBlurEnabledChange,
                 onOverviewBlurRadiusChange = viewModel::onOverviewBlurRadiusChange,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.HOME) {
+        SettingsRoute.HOME -> {
             val viewModel: HomeSettingsViewModel = viewModel(
                 factory = HomeSettingsViewModel.Factory(appContainer.settingsRepository),
             )
@@ -299,11 +470,11 @@ fun SettingsNavHost(
                 onSearchWeatherCities = onSearchWeatherCities,
                 onSelectWeatherLocation = onSelectWeatherLocation,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.DOCK) {
+        SettingsRoute.DOCK -> {
             val viewModel: DockSettingsViewModel = viewModel(
                 factory = DockSettingsViewModel.Factory(
                     appsRepository = appContainer.appsRepository,
@@ -319,11 +490,11 @@ fun SettingsNavHost(
                 onShowSearchBarChange = viewModel::onShowSearchBarChange,
                 onTogglePinnedApp = viewModel::onTogglePinnedApp,
                 onResetToAuto = viewModel::onResetToAuto,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.APP_GRID) {
+        SettingsRoute.APP_GRID -> {
             val viewModel: AppGridSettingsViewModel = viewModel(
                 factory = AppGridSettingsViewModel.Factory(
                     appsRepository = appContainer.appsRepository,
@@ -339,12 +510,12 @@ fun SettingsNavHost(
                 onIconScaleChange = viewModel::onIconScaleChange,
                 onLayoutModeChange = viewModel::onLayoutModeChange,
                 onSortOrderChange = viewModel::onSortOrderChange,
-                onOpenHiddenApps = { navController.navigate(SettingsRoute.HIDDEN_APPS) },
-                onBack = { navController.popBackStack() },
+                onOpenHiddenApps = onOpenHiddenApps,
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.HIDDEN_APPS) {
+        SettingsRoute.HIDDEN_APPS -> {
             val viewModel: AppGridSettingsViewModel = viewModel(
                 factory = AppGridSettingsViewModel.Factory(
                     appsRepository = appContainer.appsRepository,
@@ -360,11 +531,11 @@ fun SettingsNavHost(
                 onToggleAppHidden = viewModel::onToggleAppHidden,
                 onSearchQueryChange = viewModel::onHiddenSearchQueryChange,
                 onClearSearchQuery = viewModel::onClearHiddenSearchQuery,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.OVERVIEW) {
+        SettingsRoute.OVERVIEW -> {
             val viewModel: OverviewSettingsViewModel = viewModel(
                 factory = OverviewSettingsViewModel.Factory(appContainer.settingsRepository),
             )
@@ -378,11 +549,11 @@ fun SettingsNavHost(
                 onAnimationSpeedChange = viewModel::onAnimationSpeedChange,
                 onHomeDepthEffectChange = viewModel::onHomeDepthEffectChange,
                 onAppLaunchAnimationChange = viewModel::onAppLaunchAnimationChange,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.SEARCH) {
+        SettingsRoute.SEARCH -> {
             val viewModel: SearchSettingsViewModel = viewModel(
                 factory = SearchSettingsViewModel.Factory(appContainer.settingsRepository),
             )
@@ -395,11 +566,11 @@ fun SettingsNavHost(
                 onClearOnCloseChange = viewModel::onClearOnCloseChange,
                 onShowWebSuggestionChange = viewModel::onShowWebSuggestionChange,
                 onWebEngineChange = viewModel::onWebEngineChange,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.FOLDERS) {
+        SettingsRoute.FOLDERS -> {
             val viewModel: FoldersSettingsViewModel = viewModel(
                 factory = FoldersSettingsViewModel.Factory(
                     appsRepository = appContainer.appsRepository,
@@ -416,11 +587,11 @@ fun SettingsNavHost(
                 onCloseOnAppLaunchChange = viewModel::onCloseOnAppLaunchChange,
                 onSaveFolder = viewModel::saveFolder,
                 onDeleteFolder = viewModel::deleteFolder,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.GESTURES) {
+        SettingsRoute.GESTURES -> {
             val viewModel: GesturesSettingsViewModel = viewModel(
                 factory = GesturesSettingsViewModel.Factory(appContainer.settingsRepository),
             )
@@ -433,14 +604,12 @@ fun SettingsNavHost(
                 onDoubleTapChange = viewModel::onDoubleTapChange,
                 onHomeButtonChange = viewModel::onHomeButtonChange,
                 onSensitivityChange = viewModel::onSensitivityChange,
-                onBack = { navController.popBackStack() },
+                onBack = onBack,
             )
         }
 
-        composable(SettingsRoute.ABOUT) {
-            AboutScreen(
-                onBack = { navController.popBackStack() },
-            )
+        SettingsRoute.ABOUT -> {
+            AboutScreen(onBack = onBack)
         }
     }
 }

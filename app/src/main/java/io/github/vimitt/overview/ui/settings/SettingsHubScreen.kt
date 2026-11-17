@@ -34,6 +34,18 @@ import io.github.vimitt.overview.ui.settings.gestures.gestureActionLabel
 import io.github.vimitt.overview.ui.theme.AdwaitaPalette
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
+enum class SettingsCategory {
+    APPEARANCE,
+    HOME,
+    DOCK,
+    APP_GRID,
+    OVERVIEW,
+    SEARCH,
+    FOLDERS,
+    GESTURES,
+    ABOUT,
+}
+
 @Composable
 fun SettingsHubScreen(
     uiState: SettingsHubUiState,
@@ -51,6 +63,7 @@ fun SettingsHubScreen(
     onPreviewOnboarding: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    selectedCategory: SettingsCategory? = null,
 ) {
     val colors = OverviewTheme.colors
     val prefs = uiState.preferences
@@ -174,6 +187,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_appearance),
                     subtitle = appearanceSubtitle,
+                    selected = selectedCategory == SettingsCategory.APPEARANCE,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_appearance),
@@ -188,6 +202,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_home),
                     subtitle = homeSubtitle,
+                    selected = selectedCategory == SettingsCategory.HOME,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Home,
@@ -202,6 +217,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_dock),
                     subtitle = dockSubtitle,
+                    selected = selectedCategory == SettingsCategory.DOCK,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_dock),
@@ -216,6 +232,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_app_grid),
                     subtitle = appGridSubtitle,
+                    selected = selectedCategory == SettingsCategory.APP_GRID,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_grid),
@@ -230,6 +247,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_overview),
                     subtitle = overviewSubtitle,
+                    selected = selectedCategory == SettingsCategory.OVERVIEW,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_overview),
@@ -244,6 +262,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_search),
                     subtitle = searchSubtitle,
+                    selected = selectedCategory == SettingsCategory.SEARCH,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_search),
@@ -258,6 +277,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_folders),
                     subtitle = foldersSubtitle,
+                    selected = selectedCategory == SettingsCategory.FOLDERS,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_folders),
@@ -272,6 +292,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_gestures),
                     subtitle = gesturesSubtitle,
+                    selected = selectedCategory == SettingsCategory.GESTURES,
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings_gestures),
@@ -322,6 +343,7 @@ fun SettingsHubScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_hub_about),
                     subtitle = aboutSubtitle,
+                    selected = selectedCategory == SettingsCategory.ABOUT,
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Info,

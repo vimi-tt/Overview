@@ -130,10 +130,10 @@ fun HomeAppPickerScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .widthIn(max = 600.dp)
+                .widthIn(max = 840.dp)
                 .fillMaxWidth(),
         ) {
-            val columns = (maxWidth / 88.dp).toInt().coerceIn(4, 6)
+            val columns = (maxWidth / 92.dp).toInt().coerceIn(4, 8)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
                 modifier = Modifier.fillMaxSize(),
@@ -254,7 +254,7 @@ fun HomeWidgetPickerScreen(
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .widthIn(max = 600.dp)
+                    .widthIn(max = 760.dp)
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),

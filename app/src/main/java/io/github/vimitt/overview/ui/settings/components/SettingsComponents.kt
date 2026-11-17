@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -50,6 +51,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +72,8 @@ import io.github.vimitt.overview.R
 import io.github.vimitt.overview.ui.components.ExpressiveButtonGroup
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 import io.github.vimitt.overview.ui.theme.bestOnColor
+
+val LocalSettingsDualPane = compositionLocalOf { false }
 
 /**
  * Estrutura base das páginas de configurações no estilo Adwaita (HeaderBar leve + lista agrupada).
@@ -82,28 +87,33 @@ fun SettingsScaffold(
 ) {
     val colors = OverviewTheme.colors
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(colors.windowBackground)
             .statusBarsPadding()
             .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        SettingsTopBar(
-            title = title,
-            onBack = onBack,
-        )
+        val horizontalPad = if (maxWidth >= 600.dp) 24.dp else 16.dp
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            SettingsTopBar(
+                title = title,
+                onBack = onBack,
+            )
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .widthIn(max = 720.dp)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            content = content,
-        )
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 720.dp)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = horizontalPad, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                content = content,
+            )
+        }
     }
 }
 
@@ -115,6 +125,7 @@ fun SettingsTopBar(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showBackButton: Boolean = !LocalSettingsDualPane.current,
 ) {
     val colors = OverviewTheme.colors
 
@@ -123,20 +134,27 @@ fun SettingsTopBar(
             .fillMaxWidth()
             .widthIn(max = 720.dp)
             .defaultMinSize(minHeight = 56.dp)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(
+                start = if (showBackButton) 8.dp else 24.dp,
+                end = 16.dp,
+                top = 6.dp,
+                bottom = 6.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.size(48.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.settings_back_content_description),
-                tint = colors.onSurface,
-            )
+        if (showBackButton) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.settings_back_content_description),
+                    tint = colors.onSurface,
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
         }
-        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = title,
             style = OverviewTheme.typography.topBarTitle,
@@ -210,6 +228,8 @@ fun SettingsRow(
     trailingContent: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     role: Role? = null,
+    titleColor: Color? = null,
+    subtitleColor: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
@@ -241,14 +261,18 @@ fun SettingsRow(
             Text(
                 text = title,
                 style = OverviewTheme.typography.rowTitle,
-                color = if (enabled) colors.onSurface else colors.onSurfaceMuted,
+                color = when {
+                    !enabled -> colors.onSurfaceMuted
+                    titleColor != null -> titleColor
+                    else -> colors.onSurface
+                },
             )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceMuted,
+                    color = subtitleColor ?: colors.onSurfaceMuted,
                 )
             }
         }
@@ -271,8 +295,16 @@ fun NavigationRow(
     subtitle: String? = null,
     icon: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
+    selected: Boolean = false,
 ) {
     val colors = OverviewTheme.colors
+    val selectedModifier = if (selected) {
+        modifier
+            .background(colors.accentContainer.copy(alpha = 0.65f))
+            .semantics { this.selected = true }
+    } else {
+        modifier
+    }
     SettingsRow(
         title = title,
         subtitle = subtitle,
@@ -280,12 +312,14 @@ fun NavigationRow(
         enabled = enabled,
         onClick = onClick,
         role = Role.Button,
-        modifier = modifier,
+        titleColor = if (selected) colors.onAccentContainer else null,
+        subtitleColor = if (selected) colors.onAccentContainer.copy(alpha = 0.80f) else null,
+        modifier = selectedModifier,
         trailingContent = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = colors.onSurfaceMuted,
+                tint = if (selected) colors.onAccentContainer else colors.onSurfaceMuted,
             )
         },
     )
