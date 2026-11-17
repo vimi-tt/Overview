@@ -1,5 +1,6 @@
 package io.github.vimitt.overview.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +68,8 @@ fun OverviewSearchBar(
     onOpenQuickSettings: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
+    val motion = OverviewTheme.motion
+    val isExpressive = OverviewTheme.components.isExpressive
     var isFocused by remember { mutableStateOf(false) }
     var fieldValue by remember {
         mutableStateOf(TextFieldValue(text = query, selection = TextRange(query.length)))
@@ -78,7 +83,20 @@ fun OverviewSearchBar(
     }
 
     val shape = OverviewTheme.shapes.pill
-    val borderColor = if (isFocused) colors.accent else colors.hairlineBorder
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isExpressive) {
+            lerp(colors.surfaceContainerHigh, colors.accentContainer, if (isFocused) 0.22f else 0.10f)
+        } else {
+            colors.searchFieldBackground
+        },
+        animationSpec = motion.effectSpec(durationMillis = 150),
+        label = "searchBarBg",
+    )
+    val borderColor = when {
+        isFocused -> colors.accent
+        isExpressive -> colors.outlineVariant
+        else -> colors.hairlineBorder
+    }
     val borderWidth = if (isFocused) 1.5.dp else 1.dp
 
     Row(
@@ -86,17 +104,34 @@ fun OverviewSearchBar(
             .fillMaxWidth()
             .heightIn(min = 50.dp)
             .clip(shape)
-            .background(colors.searchFieldBackground)
+            .background(backgroundColor)
             .border(width = borderWidth, color = borderColor, shape = shape)
-            .padding(start = 16.dp, end = 6.dp),
+            .padding(start = if (isExpressive) 10.dp else 16.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Filled.Search,
-            contentDescription = stringResource(R.string.search_apps_content_description),
-            tint = if (isFocused) colors.accent else colors.onSurfaceMuted,
-            modifier = Modifier.size(20.dp),
-        )
+        if (isExpressive) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(if (isFocused) colors.accentContainer else colors.surfaceElevated),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.search_apps_content_description),
+                    tint = if (isFocused) colors.onAccentContainer else colors.onSurfaceMuted,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        } else {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = stringResource(R.string.search_apps_content_description),
+                tint = if (isFocused) colors.accent else colors.onSurfaceMuted,
+                modifier = Modifier.size(20.dp),
+            )
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 

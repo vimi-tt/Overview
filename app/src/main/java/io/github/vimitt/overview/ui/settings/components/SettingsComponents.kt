@@ -98,7 +98,7 @@ fun SettingsScaffold(
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
-                .widthIn(max = 620.dp)
+                .widthIn(max = 720.dp)
                 .fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -121,7 +121,7 @@ fun SettingsTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .widthIn(max = 620.dp)
+            .widthIn(max = 720.dp)
             .defaultMinSize(minHeight = 56.dp)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -164,7 +164,7 @@ fun SettingsGroup(
     val typography = OverviewTheme.typography
     val shape = shapes.settingsGroup
     val borderColor = if (components.useTonalCardBorder) {
-        colors.accent.copy(alpha = 0.28f)
+        colors.outlineVariant
     } else {
         colors.hairlineBorder
     }
@@ -174,7 +174,7 @@ fun SettingsGroup(
             Text(
                 text = title,
                 style = typography.sectionHeader,
-                color = if (components.isExpressive) colors.accent else colors.onSurfaceMuted,
+                color = colors.onSurfaceMuted,
                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
             )
         }
@@ -213,8 +213,6 @@ fun SettingsRow(
     onClick: (() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
-    val components = OverviewTheme.components
-    val shapes = OverviewTheme.shapes
     val clickModifier = if (onClick != null) {
         Modifier.clickable(enabled = enabled, role = role, onClick = onClick)
     } else {
@@ -231,17 +229,7 @@ fun SettingsRow(
     ) {
         if (icon != null) {
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .then(
-                        if (components.isExpressive) {
-                            Modifier
-                                .clip(shapes.small)
-                                .background(colors.accentContainer.copy(alpha = 0.55f))
-                        } else {
-                            Modifier
-                        },
-                    ),
+                modifier = Modifier.size(32.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 icon()
@@ -525,7 +513,7 @@ fun <T> SegmentedRow(
                         modifier = Modifier
                             .weight(1f)
                             .defaultMinSize(minHeight = 48.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(containerShape)
                             .background(if (isSelected) colors.accent else Color.Transparent)
                             .selectable(
                                 selected = isSelected,
@@ -576,9 +564,11 @@ fun <T> SingleChoiceRow(
     )
 
     if (dialogOpen) {
+        val isExpressive = OverviewTheme.components.isExpressive
         AlertDialog(
             onDismissRequest = { dialogOpen = false },
-            containerColor = colors.surfaceContainer,
+            shape = OverviewTheme.shapes.large,
+            containerColor = if (isExpressive) colors.surfaceContainerHigh else colors.surfaceContainer,
             titleContentColor = colors.onSurface,
             textContentColor = colors.onSurface,
             title = {

@@ -117,6 +117,16 @@ class OverviewThemeTokensTest {
             shapeFamily = ShapeFamily.EXPRESSIVE,
         )
         assertTrue(expressiveShapes.settingsGroupRadius > OverviewCornerRadius.SettingsGroup)
+
+        for (style in VisualStyle.entries) {
+            for (family in ShapeFamily.entries) {
+                val tokens = overviewShapeTokens(visualStyle = style, shapeFamily = family)
+                assertTrue(tokens.smallRadius < tokens.settingsGroupRadius)
+                assertTrue(tokens.settingsGroupRadius < tokens.mediumRadius)
+                assertTrue(tokens.mediumRadius < tokens.largeRadius)
+                assertTrue(tokens.largeRadius < tokens.dashRadius)
+            }
+        }
     }
 
     @Test

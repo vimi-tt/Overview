@@ -275,7 +275,7 @@ fun GnomeQuickSettingsPanel(
     ) {
         Column(
             modifier = Modifier
-                .widthIn(max = 410.dp)
+                .widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .graphicsLayer {
                     val scale = if (isExpressive) {
@@ -810,9 +810,23 @@ private fun GnomeToggleTile(
     enabled: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
+    val shapes = OverviewTheme.shapes
     val motion = OverviewTheme.motion
     val isExpressive = OverviewTheme.components.isExpressive
-    val tileShape = OverviewTheme.shapes.pill
+    val cornerRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = when {
+            !isExpressive -> shapes.pillRadius
+            active -> 999.dp
+            else -> shapes.mediumRadius
+        },
+        animationSpec = motion.spatialSpec(durationMillis = 180),
+        label = "qsTileCorner",
+    )
+    val tileShape = if (isExpressive) {
+        androidx.compose.foundation.shape.RoundedCornerShape(cornerRadius)
+    } else {
+        shapes.pill
+    }
 
     val targetFill = when {
         !enabled -> colors.surfaceContainer.copy(alpha = 0.55f)

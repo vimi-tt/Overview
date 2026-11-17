@@ -56,26 +56,15 @@ fun DashBar(
     val expressiveMotionEnabled = isExpressive && motion.usesSprings && !motion.reducedMotion
     val animateWhenVisible = expressiveMotionEnabled && isVisible
 
-    val entranceScale by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.94f,
-        animationSpec = if (animateWhenVisible) motion.spatialSpec() else snap(),
-        label = "dash_entrance_scale",
-    )
-    val entranceAlpha by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
-        animationSpec = if (animateWhenVisible) motion.effectSpec(durationMillis = 140) else snap(),
-        label = "dash_entrance_alpha",
-    )
-
     val containerShape = if (isExpressive) OverviewTheme.shapes.pill else OverviewTheme.shapes.dash
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val backgroundColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.26f).copy(alpha = clampedAlpha)
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.22f).copy(alpha = clampedAlpha)
     } else {
         colors.dashBackground.copy(alpha = clampedAlpha)
     }
     val borderColor = if (isExpressive) {
-        colors.accent.copy(alpha = 0.28f * clampedAlpha)
+        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * clampedAlpha).coerceIn(0f, 1f))
     } else {
         colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * clampedAlpha)
     }
@@ -85,20 +74,9 @@ fun DashBar(
             .widthIn(max = 420.dp)
             .fillMaxWidth()
             .then(
-                if (expressiveMotionEnabled) {
-                    Modifier.graphicsLayer {
-                        scaleX = entranceScale
-                        scaleY = entranceScale
-                        alpha = entranceAlpha
-                    }
-                } else {
-                    Modifier
-                },
-            )
-            .then(
                 if (isExpressive && clampedAlpha > 0.15f) {
                     Modifier.shadow(
-                        elevation = (10f * clampedAlpha).dp,
+                        elevation = (6f * clampedAlpha).dp,
                         shape = containerShape,
                         clip = false,
                     )

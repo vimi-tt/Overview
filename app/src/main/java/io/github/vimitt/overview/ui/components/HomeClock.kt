@@ -214,17 +214,6 @@ fun HomeClock(
     val expressiveMotionEnabled = isExpressive && motion.usesSprings && !motion.reducedMotion
     val animateWhileVisible = expressiveMotionEnabled && isVisible
 
-    val entranceScale by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.94f,
-        animationSpec = if (animateWhileVisible) motion.spatialSpec() else snap(),
-        label = "clock_entrance_scale",
-    )
-    val entranceAlpha by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
-        animationSpec = if (animateWhileVisible) motion.effectSpec(durationMillis = 140) else snap(),
-        label = "clock_entrance_alpha",
-    )
-
     val minuteTickPulse = remember { Animatable(1f) }
     val minuteKey = remember(now) { currentTimeMillis / 60_000L }
     var lastAnimatedMinute by remember { mutableLongStateOf(minuteKey) }
@@ -250,9 +239,8 @@ fun HomeClock(
     val clockModifier = if (expressiveMotionEnabled) {
         modifier.graphicsLayer {
             val pulse = minuteTickPulse.value
-            scaleX = entranceScale * pulse
-            scaleY = entranceScale * pulse
-            alpha = entranceAlpha
+            scaleX = pulse
+            scaleY = pulse
         }
     } else {
         modifier
@@ -455,29 +443,23 @@ fun HomeClock(
 }
 
 @Composable
-private fun ClockDateChip(
+private fun ClockDateText(
     text: String,
     compact: Boolean,
-    fillColor: Color,
-    textColor: Color,
-    borderColor: Color,
+    isExpressive: Boolean,
+    color: Color,
+    shadow: Shadow?,
 ) {
-    val shape = OverviewTheme.shapes.pill
     Text(
         text = text,
-        style = (if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall)
-            .copy(fontWeight = FontWeight.SemiBold),
-        color = textColor,
+        style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+            .copy(
+                fontWeight = if (isExpressive) FontWeight.SemiBold else null,
+                shadow = shadow,
+            ),
+        color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .clip(shape)
-            .background(fillColor)
-            .border(width = 1.dp, color = borderColor, shape = shape)
-            .padding(
-                horizontal = if (compact) 10.dp else 14.dp,
-                vertical = if (compact) 3.dp else 5.dp,
-            ),
     )
 }
 
@@ -494,6 +476,7 @@ private fun ClockWeatherBadge(
     shadow: Shadow?,
     onWeatherClick: (() -> Unit)?,
     onEnableLocationClick: (() -> Unit)?,
+    embeddedInPill: Boolean = false,
 ) {
     val weatherMeta = LocalClockWeatherMeta.current
     val savedLocation = weatherMeta.savedLocation
@@ -528,7 +511,7 @@ private fun ClockWeatherBadge(
         else -> stringResource(R.string.clock_enable_location_cta)
     }
 
-    if (isExpressive) {
+    if (isExpressive && !embeddedInPill) {
         Row(
             modifier = Modifier
                 .clip(shape)
@@ -697,22 +680,13 @@ private fun GnomeClassicClock(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (isExpressive) {
-                ClockDateChip(
-                    text = dateText,
-                    compact = compact,
-                    fillColor = chipFill,
-                    textColor = chipTextColor,
-                    borderColor = chipBorder,
-                )
-            } else {
-                Text(
-                    text = dateText,
-                    style = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
-                        .copy(shadow = shadow),
-                    color = secondaryColor,
-                )
-            }
+            ClockDateText(
+                text = dateText,
+                compact = compact,
+                isExpressive = isExpressive,
+                color = secondaryColor,
+                shadow = shadow,
+            )
             val weatherMeta = LocalClockWeatherMeta.current
             if (weather != null || weatherMeta.savedLocation != null || showLocationCta) {
                 if (!isExpressive) {
@@ -819,21 +793,13 @@ private fun StackedClock(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                if (isExpressive) {
-                    ClockDateChip(
-                        text = shortDateText,
-                        compact = true,
-                        fillColor = chipFill,
-                        textColor = chipTextColor,
-                        borderColor = chipBorder,
-                    )
-                } else {
-                    Text(
-                        text = shortDateText,
-                        style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow),
-                        color = secondaryColor,
-                    )
-                }
+                ClockDateText(
+                    text = shortDateText,
+                    compact = true,
+                    isExpressive = isExpressive,
+                    color = secondaryColor,
+                    shadow = shadow,
+                )
                 ClockWeatherBadge(
                     weather = weather,
                     showLocationCta = showLocationCta,
@@ -883,21 +849,13 @@ private fun StackedClock(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (isExpressive) {
-                    ClockDateChip(
-                        text = shortDateText,
-                        compact = false,
-                        fillColor = chipFill,
-                        textColor = chipTextColor,
-                        borderColor = chipBorder,
-                    )
-                } else {
-                    Text(
-                        text = shortDateText,
-                        style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                        color = secondaryColor,
-                    )
-                }
+                ClockDateText(
+                    text = shortDateText,
+                    compact = false,
+                    isExpressive = isExpressive,
+                    color = secondaryColor,
+                    shadow = shadow,
+                )
                 ClockWeatherBadge(
                     weather = weather,
                     showLocationCta = showLocationCta,
@@ -965,21 +923,13 @@ private fun AnalogClock(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                if (isExpressive) {
-                    ClockDateChip(
-                        text = dateText,
-                        compact = true,
-                        fillColor = chipFill,
-                        textColor = chipTextColor,
-                        borderColor = chipBorder,
-                    )
-                } else {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.titleSmall.copy(shadow = shadow),
-                        color = dateColor,
-                    )
-                }
+                ClockDateText(
+                    text = dateText,
+                    compact = true,
+                    isExpressive = isExpressive,
+                    color = dateColor,
+                    shadow = shadow,
+                )
                 ClockWeatherBadge(
                     weather = weather,
                     showLocationCta = showLocationCta,
@@ -1016,21 +966,13 @@ private fun AnalogClock(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (isExpressive) {
-                    ClockDateChip(
-                        text = dateText,
-                        compact = false,
-                        fillColor = chipFill,
-                        textColor = chipTextColor,
-                        borderColor = chipBorder,
-                    )
-                } else {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.titleMedium.copy(shadow = shadow),
-                        color = dateColor,
-                    )
-                }
+                ClockDateText(
+                    text = dateText,
+                    compact = false,
+                    isExpressive = isExpressive,
+                    color = dateColor,
+                    shadow = shadow,
+                )
                 ClockWeatherBadge(
                     weather = weather,
                     showLocationCta = showLocationCta,
@@ -1426,6 +1368,7 @@ private fun PillClock(
             shadow = null,
             onWeatherClick = onWeatherClick,
             onEnableLocationClick = onEnableLocationClick,
+            embeddedInPill = true,
         )
     }
 }
@@ -1526,13 +1469,14 @@ private fun FullPillSummaryClock(
                 showLocationCta = showLocationCta,
                 compact = compact,
                 isExpressive = isExpressive,
-                textColor = if (isExpressive) onAccentContainer else primaryColor,
+                textColor = primaryColor,
                 accentColor = accentColor,
                 fillColor = accentContainer.copy(alpha = 0.72f),
                 borderColor = borderColor,
                 shadow = null,
                 onWeatherClick = onWeatherClick,
                 onEnableLocationClick = onEnableLocationClick,
+                embeddedInPill = true,
             )
 
             if (isExpressive) {

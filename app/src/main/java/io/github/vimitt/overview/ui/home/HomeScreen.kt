@@ -1171,35 +1171,21 @@ private fun DockSearchBarPill(
     backgroundAlpha: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isVisible: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") isVisible: Boolean = true,
 ) {
     val colors = OverviewTheme.colors
-    val motion = OverviewTheme.motion
     val isExpressive = OverviewTheme.components.isExpressive
-    val expressiveMotionEnabled = isExpressive && motion.usesSprings && !motion.reducedMotion
-    val animateWhenVisible = expressiveMotionEnabled && isVisible
-
-    val entranceScale by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.94f,
-        animationSpec = if (animateWhenVisible) motion.expressiveSpec() else snap(),
-        label = "dock_search_scale",
-    )
-    val entranceAlpha by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
-        animationSpec = if (animateWhenVisible) motion.effectSpec(durationMillis = 140) else snap(),
-        label = "dock_search_alpha",
-    )
 
     val shape = OverviewTheme.shapes.pill
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
     val backgroundColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.24f).copy(alpha = effectiveAlpha)
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.18f).copy(alpha = effectiveAlpha)
     } else {
         colors.dashBackground.copy(alpha = effectiveAlpha)
     }
     val borderColor = if (isExpressive) {
-        colors.accent.copy(alpha = 0.26f * effectiveAlpha)
+        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * effectiveAlpha).coerceIn(0f, 1f))
     } else {
         colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * effectiveAlpha)
     }
@@ -1208,21 +1194,11 @@ private fun DockSearchBarPill(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
-            .then(
-                if (expressiveMotionEnabled) {
-                    Modifier.graphicsLayer {
-                        scaleX = entranceScale
-                        scaleY = entranceScale
-                        alpha = entranceAlpha
-                    }
-                } else {
-                    Modifier
-                },
-            )
+            .defaultMinSize(minHeight = 48.dp)
             .then(
                 if (isExpressive) {
                     Modifier.shadow(
-                        elevation = (8f * effectiveAlpha).dp,
+                        elevation = (4f * effectiveAlpha).dp,
                         shape = shape,
                         clip = false,
                     )

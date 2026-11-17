@@ -564,45 +564,45 @@ fun LauncherRoot(
         val settingsEnterTransition = if (reducedMotion || !motion.usesSprings) {
             enterTransition
         } else {
-            // Abertura expressiva com expansão central e mola mais presente para Configurações
-            fadeIn(motion.effectSpec(durationMillis = 200, durationScale = modalDurationScale)) +
+            // Transição contida de mola espacial para configurações (superfície de formulário/leitura)
+            fadeIn(motion.effectSpec(durationMillis = 180, durationScale = modalDurationScale)) +
                 scaleIn(
-                    initialScale = 0.88f,
+                    initialScale = 0.94f,
                     transformOrigin = TransformOrigin.Center,
-                    animationSpec = motion.expressiveSpec(
-                        durationMillis = 280,
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 220,
                         durationScale = modalDurationScale,
                     ),
                 ) +
                 slideInVertically(
-                    animationSpec = motion.expressiveSpec(
-                        durationMillis = 280,
+                    animationSpec = motion.spatialSpec(
+                        durationMillis = 220,
                         durationScale = modalDurationScale,
                         visibilityThreshold = IntOffset.VisibilityThreshold,
                     ),
-                    initialOffsetY = { fullHeight -> fullHeight / 8 },
+                    initialOffsetY = { fullHeight -> fullHeight / 12 },
                 )
         }
 
         val settingsExitTransition = if (reducedMotion || !motion.usesSprings) {
             exitTransition
         } else {
-            fadeOut(motion.effectSpec(durationMillis = 150, durationScale = modalDurationScale)) +
+            fadeOut(motion.effectSpec(durationMillis = 140, durationScale = modalDurationScale)) +
                 scaleOut(
-                    targetScale = 0.92f,
+                    targetScale = 0.95f,
                     transformOrigin = TransformOrigin.Center,
                     animationSpec = motion.spatialSpec(
-                        durationMillis = 170,
+                        durationMillis = 160,
                         durationScale = modalDurationScale,
                     ),
                 ) +
                 slideOutVertically(
                     animationSpec = motion.spatialSpec(
-                        durationMillis = 170,
+                        durationMillis = 160,
                         durationScale = modalDurationScale,
                         visibilityThreshold = IntOffset.VisibilityThreshold,
                     ),
-                    targetOffsetY = { fullHeight -> fullHeight / 10 },
+                    targetOffsetY = { fullHeight -> fullHeight / 14 },
                 )
         }
 

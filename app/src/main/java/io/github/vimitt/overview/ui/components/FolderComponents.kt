@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -505,7 +507,12 @@ fun FolderEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = colors.surfaceContainer,
+        shape = OverviewTheme.shapes.large,
+        containerColor = if (OverviewTheme.components.isExpressive) {
+            colors.surfaceContainerHigh
+        } else {
+            colors.surfaceContainer
+        },
         titleContentColor = colors.onSurface,
         textContentColor = colors.onSurface,
         title = { Text(stringResource(titleRes)) },
@@ -608,14 +615,15 @@ fun FolderEditorDialog(
         },
         confirmButton = {
             val canSave = folderName.isNotBlank() && selectedKeys.isNotEmpty()
-            TextButton(
+            Button(
                 enabled = canSave,
                 onClick = { onSave(folderName, selectedKeys.toList()) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = colors.onAccent,
+                ),
             ) {
-                Text(
-                    text = stringResource(R.string.settings_folder_save),
-                    color = if (canSave) colors.accent else colors.onSurfaceMuted,
-                )
+                Text(text = stringResource(R.string.settings_folder_save))
             }
         },
     )

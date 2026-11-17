@@ -114,8 +114,8 @@ fun overviewShapeTokens(
     val smallR = (OverviewCornerRadius.Small.value * scale).dp
     val groupR = (OverviewCornerRadius.SettingsGroup.value * scale).dp
     val mediumR = (OverviewCornerRadius.Medium.value * scale).dp
-    val largeR = (OverviewCornerRadius.Large.value * scale).dp
-    val dashR = (OverviewCornerRadius.Dash.value * scale.coerceAtMost(1.25f)).dp
+    val largeR = (OverviewCornerRadius.Large.value * scale.coerceAtMost(1.18f)).dp
+    val dashR = (OverviewCornerRadius.Dash.value * scale.coerceAtMost(1.26f)).dp
 
     val smallShape = RoundedCornerShape(smallR)
     val groupShape = RoundedCornerShape(groupR)

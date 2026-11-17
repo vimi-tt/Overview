@@ -29,6 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -424,15 +426,17 @@ fun AppearanceSettingsScreen(
 
     if (showNotificationAccessDialog) {
         val colors = OverviewTheme.colors
+        val isExpressive = OverviewTheme.components.isExpressive
         AlertDialog(
             onDismissRequest = { showNotificationAccessDialog = false },
-            containerColor = colors.surfaceContainer,
+            shape = OverviewTheme.shapes.large,
+            containerColor = if (isExpressive) colors.surfaceContainerHigh else colors.surfaceContainer,
             titleContentColor = colors.onSurface,
             textContentColor = colors.onSurface,
             title = { Text(stringResource(R.string.settings_notification_permission_title)) },
             text = { Text(stringResource(R.string.settings_notification_permission_body)) },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         showNotificationAccessDialog = false
                         val detailIntent = notificationBadgeRepository.createAccessSettingsIntent()
@@ -442,11 +446,12 @@ fun AppearanceSettingsScreen(
                             runCatching { context.startActivity(fallback) }
                         }
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent,
+                    ),
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_notification_permission_grant),
-                        color = colors.accent,
-                    )
+                    Text(text = stringResource(R.string.settings_notification_permission_grant))
                 }
             },
             dismissButton = {
@@ -560,7 +565,8 @@ private fun StyleMiniPreviewTile(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val tileShape = if (isExpressivePreview) RoundedCornerShape(22.dp) else RoundedCornerShape(14.dp)
+    val shapes = OverviewTheme.shapes
+    val tileShape = if (isExpressivePreview) shapes.large else shapes.settingsGroup
     val bgColor = when {
         selected && isExpressivePreview -> colors.accentContainer.copy(alpha = 0.62f)
         selected -> colors.surfaceElevated
@@ -779,7 +785,12 @@ private fun CustomAccentHexDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = colors.surfaceContainer,
+        shape = OverviewTheme.shapes.large,
+        containerColor = if (OverviewTheme.components.isExpressive) {
+            colors.surfaceContainerHigh
+        } else {
+            colors.surfaceContainer
+        },
         titleContentColor = colors.onSurface,
         textContentColor = colors.onSurface,
         title = {
@@ -823,7 +834,7 @@ private fun CustomAccentHexDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     val value = parseHexColorArgb(hexInput)
                     if (value != null) {
@@ -832,11 +843,12 @@ private fun CustomAccentHexDialog(
                         hasError = true
                     }
                 },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = colors.onAccent,
+                ),
             ) {
-                Text(
-                    text = stringResource(R.string.settings_custom_accent_apply),
-                    color = colors.accent,
-                )
+                Text(text = stringResource(R.string.settings_custom_accent_apply))
             }
         },
         dismissButton = {
@@ -888,7 +900,12 @@ private fun IconPackPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = colors.surfaceContainer,
+        shape = OverviewTheme.shapes.large,
+        containerColor = if (OverviewTheme.components.isExpressive) {
+            colors.surfaceContainerHigh
+        } else {
+            colors.surfaceContainer
+        },
         titleContentColor = colors.onSurface,
         textContentColor = colors.onSurface,
         title = {

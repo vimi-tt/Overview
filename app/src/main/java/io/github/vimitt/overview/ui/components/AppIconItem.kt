@@ -187,12 +187,12 @@ fun AppIconItem(
                     val gen = ++morphGeneration
                     morphActive = true
                     var pressJob: Job? = coroutineScope.launch {
-                        morphAnimatable.animateTo(1f, currentMorphSpec)
+                        morphAnimatable.animateTo(0.42f, currentMorphSpec)
                     }
                     try {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Main)
-                            if (event.changes.none { it.pressed }) break
+                            if (dragState.isDragging || event.changes.none { it.pressed }) break
                         }
                     } finally {
                         pressJob?.cancel()

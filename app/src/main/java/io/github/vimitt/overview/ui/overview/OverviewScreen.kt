@@ -448,7 +448,7 @@ fun OverviewScreen(
                     }
                 },
                 modifier = Modifier
-                    .widthIn(max = 520.dp)
+                    .widthIn(max = 600.dp)
                     .padding(top = 8.dp),
             )
 

@@ -45,14 +45,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.vimitt.overview.domain.model.IconShape
 import io.github.vimitt.overview.ui.components.OverviewPolygonFactory
 import io.github.vimitt.overview.ui.theme.OverviewTheme
 
@@ -87,63 +85,47 @@ fun NativeWidgetCard(
     val animateWhenVisible = expressiveMotionEnabled && isVisible
 
     val entranceScale by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0.91f,
-        animationSpec = if (animateWhenVisible) motion.expressiveSpec() else snap(),
-        label = "native_widget_scale",
-    )
-    val entranceOffsetY by animateDpAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 0.dp else 10.dp,
+        targetValue = 1f,
         animationSpec = if (animateWhenVisible) motion.spatialSpec() else snap(),
-        label = "native_widget_offset",
-    )
-    val entranceAlpha by animateFloatAsState(
-        targetValue = if (isVisible || !expressiveMotionEnabled) 1f else 0f,
-        animationSpec = if (animateWhenVisible) motion.effectSpec(durationMillis = 160) else snap(),
-        label = "native_widget_alpha",
+        label = "native_widget_scale",
     )
 
     val cornerRadius by animateDpAsState(
         targetValue = when {
             isExpressive && isMoving -> 18.dp
-            isExpressive -> shapes.dashRadius
+            isExpressive -> shapes.largeRadius
             else -> shapes.largeRadius
         },
-        animationSpec = if (animateWhenVisible) motion.expressiveSpec() else snap(),
+        animationSpec = if (animateWhenVisible) motion.spatialSpec() else snap(),
         label = "native_widget_corner",
     )
     val containerShape = if (isExpressive) RoundedCornerShape(cornerRadius) else shapes.large
 
     val containerColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.28f).copy(alpha = 0.94f)
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.16f).copy(alpha = 0.94f)
     } else {
         colors.surface.copy(alpha = 0.88f)
     }
     val borderColor = when {
         isMoving -> colors.accent
-        isExpressive -> colors.accent.copy(alpha = 0.36f)
+        isExpressive -> colors.outlineVariant
         else -> colors.hairlineBorder
     }
-    val borderWidth = if (isMoving) 2.dp else if (isExpressive) 1.2.dp else 1.dp
+    val borderWidth = if (isMoving) 2.dp else 1.dp
 
     val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
     val coordsHolder = remember { NativeWidgetCoordinatesHolder() }
     val currentOnDragStart by rememberUpdatedState(onDragStart)
     val currentOnDragMove by rememberUpdatedState(onDragMove)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnDragCancel by rememberUpdatedState(onDragCancel)
 
-    // Formas geométricas reutilizáveis para a textura expressiva de fundo
+    // Forma geométrica sutil reutilizável no fundo Expressive sem poluir a leitura
     val scallopPolygon = remember(isExpressive) {
         if (isExpressive) OverviewPolygonFactory.clockScallopPolygon() else null
     }
-    val cloverPolygon = remember(isExpressive) {
-        if (isExpressive) OverviewPolygonFactory.iconPolygon(IconShape.CLOVER, 0.7f) else null
-    }
-    val decoAndroidPath1 = remember(isExpressive) { if (isExpressive) AndroidPath() else null }
-    val decoComposePath1 = remember(decoAndroidPath1) { decoAndroidPath1?.asComposePath() }
-    val decoAndroidPath2 = remember(isExpressive) { if (isExpressive) AndroidPath() else null }
-    val decoComposePath2 = remember(decoAndroidPath2) { decoAndroidPath2?.asComposePath() }
+    val decoAndroidPath = remember(isExpressive) { if (isExpressive) AndroidPath() else null }
+    val decoComposePath = remember(decoAndroidPath) { decoAndroidPath?.asComposePath() }
     val decoMatrix = remember(isExpressive) { if (isExpressive) Matrix() else null }
 
     val horizontalPad = if (compactPadding) 10.dp else if (isExpressive) 13.dp else 12.dp
@@ -154,12 +136,9 @@ fun NativeWidgetCard(
             .fillMaxSize()
             .then(
                 if (expressiveMotionEnabled) {
-                    val offsetPx = with(density) { entranceOffsetY.toPx() }
                     Modifier.graphicsLayer {
                         scaleX = entranceScale
                         scaleY = entranceScale
-                        translationY = offsetPx
-                        alpha = entranceAlpha
                     }
                 } else {
                     Modifier
@@ -195,7 +174,7 @@ fun NativeWidgetCard(
             }
             .then(
                 if (isExpressive) {
-                    Modifier.shadow(elevation = 10.dp, shape = containerShape, clip = false)
+                    Modifier.shadow(elevation = 4.dp, shape = containerShape, clip = false)
                 } else {
                     Modifier
                 },
@@ -213,35 +192,21 @@ fun NativeWidgetCard(
     ) {
         if (isExpressive &&
             scallopPolygon != null &&
-            cloverPolygon != null &&
-            decoAndroidPath1 != null &&
-            decoComposePath1 != null &&
-            decoAndroidPath2 != null &&
-            decoComposePath2 != null &&
+            decoAndroidPath != null &&
+            decoComposePath != null &&
             decoMatrix != null
         ) {
-            val accentBlobColor = colors.accentContainer.copy(alpha = 0.42f)
-            val secondaryBlobColor = colors.accent.copy(alpha = 0.14f)
+            val accentBlobColor = colors.accentContainer.copy(alpha = 0.22f)
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val primarySize = (size.minDimension * 0.72f).coerceAtLeast(56.dp.toPx())
+                val primarySize = (size.minDimension * 0.66f).coerceAtLeast(52.dp.toPx())
                 OverviewPolygonFactory.fillScaledAndroidPath(
                     polygon = scallopPolygon,
                     sizePx = primarySize,
-                    outPath = decoAndroidPath1,
+                    outPath = decoAndroidPath,
                     workMatrix = decoMatrix,
                 )
-                decoAndroidPath1.offset(size.width - primarySize * 0.62f, -primarySize * 0.28f)
-                drawPath(path = decoComposePath1, color = accentBlobColor)
-
-                val secondarySize = (size.minDimension * 0.56f).coerceAtLeast(42.dp.toPx())
-                OverviewPolygonFactory.fillScaledAndroidPath(
-                    polygon = cloverPolygon,
-                    sizePx = secondarySize,
-                    outPath = decoAndroidPath2,
-                    workMatrix = decoMatrix,
-                )
-                decoAndroidPath2.offset(-secondarySize * 0.34f, size.height - secondarySize * 0.64f)
-                drawPath(path = decoComposePath2, color = secondaryBlobColor)
+                decoAndroidPath.offset(size.width - primarySize * 0.62f, -primarySize * 0.28f)
+                drawPath(path = decoComposePath, color = accentBlobColor)
             }
         }
 
@@ -276,11 +241,7 @@ fun NativeWidgetHeader(
     ) {
         if (isExpressive) {
             Row(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .clip(shapes.pill)
-                    .background(colors.accentContainer.copy(alpha = 0.72f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -289,14 +250,14 @@ fun NativeWidgetHeader(
                         .clip(CircleShape)
                         .background(colors.accent),
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = title,
                     style = typography.sectionHeader.copy(
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                     ),
-                    color = colors.onAccentContainer,
+                    color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
