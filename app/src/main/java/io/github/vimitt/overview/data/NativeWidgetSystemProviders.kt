@@ -125,13 +125,43 @@ object NativeWidgetSystemProviders {
     suspend fun readUpcomingCalendarEvents(
         context: Context,
         limit: Int = 5,
+    ): List<CalendarEventItem> {
+        val now = System.currentTimeMillis()
+        return queryCalendarInstances(
+            context = context,
+            windowStart = now - 10 * 60_000L,
+            windowEnd = now + 14L * 24 * 60 * 60_000L,
+            minEndMs = now,
+            limit = limit,
+        )
+    }
+
+    /**
+     * Lê eventos do calendário dentro de uma janela específica (ex.: um mês inteiro no painel do relógio).
+     */
+    suspend fun readCalendarEventsForRange(
+        context: Context,
+        startMs: Long,
+        endMs: Long,
+        limit: Int = 150,
+    ): List<CalendarEventItem> = queryCalendarInstances(
+        context = context,
+        windowStart = startMs,
+        windowEnd = endMs,
+        minEndMs = startMs,
+        limit = limit,
+    )
+
+    private suspend fun queryCalendarInstances(
+        context: Context,
+        windowStart: Long,
+        windowEnd: Long,
+        minEndMs: Long,
+        limit: Int,
     ): List<CalendarEventItem> = withContext(Dispatchers.IO) {
         if (!hasCalendarPermission(context)) return@withContext emptyList()
 
         runCatching {
-            val now = System.currentTimeMillis()
-            val windowStart = now - 10 * 60_000L
-            val windowEnd = now + 14L * 24 * 60 * 60_000L
             val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
             ContentUris.appendId(builder, windowStart)
             ContentUris.appendId(builder, windowEnd)
@@ -178,7 +208,7 @@ object NativeWidgetSystemProviders {
                     val eventId = c.safeLongOrNull(idIdx) ?: continue
                     val beginMs = c.safeLongOrNull(beginIdx) ?: continue
                     val endMs = c.safeLongOrNull(endIdx) ?: beginMs
-                    if (endMs < now) continue
+                    if (endMs < minEndMs) continue
                     val title = c.safeStringOrEmpty(titleIdx).trim()
                     val allDay = c.safeIntOrZero(allDayIdx) == 1
                     val location = c.safeStringOrEmpty(locIdx).trim()

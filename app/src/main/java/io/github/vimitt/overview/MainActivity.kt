@@ -129,6 +129,8 @@ class MainActivity : ComponentActivity() {
     private var isAppPickerOpen by mutableStateOf(false)
     private var isWidgetPickerOpen by mutableStateOf(false)
     private var isQuickSettingsOpen by mutableStateOf(false)
+    private var isHomePagesOpen by mutableStateOf(false)
+    private var isClockCalendarOpen by mutableStateOf(false)
     private var openHomeFolderId by mutableStateOf<String?>(null)
     private var selectedHomeItemId by mutableStateOf<String?>(null)
     private var permissionRevision by mutableIntStateOf(0)
@@ -246,7 +248,8 @@ class MainActivity : ComponentActivity() {
                 val isOnboardingActive = loadedPreferences != null &&
                     (!preferences.onboardingCompleted || isOnboardingPreviewOpen)
                 val anyModalOpen = isOnboardingActive || isSettingsOpen || isAppPickerOpen ||
-                    isWidgetPickerOpen || isOverviewOpen || isQuickSettingsOpen
+                    isWidgetPickerOpen || isOverviewOpen || isQuickSettingsOpen ||
+                    isHomePagesOpen || isClockCalendarOpen
                 val hasNotificationAccess = remember(permissionRevision) {
                     appContainer.notificationBadgeRepository.hasNotificationAccess()
                 }
@@ -353,6 +356,8 @@ class MainActivity : ComponentActivity() {
                                 isAppPickerOpen = isAppPickerOpen,
                                 isWidgetPickerOpen = isWidgetPickerOpen,
                                 isQuickSettingsOpen = isQuickSettingsOpen,
+                                isHomePagesOpen = isHomePagesOpen,
+                                isClockCalendarOpen = isClockCalendarOpen,
                                 openHomeFolderId = openHomeFolderId,
                                 selectedHomeItem = selectedHomeItem,
                                 hasNotificationAccess = hasNotificationAccess,
@@ -369,9 +374,41 @@ class MainActivity : ComponentActivity() {
                                 onOpenQuickSettings = {
                                     isHomeMenuOpen = false
                                     selectedHomeItemId = null
+                                    isHomePagesOpen = false
+                                    isClockCalendarOpen = false
                                     isQuickSettingsOpen = true
                                 },
                                 onCloseQuickSettings = { isQuickSettingsOpen = false },
+                                onOpenHomePages = {
+                                    isHomeMenuOpen = false
+                                    selectedHomeItemId = null
+                                    isQuickSettingsOpen = false
+                                    isClockCalendarOpen = false
+                                    isHomePagesOpen = true
+                                },
+                                onCloseHomePages = { isHomePagesOpen = false },
+                                onCreateHomePage = {
+                                    homeViewModel.addHomePage { newPage ->
+                                        currentHomePage = newPage
+                                        isHomePagesOpen = false
+                                    }
+                                },
+                                onRemoveEmptyHomePage = { pageIndex ->
+                                    homeViewModel.removeEmptyHomePage(
+                                        pageIndex = pageIndex,
+                                        currentPage = currentHomePage,
+                                    ) { adjustedPage ->
+                                        currentHomePage = adjustedPage
+                                    }
+                                },
+                                onOpenClockCalendar = {
+                                    isHomeMenuOpen = false
+                                    selectedHomeItemId = null
+                                    isQuickSettingsOpen = false
+                                    isHomePagesOpen = false
+                                    isClockCalendarOpen = true
+                                },
+                                onCloseClockCalendar = { isClockCalendarOpen = false },
                                 onToggleThemeDark = { currentlyDark ->
                                     val nextMode = if (currentlyDark) ThemeMode.LIGHT else ThemeMode.DARK
                                     lifecycleScope.launch {
@@ -578,6 +615,9 @@ class MainActivity : ComponentActivity() {
     private fun openOverview() {
         isHomeMenuOpen = false
         selectedHomeItemId = null
+        isQuickSettingsOpen = false
+        isHomePagesOpen = false
+        isClockCalendarOpen = false
         homeViewModel.cancelResizingItem()
         isOverviewOpen = true
         if (currentPreferences.search.autoFocusOnOpen) {
@@ -588,6 +628,9 @@ class MainActivity : ComponentActivity() {
     private fun openOverviewSearch() {
         isHomeMenuOpen = false
         selectedHomeItemId = null
+        isQuickSettingsOpen = false
+        isHomePagesOpen = false
+        isClockCalendarOpen = false
         homeViewModel.cancelResizingItem()
         isOverviewOpen = true
         overviewFocusSearchTrigger++
@@ -609,6 +652,8 @@ class MainActivity : ComponentActivity() {
                 isHomeMenuOpen = false
                 selectedHomeItemId = null
                 openHomeFolderId = null
+                isHomePagesOpen = false
+                isClockCalendarOpen = false
                 isQuickSettingsOpen = true
             }
             LauncherGestureAction.EXPAND_NOTIFICATIONS -> SystemPanelHelper.expandNotificationsPanel(this)
@@ -617,6 +662,8 @@ class MainActivity : ComponentActivity() {
                     isHomeMenuOpen = false
                     selectedHomeItemId = null
                     openHomeFolderId = null
+                    isHomePagesOpen = false
+                    isClockCalendarOpen = false
                     isQuickSettingsOpen = true
                 }
             }
@@ -624,6 +671,8 @@ class MainActivity : ComponentActivity() {
                 isHomeMenuOpen = false
                 isOverviewOpen = false
                 isQuickSettingsOpen = false
+                isHomePagesOpen = false
+                isClockCalendarOpen = false
                 isSettingsOpen = true
             }
             LauncherGestureAction.OPEN_WALLPAPER -> openWallpaperPicker()
@@ -645,6 +694,8 @@ class MainActivity : ComponentActivity() {
                     isAppPickerOpen = false
                     isWidgetPickerOpen = false
                     isQuickSettingsOpen = false
+                    isHomePagesOpen = false
+                    isClockCalendarOpen = false
                     openHomeFolderId = null
                     selectedHomeItemId = null
                     isOverviewOpen = false
@@ -658,6 +709,8 @@ class MainActivity : ComponentActivity() {
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
                 isQuickSettingsOpen = false
+                isHomePagesOpen = false
+                isClockCalendarOpen = false
                 openHomeFolderId = null
                 selectedHomeItemId = null
                 isSettingsOpen = true
@@ -672,6 +725,8 @@ class MainActivity : ComponentActivity() {
                     !isAppPickerOpen &&
                     !isWidgetPickerOpen &&
                     !isQuickSettingsOpen &&
+                    !isHomePagesOpen &&
+                    !isClockCalendarOpen &&
                     openHomeFolderId == null &&
                     selectedHomeItemId == null
 
@@ -680,6 +735,8 @@ class MainActivity : ComponentActivity() {
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
                 isQuickSettingsOpen = false
+                isHomePagesOpen = false
+                isClockCalendarOpen = false
                 openHomeFolderId = null
                 selectedHomeItemId = null
                 isOverviewOpen = false
@@ -702,6 +759,8 @@ class MainActivity : ComponentActivity() {
                 isAppPickerOpen = false
                 isWidgetPickerOpen = false
                 isQuickSettingsOpen = false
+                isHomePagesOpen = false
+                isClockCalendarOpen = false
                 openHomeFolderId = null
                 selectedHomeItemId = null
                 isOverviewOpen = false

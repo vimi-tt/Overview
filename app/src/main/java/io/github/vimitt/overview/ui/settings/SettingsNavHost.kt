@@ -457,7 +457,6 @@ private fun SettingsDetailDestination(
                 onShowLabelsChange = viewModel::onShowLabelsChange,
                 onLabelScaleChange = viewModel::onLabelScaleChange,
                 onLockLayoutChange = viewModel::onLockLayoutChange,
-                onShowClockChange = viewModel::onShowClockChange,
                 onShowClockWeatherChange = viewModel::onShowClockWeatherChange,
                 onWeatherProviderChange = { provider ->
                     viewModel.onWeatherProviderChange(provider)
@@ -466,6 +465,8 @@ private fun SettingsDetailDestination(
                 onClockStyleChange = viewModel::onClockStyleChange,
                 onClockBackgroundAlphaChange = viewModel::onClockBackgroundAlphaChange,
                 onShowQuickSettingsButtonChange = viewModel::onShowQuickSettingsButtonChange,
+                onShowTopPagesButtonChange = viewModel::onShowTopPagesButtonChange,
+                onShowTopClockButtonChange = viewModel::onShowTopClockButtonChange,
                 onActivateWeatherLocation = onActivateWeatherLocation,
                 onSearchWeatherCities = onSearchWeatherCities,
                 onSelectWeatherLocation = onSelectWeatherLocation,

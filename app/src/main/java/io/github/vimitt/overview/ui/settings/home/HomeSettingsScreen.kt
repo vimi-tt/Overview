@@ -61,12 +61,13 @@ fun HomeSettingsScreen(
     onShowLabelsChange: (Boolean) -> Unit,
     onLabelScaleChange: (Float) -> Unit,
     onLockLayoutChange: (Boolean) -> Unit,
-    onShowClockChange: (Boolean) -> Unit,
     onShowClockWeatherChange: (Boolean) -> Unit = {},
     onWeatherProviderChange: (WeatherProvider) -> Unit = {},
     onClockStyleChange: (HomeClockStyle) -> Unit,
     onClockBackgroundAlphaChange: (Float) -> Unit,
     onShowQuickSettingsButtonChange: (Boolean) -> Unit = {},
+    onShowTopPagesButtonChange: (Boolean) -> Unit = {},
+    onShowTopClockButtonChange: (Boolean) -> Unit = {},
     onActivateWeatherLocation: () -> Unit = {},
     onSearchWeatherCities: suspend (String) -> Result<List<WeatherLocation>> = { Result.success(emptyList()) },
     onSelectWeatherLocation: (WeatherLocation) -> Unit = {},
@@ -155,7 +156,7 @@ fun HomeSettingsScreen(
 
             SettingsGroup(title = stringResource(R.string.settings_section_home_clock)) {
                 HomeClockPreview(
-                    showClock = settings.showClock,
+                    showClock = settings.showTopClockButton,
                     showWeather = settings.showClockWeather,
                     weather = weather,
                     weatherLocation = weatherLocation,
@@ -169,17 +170,17 @@ fun HomeSettingsScreen(
                 )
                 SettingsDivider()
                 SwitchRow(
-                    title = stringResource(R.string.settings_show_clock),
-                    subtitle = stringResource(R.string.settings_show_clock_subtitle),
-                    checked = settings.showClock,
-                    onCheckedChange = onShowClockChange,
+                    title = stringResource(R.string.settings_home_top_clock_button),
+                    subtitle = stringResource(R.string.settings_home_top_clock_button_subtitle),
+                    checked = settings.showTopClockButton,
+                    onCheckedChange = onShowTopClockButtonChange,
                 )
                 SettingsDivider()
                 SingleChoiceRow(
                     title = stringResource(R.string.settings_home_clock_style),
                     options = clockOptions,
                     selected = settings.clockStyle,
-                    enabled = settings.showClock,
+                    enabled = settings.showTopClockButton,
                     onSelect = onClockStyleChange,
                 )
                 SettingsDivider()
@@ -189,7 +190,7 @@ fun HomeSettingsScreen(
                     value = settings.clockBackgroundAlpha,
                     valueRange = SettingsDefaults.MIN_CLOCK_ALPHA..SettingsDefaults.MAX_CLOCK_ALPHA,
                     valueLabel = "${(settings.clockBackgroundAlpha * 100f).roundToInt()}%",
-                    enabled = settings.showClock && settings.clockStyle.hasBackground,
+                    enabled = settings.showTopClockButton && settings.clockStyle.hasBackground,
                     onValueChange = onClockBackgroundAlphaChange,
                 )
                 SettingsDivider()
@@ -197,7 +198,7 @@ fun HomeSettingsScreen(
                     title = stringResource(R.string.settings_home_clock_weather),
                     subtitle = stringResource(R.string.settings_home_clock_weather_subtitle),
                     checked = settings.showClockWeather,
-                    enabled = settings.showClock,
+                    enabled = settings.showTopClockButton,
                     onCheckedChange = onShowClockWeatherChange,
                 )
                 SettingsDivider()
@@ -214,14 +215,14 @@ fun HomeSettingsScreen(
                 NavigationRow(
                     title = stringResource(R.string.settings_home_clock_location),
                     subtitle = locationSubtitle,
-                    enabled = settings.showClock && settings.showClockWeather,
+                    enabled = settings.showTopClockButton && settings.showClockWeather,
                     onClick = onActivateWeatherLocation,
                 )
                 SettingsDivider()
                 NavigationRow(
                     title = stringResource(R.string.settings_home_clock_city),
                     subtitle = weatherLocation?.displayLabel,
-                    enabled = settings.showClock && settings.showClockWeather,
+                    enabled = settings.showTopClockButton && settings.showClockWeather,
                     onClick = { showCityPicker = true },
                 )
                 SettingsDivider()
@@ -235,7 +236,7 @@ fun HomeSettingsScreen(
                     title = stringResource(R.string.settings_home_weather_provider),
                     options = weatherProviderOptions,
                     selected = settings.weatherProvider,
-                    enabled = settings.showClock && settings.showClockWeather,
+                    enabled = settings.showTopClockButton && settings.showClockWeather,
                     onSelect = onWeatherProviderChange,
                 )
             }
@@ -243,6 +244,13 @@ fun HomeSettingsScreen(
 
         item(key = "home_general_group") {
             SettingsGroup(title = stringResource(R.string.settings_section_home_general)) {
+                SwitchRow(
+                    title = stringResource(R.string.settings_home_pages_button),
+                    subtitle = stringResource(R.string.settings_home_pages_button_subtitle),
+                    checked = settings.showTopPagesButton,
+                    onCheckedChange = onShowTopPagesButtonChange,
+                )
+                SettingsDivider()
                 SwitchRow(
                     title = stringResource(R.string.settings_home_quick_settings_button),
                     subtitle = stringResource(R.string.settings_home_quick_settings_button_subtitle),

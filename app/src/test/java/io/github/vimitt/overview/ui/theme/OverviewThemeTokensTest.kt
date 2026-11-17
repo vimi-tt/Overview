@@ -176,4 +176,37 @@ class OverviewThemeTokensTest {
             )
         }
     }
+
+    @Test
+    fun `switching light and dark across all visual styles and color modes produces valid colors`() {
+        val accents = (AdwaitaPalette.AccentPresets + AdwaitaPalette.CustomAccentPresets)
+            .map { Color(it.second) } + listOf(Color.White, Color.Black, Color(0xFFFF00FF))
+
+        for (style in VisualStyle.entries) {
+            for (colorMode in ColorSourceMode.entries) {
+                for (accent in accents) {
+                    val light = overviewColors(
+                        isDark = false,
+                        visualStyle = style,
+                        colorSourceMode = colorMode,
+                        accentColor = accent,
+                    )
+                    val dark = overviewColors(
+                        isDark = true,
+                        visualStyle = style,
+                        colorSourceMode = colorMode,
+                        accentColor = accent,
+                    )
+                    assertFalse(light.isDark)
+                    assertTrue(dark.isDark)
+                    assertTrue(light.hairlineBorder.alpha in 0f..1f)
+                    assertTrue(dark.hairlineBorder.alpha in 0f..1f)
+                    val clampedLightAlpha = (light.hairlineBorder.alpha + 0.14f).coerceIn(0f, 1f)
+                    val clampedDarkAlpha = (dark.hairlineBorder.alpha + 0.14f).coerceIn(0f, 1f)
+                    assertTrue(clampedLightAlpha in 0f..1f)
+                    assertTrue(clampedDarkAlpha in 0f..1f)
+                }
+            }
+        }
+    }
 }

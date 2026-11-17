@@ -538,6 +538,18 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setShowTopPagesButton(show: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_SHOW_TOP_PAGES] = show
+        }
+    }
+
+    suspend fun setShowTopClockButton(show: Boolean) {
+        context.overviewSettingsDataStore.edit { prefs ->
+            prefs[KEY_HOME_SHOW_TOP_CLOCK] = show
+        }
+    }
+
     // endregion
 
     // region Dock
@@ -746,6 +758,8 @@ class SettingsRepository(
         val clockBackgroundAlpha = (prefs[KEY_HOME_CLOCK_BG_ALPHA] ?: SettingsDefaults.DEFAULT_CLOCK_ALPHA)
             .coerceIn(SettingsDefaults.MIN_CLOCK_ALPHA, SettingsDefaults.MAX_CLOCK_ALPHA)
         val showQuickSettingsButton = prefs[KEY_HOME_SHOW_QUICK_SETTINGS] ?: true
+        val showTopPagesButton = prefs[KEY_HOME_SHOW_TOP_PAGES] ?: true
+        val showTopClockButton = prefs[KEY_HOME_SHOW_TOP_CLOCK] ?: true
 
         return HomeSettings(
             gridColumns = columns,
@@ -760,6 +774,8 @@ class SettingsRepository(
             clockStyle = clockStyle,
             clockBackgroundAlpha = clockBackgroundAlpha,
             showQuickSettingsButton = showQuickSettingsButton,
+            showTopPagesButton = showTopPagesButton,
+            showTopClockButton = showTopClockButton,
         )
     }
 
@@ -1052,6 +1068,8 @@ class SettingsRepository(
         val KEY_HOME_CLOCK_STYLE = stringPreferencesKey("home_clock_style")
         val KEY_HOME_CLOCK_BG_ALPHA = floatPreferencesKey("home_clock_bg_alpha")
         val KEY_HOME_SHOW_QUICK_SETTINGS = booleanPreferencesKey("home_show_quick_settings")
+        val KEY_HOME_SHOW_TOP_PAGES = booleanPreferencesKey("home_show_top_pages")
+        val KEY_HOME_SHOW_TOP_CLOCK = booleanPreferencesKey("home_show_top_clock")
 
         // Chaves de Dock
         val KEY_DOCK_ICON_COUNT = intPreferencesKey("dock_icon_count")

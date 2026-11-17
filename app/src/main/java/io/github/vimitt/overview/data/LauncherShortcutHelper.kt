@@ -1,5 +1,6 @@
 package io.github.vimitt.overview.data
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -11,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.os.UserHandle
+import android.provider.Settings
 import android.util.DisplayMetrics
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -160,17 +162,36 @@ object LauncherShortcutHelper {
         context: Context,
         packageName: String,
         userHandle: UserHandle? = null,
-    ) {
-        if (!canUninstallApp(context, packageName)) return
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (userHandle != null) {
-                putExtra(Intent.EXTRA_USER, userHandle)
-            }
+    ): Boolean {
+        if (!canUninstallApp(context, packageName)) return false
+        val packageUri = Uri.fromParts("package", packageName, null)
+        val isSecondaryUser = userHandle != null && userHandle != Process.myUserHandle()
+        val newTaskFlag = if (context is Activity) 0 else Intent.FLAG_ACTIVITY_NEW_TASK
+
+        val deleteIntent = Intent(Intent.ACTION_DELETE, packageUri).apply {
+            if (newTaskFlag != 0) addFlags(newTaskFlag)
+            if (isSecondaryUser) putExtra(Intent.EXTRA_USER, userHandle)
         }
-        runCatching {
-            context.startActivity(intent)
+        if (runCatching { context.startActivity(deleteIntent) }.isSuccess) {
+            return true
         }
+
+        @Suppress("DEPRECATION")
+        val uninstallIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri).apply {
+            if (newTaskFlag != 0) addFlags(newTaskFlag)
+            if (isSecondaryUser) putExtra(Intent.EXTRA_USER, userHandle)
+        }
+        if (runCatching { context.startActivity(uninstallIntent) }.isSuccess) {
+            return true
+        }
+
+        val detailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri).apply {
+            if (newTaskFlag != 0) addFlags(newTaskFlag)
+        }
+        return runCatching {
+            context.startActivity(detailsIntent)
+            true
+        }.getOrDefault(false)
     }
 
     private fun loadShortcutIconSync(

@@ -297,6 +297,8 @@ data class HomeSettings(
     val clockStyle: HomeClockStyle = HomeClockStyle.GNOME,
     val clockBackgroundAlpha: Float = SettingsDefaults.DEFAULT_CLOCK_ALPHA,
     val showQuickSettingsButton: Boolean = true,
+    val showTopPagesButton: Boolean = true,
+    val showTopClockButton: Boolean = true,
 )
 
 /**

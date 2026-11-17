@@ -102,8 +102,9 @@ import io.github.vimitt.overview.ui.HomeDropTarget
 import io.github.vimitt.overview.ui.components.AppIconItem
 import io.github.vimitt.overview.ui.components.DashBar
 import io.github.vimitt.overview.ui.components.FolderIconTile
-import io.github.vimitt.overview.ui.components.HomeClock
+import io.github.vimitt.overview.ui.components.HomePagesPill
 import io.github.vimitt.overview.ui.components.HomeQuickSettingsPill
+import io.github.vimitt.overview.ui.components.HomeTopClockPill
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetDialogsOverlay
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetHost
@@ -152,6 +153,8 @@ fun HomeScreen(
     onAppClick: (app: AppInfo, sourceView: View, sourceBounds: Rect?) -> Unit,
     onPinnedShortcutClick: (HomeWorkspaceItem.PinnedShortcut, Rect?) -> Unit = { _, _ -> },
     onFolderClick: (HomeWorkspaceItem.Folder) -> Unit = {},
+    onOpenHomePages: (() -> Unit)? = null,
+    onOpenClockCalendar: (() -> Unit)? = null,
     onOpenQuickSettings: (() -> Unit)? = null,
     onOpenOverview: () -> Unit,
     onOpenOverviewSearch: () -> Unit,
@@ -193,7 +196,7 @@ fun HomeScreen(
         hasWeatherCache = uiState.nativeWidgets.weather != null,
         actions = nativeWidgetActions,
         isVisible = isVisible,
-        includeClockWeather = uiState.showClock && uiState.homeSettings.showClockWeather,
+        includeClockWeather = uiState.homeSettings.showTopClockButton && uiState.homeSettings.showClockWeather,
         permissionRevision = permissionRevision,
     )
     val density = LocalDensity.current
@@ -252,6 +255,22 @@ fun HomeScreen(
     } else if (isResizing) {
         BackHandler(onBack = onCancelResizingItem)
     }
+
+    val showLeftPagesPill = uiState.homeSettings.showTopPagesButton && onOpenHomePages != null
+    val showCenterClockPill = uiState.homeSettings.showTopClockButton && onOpenClockCalendar != null
+    val showRightQuickSettingsPill = uiState.homeSettings.showQuickSettingsButton && onOpenQuickSettings != null
+    val showAnyTopBarPill = showLeftPagesPill || showCenterClockPill || showRightQuickSettingsPill
+
+    val displayedPageCount = if (isDraggingOverGrid || isMoving) {
+        (uiState.pageCount + 1).coerceIn(1, HomeGridSpec.MAX_PAGES)
+    } else {
+        uiState.pageCount.coerceIn(1, HomeGridSpec.MAX_PAGES)
+    }
+    val pagerState = rememberPagerState(
+        initialPage = currentPage.coerceIn(0, displayedPageCount - 1),
+        pageCount = { displayedPageCount },
+    )
+    val pagerScope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -389,40 +408,10 @@ fun HomeScreen(
                     onDone = onCancelResizingItem,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 )
-            } else if (uiState.showClock) {
-                HomeClock(
-                    style = uiState.clockStyle,
-                    compact = hasWorkspaceItems,
-                    backgroundAlpha = uiState.clockBackgroundAlpha,
-                    isVisible = isVisible,
-                    weather = uiState.nativeWidgets.weather,
-                    weatherLocation = uiState.nativeWidgets.weatherLocation,
-                    isWeatherLoading = uiState.nativeWidgets.isWeatherLoading,
-                    showWeather = uiState.homeSettings.showClockWeather,
-                    onWeatherClick = nativeEnvironment.onOpenWeatherCityPicker,
-                    onRefreshWeatherClick = nativeWidgetActions.onManualRefreshWeather,
-                    onEnableLocationClick = nativeEnvironment.onRequestCoarseLocationOrUseGps,
-                    modifier = Modifier
-                        .graphicsLayer {
-                            alpha = if (isDraggingRemovable) 0f else 1f
-                        }
-                        .padding(
-                            top = if (hasWorkspaceItems) 8.dp else 44.dp,
-                            bottom = if (hasWorkspaceItems) 8.dp else 0.dp,
-                        ),
-                )
+            } else if (showAnyTopBarPill) {
+                Spacer(modifier = Modifier.height(44.dp))
             }
 
-            val displayedPageCount = if (isDraggingOverGrid || isMoving) {
-                (uiState.pageCount + 1).coerceIn(1, HomeGridSpec.MAX_PAGES)
-            } else {
-                uiState.pageCount.coerceIn(1, HomeGridSpec.MAX_PAGES)
-            }
-            val pagerState = rememberPagerState(
-                initialPage = currentPage.coerceIn(0, displayedPageCount - 1),
-                pageCount = { displayedPageCount },
-            )
-            val pagerScope = rememberCoroutineScope()
             var localGridBounds by remember { mutableStateOf<ComposeRect?>(null) }
 
             LaunchedEffect(pagerState.currentPage, displayedPageCount) {
@@ -472,7 +461,7 @@ fun HomeScreen(
                         onGridBoundsChanged(bounds)
                     },
             ) {
-                if (hasWorkspaceItems || isMoving || isDraggingOverGrid) {
+                if (hasWorkspaceItems || displayedPageCount > 1 || isMoving || isDraggingOverGrid) {
                     HorizontalPager(
                         state = pagerState,
                         userScrollEnabled = !isDraggingOverGrid && !isResizing,
@@ -526,7 +515,7 @@ fun HomeScreen(
                 }
             }
 
-            if (displayedPageCount > 1 && (hasWorkspaceItems || isMoving || isDraggingOverGrid)) {
+            if (displayedPageCount > 1) {
                 HomePageIndicator(
                     pageCount = displayedPageCount,
                     currentPage = pagerState.currentPage,
@@ -577,61 +566,89 @@ fun HomeScreen(
             }
         }
 
-        if (uiState.homeSettings.showQuickSettingsButton &&
-            onOpenQuickSettings != null &&
+        if (showAnyTopBarPill &&
             !isDraggingRemovable &&
             !isMoving &&
             !isResizing
         ) {
-            val context = LocalContext.current
-            var batteryLevel by remember { mutableIntStateOf(0) }
-            var batteryCharging by remember { mutableStateOf(false) }
-
-            DisposableEffect(context, isVisible) {
-                if (!isVisible) {
-                    return@DisposableEffect onDispose {}
-                }
-                fun updateFromBatteryIntent(intent: Intent?) {
-                    val raw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                    val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
-                    if (raw >= 0 && scale > 0) {
-                        batteryLevel = ((raw * 100f) / scale).toInt().coerceIn(0, 100)
-                    }
-                    val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-                    batteryCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                        status == BatteryManager.BATTERY_STATUS_FULL
-                }
-                updateFromBatteryIntent(
-                    context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)),
-                )
-                val receiver = object : BroadcastReceiver() {
-                    override fun onReceive(ctx: Context?, intent: Intent?) {
-                        updateFromBatteryIntent(intent)
-                    }
-                }
-                runCatching {
-                    ContextCompat.registerReceiver(
-                        context,
-                        receiver,
-                        IntentFilter(Intent.ACTION_BATTERY_CHANGED),
-                        ContextCompat.RECEIVER_NOT_EXPORTED,
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            ) {
+                if (uiState.homeSettings.showTopPagesButton && onOpenHomePages != null) {
+                    HomePagesPill(
+                        pageCount = uiState.pageCount,
+                        currentPage = pagerState.currentPage,
+                        onClick = onOpenHomePages,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .suppressHomeBackgroundLongPress(gestureGuard),
                     )
                 }
-                onDispose {
-                    runCatching { context.unregisterReceiver(receiver) }
+
+                if (uiState.homeSettings.showTopClockButton && onOpenClockCalendar != null) {
+                    HomeTopClockPill(
+                        isVisible = isVisible,
+                        onClick = onOpenClockCalendar,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .suppressHomeBackgroundLongPress(gestureGuard),
+                    )
+                }
+
+                if (uiState.homeSettings.showQuickSettingsButton && onOpenQuickSettings != null) {
+                    val context = LocalContext.current
+                    var batteryLevel by remember { mutableIntStateOf(0) }
+                    var batteryCharging by remember { mutableStateOf(false) }
+
+                    DisposableEffect(context, isVisible) {
+                        if (!isVisible) {
+                            return@DisposableEffect onDispose {}
+                        }
+                        fun updateFromBatteryIntent(intent: Intent?) {
+                            val raw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+                            if (raw >= 0 && scale > 0) {
+                                batteryLevel = ((raw * 100f) / scale).toInt().coerceIn(0, 100)
+                            }
+                            val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+                            batteryCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                                status == BatteryManager.BATTERY_STATUS_FULL
+                        }
+                        updateFromBatteryIntent(
+                            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)),
+                        )
+                        val receiver = object : BroadcastReceiver() {
+                            override fun onReceive(ctx: Context?, intent: Intent?) {
+                                updateFromBatteryIntent(intent)
+                            }
+                        }
+                        runCatching {
+                            ContextCompat.registerReceiver(
+                                context,
+                                receiver,
+                                IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+                                ContextCompat.RECEIVER_NOT_EXPORTED,
+                            )
+                        }
+                        onDispose {
+                            runCatching { context.unregisterReceiver(receiver) }
+                        }
+                    }
+
+                    HomeQuickSettingsPill(
+                        batteryLevel = batteryLevel,
+                        isCharging = batteryCharging,
+                        onClick = onOpenQuickSettings,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .suppressHomeBackgroundLongPress(gestureGuard),
+                    )
                 }
             }
-
-            HomeQuickSettingsPill(
-                batteryLevel = batteryLevel,
-                isCharging = batteryCharging,
-                onClick = onOpenQuickSettings,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 8.dp, end = 16.dp)
-                    .suppressHomeBackgroundLongPress(gestureGuard),
-            )
         }
 
         if (isDraggingRemovable) {
@@ -1187,7 +1204,7 @@ private fun DockSearchBarPill(
     val borderColor = if (isExpressive) {
         colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * effectiveAlpha).coerceIn(0f, 1f))
     } else {
-        colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * effectiveAlpha)
+        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * effectiveAlpha).coerceIn(0f, 1f))
     }
 
     Row(

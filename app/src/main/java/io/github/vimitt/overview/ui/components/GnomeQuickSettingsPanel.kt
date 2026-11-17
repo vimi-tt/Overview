@@ -2,6 +2,7 @@ package io.github.vimitt.overview.ui.components
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -97,57 +98,30 @@ fun HomeQuickSettingsPill(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    val shape = OverviewTheme.shapes.pill
-    val isExpressive = OverviewTheme.components.isExpressive
     val openCd = stringResource(R.string.quick_settings_open_cd)
 
-    val pillFill = if (isExpressive) {
-        lerp(colors.dashBackground, colors.accentContainer, 0.24f)
-    } else {
-        colors.dashBackground
-    }
-    val pillBorder = if (isExpressive) {
-        colors.accent.copy(alpha = 0.28f)
-    } else {
-        colors.hairlineBorder
-    }
-
-    Box(
-        modifier = modifier
-            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-            .clip(shape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = openCd },
-        contentAlignment = Alignment.Center,
+    GnomeTopBarPill(
+        contentDescription = openCd,
+        onClick = onClick,
+        modifier = modifier,
     ) {
-        Row(
-            modifier = Modifier
-                .defaultMinSize(minHeight = 36.dp)
-                .clip(shape)
-                .background(pillFill)
-                .border(1.dp, pillBorder, shape)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            QsSlidersGlyph(tint = colors.onSurface, size = 15.dp)
-            QsBatteryGlyph(
-                level = batteryLevel,
-                isCharging = isCharging,
-                tint = colors.onSurface,
-                accent = colors.accent,
-                errorColor = colors.error,
-                size = 16.dp,
-            )
-            Text(
-                text = stringResource(R.string.quick_settings_battery_percent, batteryLevel),
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontFeatureSettings = "tnum",
-                ),
-                color = colors.onSurface,
-            )
-        }
+        QsSlidersGlyph(tint = colors.onSurface, size = 15.dp)
+        QsBatteryGlyph(
+            level = batteryLevel,
+            isCharging = isCharging,
+            tint = colors.onSurface,
+            accent = colors.accent,
+            errorColor = colors.error,
+            size = 16.dp,
+        )
+        Text(
+            text = stringResource(R.string.quick_settings_battery_percent, batteryLevel),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontFeatureSettings = "tnum",
+            ),
+            color = colors.onSurface,
+        )
     }
 }
 
@@ -164,12 +138,10 @@ fun GnomeQuickSettingsPanel(
     modifier: Modifier = Modifier,
     permissionRevision: Int = 0,
     onOpenNotificationAccessSettings: () -> Unit = {},
+    visibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val context = LocalContext.current
     val colors = OverviewTheme.colors
-    val shapes = OverviewTheme.shapes
-    val motion = OverviewTheme.motion
-    val isExpressive = OverviewTheme.components.isExpressive
 
     val torchCameraId = remember(context) { QuickSettingsController.findTorchCameraId(context) }
     var torchEnabled by remember { mutableStateOf(false) }
@@ -226,82 +198,15 @@ fun GnomeQuickSettingsPanel(
         lastNonZeroVolume = snapshot.mediaVolume
     }
 
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    val entryProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = if (isExpressive) {
-            motion.expressiveSpec(durationMillis = 230)
-        } else {
-            motion.spatialSpec(durationMillis = 180)
-        },
-        label = "gnomeQuickSettingsEntry",
-    )
-    val clampedProgress = entryProgress.coerceIn(0f, 1f)
-
-    val panelShape = shapes.large
-    val panelBackground = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.14f)
-    } else {
-        colors.surface
-    }
-    val panelBorder = if (isExpressive) {
-        colors.accent.copy(alpha = 0.28f)
-    } else {
-        colors.hairlineBorder
-    }
-
     val openCd = stringResource(R.string.quick_settings_title)
-    BackHandler(onBack = onDismiss)
-
-    val backdropInteraction = remember { MutableInteractionSource() }
-    val cardInteraction = remember { MutableInteractionSource() }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .semantics { contentDescription = openCd }
-            .background(Color.Black.copy(alpha = 0.38f * clampedProgress))
-            .clickable(
-                interactionSource = backdropInteraction,
-                indication = null,
-                onClick = onDismiss,
-            )
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        contentAlignment = Alignment.TopEnd,
+    GnomeTopPopoverScaffold(
+        panelTitle = openCd,
+        alignment = Alignment.TopEnd,
+        transformOrigin = TransformOrigin(0.88f, 0f),
+        onDismiss = onDismiss,
+        modifier = modifier,
+        visibilityScope = visibilityScope,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 440.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = if (isExpressive) {
-                        0.88f + 0.12f * entryProgress
-                    } else {
-                        0.94f + 0.06f * entryProgress
-                    }
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0.88f, 0f)
-                    translationY = (1f - entryProgress) * -18f
-                    alpha = clampedProgress
-                }
-                .shadow(elevation = 18.dp, shape = panelShape, clip = false)
-                .clip(panelShape)
-                .background(panelBackground)
-                .border(1.dp, panelBorder, panelShape)
-                .clickable(
-                    interactionSource = cardInteraction,
-                    indication = null,
-                    onClick = {},
-                )
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
             QuickSettingsHeaderRow(
                 batteryLevel = snapshot.batteryLevel,
                 isCharging = snapshot.isCharging,
@@ -434,7 +339,6 @@ fun GnomeQuickSettingsPanel(
                 )
             }
         }
-    }
 }
 
 @Composable

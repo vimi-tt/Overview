@@ -206,6 +206,10 @@
     <string name="settings_home_lock_layout_subtitle">Impede mover, redimensionar ou remover itens da tela inicial</string>
     <string name="settings_home_quick_settings_button">Atalho do painel rápido GNOME</string>
     <string name="settings_home_quick_settings_button_subtitle">Exibe a pílula de status e ajustes rápidos no topo da tela inicial</string>
+    <string name="settings_home_pages_button">Indicador de páginas no topo</string>
+    <string name="settings_home_pages_button_subtitle">Exibe o botão para ver e criar abas da tela inicial no canto esquerdo</string>
+    <string name="settings_home_top_clock_button">Relógio compacto no topo</string>
+    <string name="settings_home_top_clock_button_subtitle">Exibe o horário centralizado no topo para expandir o relógio e o calendário</string>
     <string name="settings_show_clock">Mostrar relógio</string>
     <string name="settings_show_clock_subtitle">Exibe hora e data sobre o papel de parede</string>
     <string name="settings_home_clock_style">Estilo do relógio</string>
@@ -557,6 +561,32 @@
     <string name="quick_settings_state_unavailable">Indisponível</string>
     <string name="quick_settings_system_settings_cd">Configurações do Android</string>
     <string name="quick_settings_toggle_theme_cd">Alternar modo claro e escuro</string>
+
+    <!-- Barra superior GNOME: Páginas da Home e Relógio/Calendário -->
+    <string name="top_bar_pages_cd">Abrir páginas da tela inicial</string>
+    <string name="top_bar_clock_cd">Expandir relógio e calendário</string>
+
+    <string name="home_pages_title">Telas iniciais</string>
+    <string name="home_pages_page_title">Página %1$d</string>
+    <string name="home_pages_current_badge">Atual</string>
+    <string name="home_pages_empty">Página vazia</string>
+    <string name="home_pages_remove_cd">Remover página %1$d</string>
+    <string name="home_pages_create">Nova página</string>
+    <string name="home_pages_create_subtitle">Adicionar uma nova aba à tela inicial</string>
+    <string name="home_pages_limit_reached">Limite de %1$d páginas atingido</string>
+    <plurals name="home_pages_items_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="many">%1$d itens</item>
+        <item quantity="other">%1$d itens</item>
+    </plurals>
+
+    <string name="clock_calendar_title">Relógio e calendário</string>
+    <string name="clock_calendar_prev_month_cd">Mês anterior</string>
+    <string name="clock_calendar_next_month_cd">Próximo mês</string>
+    <string name="clock_calendar_today">Hoje</string>
+    <string name="clock_calendar_events_for_day">Agenda · %1$s</string>
+    <string name="clock_calendar_open_app">Abrir agenda</string>
+    <string name="clock_calendar_no_events">Nenhum compromisso neste dia</string>
 
     <!-- Backup e restauração -->
     <string name="settings_section_backup">Backup e restauração</string>

@@ -68,6 +68,7 @@ class HomeViewModel(
         val resizingId: String?,
         val badgePackages: Set<String>,
         val shortcutIcons: Map<String, ImageBitmap>,
+        val storedPageCount: Int,
     )
 
     init {
@@ -104,6 +105,7 @@ class HomeViewModel(
             resizingItemId,
             notificationBadgeRepository.activeBadgePackages,
             pinnedShortcutIcons,
+            homeWorkspaceRepository.pageCount,
             ::HomeUiAuxState,
         ),
     ) { apps, preferences, rawItems, nativeWidgets, aux ->
@@ -235,6 +237,7 @@ class HomeViewModel(
             folderSettings = folderSettings,
             showNotificationDots = showDots,
             badgePackages = badgePackages,
+            storedPageCount = aux.storedPageCount,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -654,6 +657,35 @@ class HomeViewModel(
                 columns = currentState.gridColumns,
                 rows = currentState.gridRows,
             )
+        }
+    }
+
+    fun addHomePage(onCreated: (Int) -> Unit = {}) {
+        if (uiState.value.lockLayout) return
+        viewModelScope.launch {
+            val createdPage = homeWorkspaceRepository.addPage()
+            if (createdPage != null) {
+                onCreated(createdPage)
+            }
+        }
+    }
+
+    fun removeEmptyHomePage(
+        pageIndex: Int,
+        currentPage: Int,
+        onAdjustedPage: (Int) -> Unit = {},
+    ) {
+        if (uiState.value.lockLayout) return
+        viewModelScope.launch {
+            val removed = homeWorkspaceRepository.removeEmptyPage(pageIndex)
+            if (removed) {
+                val nextPage = when {
+                    currentPage > pageIndex -> currentPage - 1
+                    currentPage == pageIndex -> (pageIndex - 1).coerceAtLeast(0)
+                    else -> currentPage
+                }
+                onAdjustedPage(nextPage)
+            }
         }
     }
 

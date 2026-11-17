@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.data.AppWidgetController
+import io.github.vimitt.overview.data.NativeWidgetSystemProviders
 import io.github.vimitt.overview.data.WidgetAppGroup
 import io.github.vimitt.overview.data.WidgetEntry
 import io.github.vimitt.overview.di.AppContainer
@@ -72,7 +73,10 @@ import io.github.vimitt.overview.domain.model.OverviewSettings
 import io.github.vimitt.overview.domain.model.OverviewTransitionStyle
 import io.github.vimitt.overview.ui.components.FolderEditorDialog
 import io.github.vimitt.overview.ui.components.FolderPopupOverlay
+import io.github.vimitt.overview.ui.components.GnomeClockCalendarPanel
+import io.github.vimitt.overview.ui.components.GnomeHomePagesPanel
 import io.github.vimitt.overview.ui.components.GnomeQuickSettingsPanel
+import io.github.vimitt.overview.ui.components.GnomeTopPopoverHost
 import io.github.vimitt.overview.ui.components.OverviewPopupActionRow
 import io.github.vimitt.overview.ui.components.OverviewPopupDivider
 import io.github.vimitt.overview.ui.components.OverviewPopupSurface
@@ -84,6 +88,7 @@ import io.github.vimitt.overview.ui.home.HomeUiState
 import io.github.vimitt.overview.ui.home.HomeWidgetPickerScreen
 import io.github.vimitt.overview.ui.home.HomeWorkspaceItem
 import io.github.vimitt.overview.ui.home.widgets.NativeWidgetActions
+import io.github.vimitt.overview.ui.home.widgets.WeatherCityPickerDialog
 import io.github.vimitt.overview.ui.overview.OverviewScreen
 import io.github.vimitt.overview.ui.overview.OverviewUiState
 import io.github.vimitt.overview.ui.settings.SettingsNavHost
@@ -105,6 +110,8 @@ fun LauncherRoot(
     isAppPickerOpen: Boolean,
     isWidgetPickerOpen: Boolean,
     isQuickSettingsOpen: Boolean,
+    isHomePagesOpen: Boolean = false,
+    isClockCalendarOpen: Boolean = false,
     openHomeFolderId: String?,
     selectedHomeItem: HomeWorkspaceItem?,
     hasNotificationAccess: Boolean,
@@ -120,6 +127,12 @@ fun LauncherRoot(
     onCloseOverview: () -> Unit,
     onOpenQuickSettings: () -> Unit,
     onCloseQuickSettings: () -> Unit,
+    onOpenHomePages: () -> Unit = {},
+    onCloseHomePages: () -> Unit = {},
+    onCreateHomePage: () -> Unit = {},
+    onRemoveEmptyHomePage: (Int) -> Unit = {},
+    onOpenClockCalendar: () -> Unit = {},
+    onCloseClockCalendar: () -> Unit = {},
     onToggleThemeDark: (currentlyDark: Boolean) -> Unit,
     onExecuteGesture: (LauncherGestureAction) -> Unit,
     onHomeLongPress: () -> Unit,
@@ -211,6 +224,7 @@ fun LauncherRoot(
     var isCreatingHomeFolder by remember { mutableStateOf(false) }
     var editingHomeFolder by remember { mutableStateOf<HomeWorkspaceItem.Folder?>(null) }
     var homeFolderAppActionTarget by remember { mutableStateOf<Pair<HomeWorkspaceItem.Folder, AppInfo>?>(null) }
+    var showClockWeatherCityPicker by remember { mutableStateOf(false) }
 
     val openHomeFolder = remember(openHomeFolderId, homeUiState.workspaceItems) {
         openHomeFolderId?.let { id ->
@@ -376,6 +390,8 @@ fun LauncherRoot(
             onFolderClick = { folder ->
                 onOpenHomeFolder(folder.item.id)
             },
+            onOpenHomePages = onOpenHomePages,
+            onOpenClockCalendar = onOpenClockCalendar,
             onOpenQuickSettings = onOpenQuickSettings,
             onOpenOverview = onOpenOverview,
             onOpenOverviewSearch = onOpenOverviewSearch,
@@ -730,8 +746,10 @@ fun LauncherRoot(
             }
         }
 
+        val anyTopPopoverOpen = isQuickSettingsOpen || isHomePagesOpen || isClockCalendarOpen
+
         AnimatedVisibility(
-            visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen,
+            visible = isHomeMenuOpen && !isOverviewOpen && !anyModalFullScreen && !anyTopPopoverOpen,
             enter = fadeIn(motion.effectSpec(durationMillis = 160)),
             exit = fadeOut(motion.effectSpec(durationMillis = 140)),
         ) {
@@ -760,7 +778,7 @@ fun LauncherRoot(
             )
         }
 
-        if (selectedHomeItem != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
+        if (selectedHomeItem != null && !isOverviewOpen && !anyModalFullScreen && !anyTopPopoverOpen) {
             HomeItemActionOverlay(
                 workspaceItem = selectedHomeItem,
                 onOpenFolder = if (selectedHomeItem is HomeWorkspaceItem.Folder) {
@@ -798,7 +816,7 @@ fun LauncherRoot(
             )
         }
 
-        if (openHomeFolder != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
+        if (openHomeFolder != null && !isOverviewOpen && !anyModalFullScreen && !anyTopPopoverOpen) {
             FolderPopupOverlay(
                 folderName = openHomeFolder.item.name,
                 apps = openHomeFolder.apps,
@@ -825,7 +843,7 @@ fun LauncherRoot(
         }
 
         val folderAppAction = homeFolderAppActionTarget
-        if (folderAppAction != null && !isOverviewOpen && !anyModalFullScreen && !isQuickSettingsOpen) {
+        if (folderAppAction != null && !isOverviewOpen && !anyModalFullScreen && !anyTopPopoverOpen) {
             val (folderWs, folderApp) = folderAppAction
             HomeFolderAppActionOverlay(
                 app = folderApp,
@@ -877,7 +895,81 @@ fun LauncherRoot(
             )
         }
 
-        if (isQuickSettingsOpen && !anyModalFullScreen) {
+        GnomeTopPopoverHost(visible = isHomePagesOpen && !anyModalFullScreen) {
+            GnomeHomePagesPanel(
+                pageCount = homeUiState.pageCount,
+                currentPage = currentHomePage,
+                workspaceItems = homeUiState.workspaceItems,
+                gridColumns = homeUiState.gridColumns,
+                gridRows = homeUiState.gridRows,
+                lockLayout = homeUiState.lockLayout,
+                onSelectPage = onCurrentHomePageChanged,
+                onCreatePage = {
+                    if (homeUiState.lockLayout) {
+                        showLockedToast()
+                    } else {
+                        onCreateHomePage()
+                    }
+                },
+                onRemoveEmptyPage = { pageIndex ->
+                    if (homeUiState.lockLayout) {
+                        showLockedToast()
+                    } else {
+                        onRemoveEmptyHomePage(pageIndex)
+                    }
+                },
+                onDismiss = onCloseHomePages,
+                visibilityScope = this,
+            )
+        }
+
+        GnomeTopPopoverHost(visible = isClockCalendarOpen && !anyModalFullScreen) {
+            val hasCalendarPermission = remember(permissionRevision, context) {
+                NativeWidgetSystemProviders.hasCalendarPermission(context)
+            }
+            GnomeClockCalendarPanel(
+                clockStyle = homeUiState.clockStyle,
+                clockBackgroundAlpha = homeUiState.clockBackgroundAlpha,
+                weather = homeUiState.nativeWidgets.weather,
+                weatherLocation = homeUiState.nativeWidgets.weatherLocation,
+                isWeatherLoading = homeUiState.nativeWidgets.isWeatherLoading,
+                showWeather = homeUiState.homeSettings.showClockWeather,
+                hasCalendarPermission = hasCalendarPermission,
+                permissionRevision = permissionRevision,
+                onWeatherClick = { showClockWeatherCityPicker = true },
+                onRefreshWeatherClick = nativeWidgetActions.onManualRefreshWeather,
+                onEnableLocationClick = {
+                    if (NativeWidgetSystemProviders.hasCoarseLocationPermission(context)) {
+                        nativeWidgetActions.onUseDeviceWeatherLocation()
+                    } else {
+                        nativeWidgetActions.onRequestLocationPermission()
+                    }
+                },
+                onRequestCalendarPermission = nativeWidgetActions.onRequestCalendarPermission,
+                onDismiss = onCloseClockCalendar,
+                visibilityScope = this,
+            )
+        }
+
+        if (showClockWeatherCityPicker && !anyModalFullScreen) {
+            WeatherCityPickerDialog(
+                selectedProvider = homeUiState.homeSettings.weatherProvider,
+                onSelectProvider = nativeWidgetActions.onSelectWeatherProvider,
+                onSearchCities = nativeWidgetActions.onSearchWeatherCities,
+                onSelectLocation = nativeWidgetActions.onSelectWeatherLocation,
+                onUseGpsLocation = {
+                    if (NativeWidgetSystemProviders.hasCoarseLocationPermission(context)) {
+                        nativeWidgetActions.onUseDeviceWeatherLocation()
+                    } else {
+                        nativeWidgetActions.onRequestLocationPermission()
+                    }
+                },
+                onHideClockWeather = nativeWidgetActions.onHideClockWeather,
+                onDismiss = { showClockWeatherCityPicker = false },
+            )
+        }
+
+        GnomeTopPopoverHost(visible = isQuickSettingsOpen && !anyModalFullScreen) {
             GnomeQuickSettingsPanel(
                 hasNotificationAccess = hasNotificationAccess,
                 permissionRevision = permissionRevision,
@@ -888,6 +980,7 @@ fun LauncherRoot(
                 },
                 onOpenNotificationAccessSettings = nativeWidgetActions.onOpenNotificationAccessSettings,
                 onDismiss = onCloseQuickSettings,
+                visibilityScope = this,
             )
         }
 

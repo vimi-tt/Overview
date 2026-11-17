@@ -66,7 +66,7 @@ fun DashBar(
     val borderColor = if (isExpressive) {
         colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * clampedAlpha).coerceIn(0f, 1f))
     } else {
-        colors.hairlineBorder.copy(alpha = colors.hairlineBorder.alpha * clampedAlpha)
+        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * clampedAlpha).coerceIn(0f, 1f))
     }
 
     Row(

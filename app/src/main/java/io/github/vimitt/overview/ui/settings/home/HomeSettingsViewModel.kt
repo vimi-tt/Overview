@@ -106,6 +106,18 @@ class HomeSettingsViewModel(
         }
     }
 
+    fun onShowTopPagesButtonChange(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowTopPagesButton(show)
+        }
+    }
+
+    fun onShowTopClockButtonChange(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowTopClockButton(show)
+        }
+    }
+
     class Factory(
         private val settingsRepository: SettingsRepository,
     ) : ViewModelProvider.Factory {

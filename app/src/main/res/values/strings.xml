@@ -210,6 +210,10 @@
     <string name="settings_home_lock_layout_subtitle">Prevents moving, resizing, or removing items on the home screen</string>
     <string name="settings_home_quick_settings_button">GNOME quick settings pill</string>
     <string name="settings_home_quick_settings_button_subtitle">Shows the status and quick settings pill at the top of the home screen</string>
+    <string name="settings_home_pages_button">Top home pages indicator</string>
+    <string name="settings_home_pages_button_subtitle">Shows the button to view and create home pages in the top-left corner</string>
+    <string name="settings_home_top_clock_button">Top compact clock pill</string>
+    <string name="settings_home_top_clock_button_subtitle">Shows the centered time pill at the top to expand the clock and calendar</string>
     <string name="settings_show_clock">Show clock</string>
     <string name="settings_show_clock_subtitle">Displays time and date over the wallpaper</string>
     <string name="settings_home_clock_style">Clock style</string>
@@ -569,6 +573,32 @@
     <string name="quick_settings_state_unavailable">Unavailable</string>
     <string name="quick_settings_system_settings_cd">Android settings</string>
     <string name="quick_settings_toggle_theme_cd">Toggle light and dark mode</string>
+
+    <!-- GNOME Top Bar: Home Pages & Clock/Calendar -->
+    <string name="top_bar_pages_cd">Open home screen pages</string>
+    <string name="top_bar_clock_cd">Expand clock and calendar</string>
+
+    <string name="home_pages_title">Home pages</string>
+    <string name="home_pages_count_badge" translatable="false">%1$d/%2$d</string>
+    <string name="home_pages_page_title">Page %1$d</string>
+    <string name="home_pages_current_badge">Current</string>
+    <string name="home_pages_empty">Empty page</string>
+    <string name="home_pages_remove_cd">Remove page %1$d</string>
+    <string name="home_pages_create">New page</string>
+    <string name="home_pages_create_subtitle">Add a new tab to the home screen</string>
+    <string name="home_pages_limit_reached">Maximum of %1$d pages reached</string>
+    <plurals name="home_pages_items_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <string name="clock_calendar_title">Clock &amp; calendar</string>
+    <string name="clock_calendar_prev_month_cd">Previous month</string>
+    <string name="clock_calendar_next_month_cd">Next month</string>
+    <string name="clock_calendar_today">Today</string>
+    <string name="clock_calendar_events_for_day">Schedule · %1$s</string>
+    <string name="clock_calendar_open_app">Open calendar</string>
+    <string name="clock_calendar_no_events">No events on this day</string>
 
     <!-- Backup & Restore -->
     <string name="settings_section_backup">Backup &amp; restore</string>

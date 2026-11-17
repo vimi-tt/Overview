@@ -6,10 +6,12 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.domain.model.AppInfo
+import io.github.vimitt.overview.domain.model.HomeGridSpec
 import io.github.vimitt.overview.domain.model.HomeItem
 import io.github.vimitt.overview.domain.model.NativeWidgetType
 import io.github.vimitt.overview.domain.usecase.HomeGridPlacementUseCase
@@ -43,6 +45,19 @@ class HomeWorkspaceRepository(
         }
         .map { prefs ->
             decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
+        }
+
+    val pageCount: Flow<Int> = context.homeWorkspaceDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { prefs ->
+            val currentItems = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
+            effectivePageCount(storedCount = prefs[KEY_PAGE_COUNT] ?: 1, items = currentItems)
         }
 
     suspend fun addAppShortcut(
@@ -373,17 +388,61 @@ class HomeWorkspaceRepository(
                 return@edit
             }
 
-            current[index] = when (item) {
-                is HomeItem.AppShortcut -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
-                is HomeItem.PinnedShortcut -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
-                is HomeItem.Folder -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
-                is HomeItem.Widget -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
-                is HomeItem.NativeWidget -> item.copy(cellX = newCellX, cellY = newCellY, page = targetPage)
+            current[index] = item.withPlacement(
+                newCellX = newCellX,
+                newCellY = newCellY,
+                newPage = targetPage,
+            )
+            val storedCount = prefs[KEY_PAGE_COUNT] ?: 1
+            if (targetPage + 1 > storedCount) {
+                prefs[KEY_PAGE_COUNT] = (targetPage + 1).coerceIn(1, HomeGridSpec.MAX_PAGES)
             }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(current)
             moved = true
         }
         return moved
+    }
+
+    /**
+     * Cria uma nova aba/página vazia na tela inicial, respeitando [HomeGridSpec.MAX_PAGES].
+     * Retorna o índice (0-based) da nova página ou `null` caso o limite já tenha sido atingido.
+     */
+    suspend fun addPage(): Int? {
+        var createdPage: Int? = null
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
+            val effectiveCount = effectivePageCount(prefs[KEY_PAGE_COUNT] ?: 1, current)
+            if (effectiveCount >= HomeGridSpec.MAX_PAGES) return@edit
+            val nextCount = effectiveCount + 1
+            prefs[KEY_PAGE_COUNT] = nextCount
+            createdPage = nextCount - 1
+        }
+        return createdPage
+    }
+
+    /**
+     * Remove uma página vazia da tela inicial e ajusta o índice das páginas seguintes.
+     */
+    suspend fun removeEmptyPage(pageIndex: Int): Boolean {
+        var removed = false
+        context.homeWorkspaceDataStore.edit { prefs ->
+            val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
+            val effectiveCount = effectivePageCount(prefs[KEY_PAGE_COUNT] ?: 1, current)
+            if (effectiveCount <= 1 || pageIndex !in 0 until effectiveCount) return@edit
+            if (current.any { it.page == pageIndex }) return@edit
+
+            val shifted = current.map { item ->
+                if (item.page > pageIndex) {
+                    item.withPlacement(newPage = item.page - 1)
+                } else {
+                    item
+                }
+            }
+            prefs[KEY_WORKSPACE_ITEMS] = encodeItems(shifted)
+            prefs[KEY_PAGE_COUNT] = (effectiveCount - 1).coerceAtLeast(1)
+            removed = true
+        }
+        return removed
     }
 
     suspend fun resizeWidget(
@@ -496,6 +555,7 @@ class HomeWorkspaceRepository(
             val current = decodeItems(prefs[KEY_WORKSPACE_ITEMS].orEmpty())
             removedWidgetIds = current.filterIsInstance<HomeItem.Widget>().map { it.appWidgetId }
             prefs[KEY_WORKSPACE_ITEMS] = encodeItems(decoded)
+            prefs[KEY_PAGE_COUNT] = effectivePageCount(1, decoded)
         }
         return removedWidgetIds
     }
@@ -662,8 +722,26 @@ class HomeWorkspaceRepository(
         }.getOrDefault(emptyList())
     }
 
+    private fun effectivePageCount(storedCount: Int, items: List<HomeItem>): Int {
+        val maxItemPage = items.maxOfOrNull { it.page } ?: 0
+        return maxOf(storedCount, maxItemPage + 1).coerceIn(1, HomeGridSpec.MAX_PAGES)
+    }
+
+    private fun HomeItem.withPlacement(
+        newCellX: Int = cellX,
+        newCellY: Int = cellY,
+        newPage: Int = page,
+    ): HomeItem = when (this) {
+        is HomeItem.AppShortcut -> copy(cellX = newCellX, cellY = newCellY, page = newPage)
+        is HomeItem.PinnedShortcut -> copy(cellX = newCellX, cellY = newCellY, page = newPage)
+        is HomeItem.Folder -> copy(cellX = newCellX, cellY = newCellY, page = newPage)
+        is HomeItem.Widget -> copy(cellX = newCellX, cellY = newCellY, page = newPage)
+        is HomeItem.NativeWidget -> copy(cellX = newCellX, cellY = newCellY, page = newPage)
+    }
+
     private companion object {
         val KEY_WORKSPACE_ITEMS = stringPreferencesKey("workspace_items_json")
+        val KEY_PAGE_COUNT = intPreferencesKey("workspace_page_count")
         const val TYPE_SHORTCUT = "shortcut"
         const val TYPE_PINNED_SHORTCUT = "pinned_shortcut"
         const val TYPE_FOLDER = "folder"

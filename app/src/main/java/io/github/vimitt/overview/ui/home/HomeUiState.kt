@@ -72,9 +72,10 @@ data class HomeUiState(
     val folderSettings: FolderSettings = FolderSettings(),
     val showNotificationDots: Boolean = false,
     val badgePackages: Set<String> = emptySet(),
+    val storedPageCount: Int = 1,
 ) {
     val pageCount: Int
-        get() = ((workspaceItems.maxOfOrNull { it.item.page } ?: 0) + 1)
+        get() = maxOf(storedPageCount, (workspaceItems.maxOfOrNull { it.item.page } ?: 0) + 1)
             .coerceIn(1, HomeGridSpec.MAX_PAGES)
     val gridColumns: Int get() = homeSettings.gridColumns
     val gridRows: Int get() = homeSettings.gridRows
