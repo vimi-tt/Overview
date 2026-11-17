@@ -169,6 +169,14 @@ fun OverviewTheme(
                 primaryContainer = colors.accentContainer,
                 onPrimaryContainer = colors.onAccentContainer,
                 secondary = colors.secondaryAccent,
+                tertiary = colors.tertiary,
+                onTertiary = colors.onTertiary,
+                tertiaryContainer = colors.tertiaryContainer,
+                onTertiaryContainer = colors.onTertiaryContainer,
+                error = colors.error,
+                onError = colors.onError,
+                errorContainer = colors.errorContainer,
+                onErrorContainer = colors.onErrorContainer,
                 background = Color.Transparent,
                 surface = colors.surface,
                 surfaceContainer = colors.surfaceContainer,
@@ -178,6 +186,7 @@ fun OverviewTheme(
                 onSurface = colors.onSurface,
                 onSurfaceVariant = colors.onSurfaceMuted,
                 outline = colors.hairlineBorder,
+                outlineVariant = colors.outlineVariant,
             )
         } else {
             lightColorScheme(
@@ -186,6 +195,14 @@ fun OverviewTheme(
                 primaryContainer = colors.accentContainer,
                 onPrimaryContainer = colors.onAccentContainer,
                 secondary = colors.secondaryAccent,
+                tertiary = colors.tertiary,
+                onTertiary = colors.onTertiary,
+                tertiaryContainer = colors.tertiaryContainer,
+                onTertiaryContainer = colors.onTertiaryContainer,
+                error = colors.error,
+                onError = colors.onError,
+                errorContainer = colors.errorContainer,
+                onErrorContainer = colors.onErrorContainer,
                 background = Color.Transparent,
                 surface = colors.surface,
                 surfaceContainer = colors.surfaceContainer,
@@ -195,6 +212,7 @@ fun OverviewTheme(
                 onSurface = colors.onSurface,
                 onSurfaceVariant = colors.onSurfaceMuted,
                 outline = colors.hairlineBorder,
+                outlineVariant = colors.outlineVariant,
             )
         }
     }
@@ -233,6 +251,14 @@ private fun animateOverviewColors(
     val accentContainer by animateColorAsState(target.accentContainer, spec, label = "theme_accent_container")
     val onAccentContainer by animateColorAsState(target.onAccentContainer, spec, label = "theme_on_accent_container")
     val secondaryAccent by animateColorAsState(target.secondaryAccent, spec, label = "theme_secondary_accent")
+    val tertiary by animateColorAsState(target.tertiary, spec, label = "theme_tertiary")
+    val onTertiary by animateColorAsState(target.onTertiary, spec, label = "theme_on_tertiary")
+    val tertiaryContainer by animateColorAsState(target.tertiaryContainer, spec, label = "theme_tertiary_container")
+    val onTertiaryContainer by animateColorAsState(target.onTertiaryContainer, spec, label = "theme_on_tertiary_container")
+    val error by animateColorAsState(target.error, spec, label = "theme_error")
+    val onError by animateColorAsState(target.onError, spec, label = "theme_on_error")
+    val errorContainer by animateColorAsState(target.errorContainer, spec, label = "theme_error_container")
+    val onErrorContainer by animateColorAsState(target.onErrorContainer, spec, label = "theme_on_error_container")
     val windowBackground by animateColorAsState(target.windowBackground, spec, label = "theme_window_bg")
     val surface by animateColorAsState(target.surface, spec, label = "theme_surface")
     val surfaceContainer by animateColorAsState(target.surfaceContainer, spec, label = "theme_surface_container")
@@ -242,6 +268,7 @@ private fun animateOverviewColors(
     val onSurface by animateColorAsState(target.onSurface, spec, label = "theme_on_surface")
     val onSurfaceMuted by animateColorAsState(target.onSurfaceMuted, spec, label = "theme_on_surface_muted")
     val hairlineBorder by animateColorAsState(target.hairlineBorder, spec, label = "theme_border")
+    val outlineVariant by animateColorAsState(target.outlineVariant, spec, label = "theme_outline_variant")
     val dashBackground by animateColorAsState(target.dashBackground, spec, label = "theme_dash_bg")
     val overviewScrim by animateColorAsState(target.overviewScrim, spec, label = "theme_scrim")
 
@@ -251,6 +278,14 @@ private fun animateOverviewColors(
         accentContainer = accentContainer,
         onAccentContainer = onAccentContainer,
         secondaryAccent = secondaryAccent,
+        tertiary = tertiary,
+        onTertiary = onTertiary,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+        error = error,
+        onError = onError,
+        errorContainer = errorContainer,
+        onErrorContainer = onErrorContainer,
         windowBackground = windowBackground,
         surface = surface,
         surfaceContainer = surfaceContainer,
@@ -260,6 +295,7 @@ private fun animateOverviewColors(
         onSurface = onSurface,
         onSurfaceMuted = onSurfaceMuted,
         hairlineBorder = hairlineBorder,
+        outlineVariant = outlineVariant,
         dashBackground = dashBackground,
         overviewScrim = overviewScrim,
     )

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -734,7 +735,7 @@ private fun HomeWorkspaceGrid(
                 val targetColor = if (dropTarget.isValid) {
                     colors.accent
                 } else {
-                    Color(0xFFE01B24)
+                    colors.error
                 }
                 val targetShape = OverviewTheme.shapes.large
                 Box(
@@ -978,14 +979,15 @@ private fun RemoveDropZonePill(
 ) {
     val colors = OverviewTheme.colors
     val shape = OverviewTheme.shapes.pill
-    val dangerColor = Color(0xFFE01B24)
+    val dangerColor = colors.error
+    val activeContentColor = colors.onError
 
     Row(
         modifier = modifier
             .clip(shape)
             .background(
                 if (isActive) {
-                    dangerColor.copy(alpha = 0.90f)
+                    dangerColor.copy(alpha = 0.94f)
                 } else {
                     colors.dashBackground
                 },
@@ -1001,14 +1003,14 @@ private fun RemoveDropZonePill(
         Icon(
             imageVector = Icons.Default.Delete,
             contentDescription = null,
-            tint = if (isActive) Color.White else dangerColor,
+            tint = if (isActive) activeContentColor else dangerColor,
             modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.home_drag_remove),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = if (isActive) Color.White else colors.onSurface,
+            color = if (isActive) activeContentColor else colors.onSurface,
         )
     }
 }
@@ -1024,7 +1026,7 @@ private fun ResizeModeBanner(
     val colors = OverviewTheme.colors
     val shape = OverviewTheme.shapes.pill
     val isExpressive = OverviewTheme.components.isExpressive
-    val dangerColor = Color(0xFFE01B24)
+    val dangerColor = colors.error
 
     Row(
         modifier = modifier
@@ -1038,7 +1040,7 @@ private fun ResizeModeBanner(
                 },
             )
             .border(1.dp, if (isExpressive) colors.accent.copy(alpha = 0.35f) else colors.hairlineBorder, shape)
-            .padding(start = 14.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+            .padding(start = 14.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f, fill = false)) {
@@ -1057,8 +1059,11 @@ private fun ResizeModeBanner(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        TextButton(onClick = onMove) {
+        Spacer(modifier = Modifier.width(4.dp))
+        TextButton(
+            onClick = onMove,
+            modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+        ) {
             Text(
                 text = stringResource(R.string.home_resize_move),
                 color = colors.onSurface,
@@ -1066,7 +1071,7 @@ private fun ResizeModeBanner(
         }
         IconButton(
             onClick = onRemove,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
@@ -1077,17 +1082,22 @@ private fun ResizeModeBanner(
         }
         IconButton(
             onClick = onDone,
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(colors.accent),
+            modifier = Modifier.size(48.dp),
         ) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = stringResource(R.string.home_resize_done),
-                tint = colors.onAccent,
-                modifier = Modifier.size(18.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(colors.accent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = stringResource(R.string.home_resize_done),
+                    tint = colors.onAccent,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
@@ -1135,6 +1145,7 @@ private fun OverviewHandlePill(
 
     Box(
         modifier = modifier
+            .defaultMinSize(minWidth = 64.dp, minHeight = 48.dp)
             .clip(pillShape)
             .clickable(
                 interactionSource = interactionSource,
@@ -1143,7 +1154,7 @@ private fun OverviewHandlePill(
                 onClick = onClick,
             )
             .semantics { contentDescription = label }
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = 24.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -1279,29 +1290,39 @@ private fun HomePageIndicator(
     modifier: Modifier = Modifier,
 ) {
     val colors = OverviewTheme.colors
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(colors.surfaceElevated.copy(alpha = 0.45f))
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
     ) {
-        for (index in 0 until pageCount) {
-            val isSelected = index == currentPage
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .size(width = if (isSelected) 16.dp else 6.dp, height = 6.dp)
-                    .background(
-                        if (isSelected) {
-                            colors.accent
-                        } else {
-                            colors.wallpaperForeground.copy(alpha = 0.45f)
-                        },
+        Row(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(colors.surfaceElevated.copy(alpha = 0.45f)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for (index in 0 until pageCount) {
+                val isSelected = index == currentPage
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(role = Role.Tab) { onSelectPage(index) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .size(width = if (isSelected) 16.dp else 6.dp, height = 6.dp)
+                            .background(
+                                if (isSelected) {
+                                    colors.accent
+                                } else {
+                                    colors.wallpaperForeground.copy(alpha = 0.45f)
+                                },
+                            ),
                     )
-                    .clickable { onSelectPage(index) },
-            )
+                }
+            }
         }
     }
 }

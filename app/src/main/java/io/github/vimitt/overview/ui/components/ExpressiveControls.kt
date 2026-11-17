@@ -17,7 +17,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +42,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,9 +54,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,11 +78,14 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -270,7 +282,9 @@ fun <T> ExpressiveButtonGroup(
     val motion = OverviewTheme.motion
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -278,6 +292,7 @@ fun <T> ExpressiveButtonGroup(
             val isSelected = optionValue == selected
             val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()
+            val isFocused by interactionSource.collectIsFocusedAsState()
 
             val outerCorner by animateDpAsState(
                 targetValue = when {
@@ -286,16 +301,16 @@ fun <T> ExpressiveButtonGroup(
                     index == 0 || index == options.lastIndex -> 16.dp
                     else -> 12.dp
                 },
-                animationSpec = motion.expressiveSpec(durationMillis = 180),
+                animationSpec = motion.spatialSpec(durationMillis = 180),
                 label = "buttonGroupCorner",
             )
             val containerColor by animateColorAsState(
-                targetValue = if (isSelected) colors.accent else colors.surfaceElevated,
+                targetValue = if (isSelected) colors.accentContainer else colors.surfaceElevated,
                 animationSpec = motion.effectSpec(durationMillis = 150),
                 label = "buttonGroupBg",
             )
             val contentColor by animateColorAsState(
-                targetValue = if (isSelected) colors.onAccent else colors.onSurface,
+                targetValue = if (isSelected) colors.onAccentContainer else colors.onSurface,
                 animationSpec = motion.effectSpec(durationMillis = 150),
                 label = "buttonGroupFg",
             )
@@ -306,10 +321,15 @@ fun <T> ExpressiveButtonGroup(
             )
 
             val shape = RoundedCornerShape(outerCorner)
+            val borderModifier = when {
+                isFocused -> Modifier.border(2.dp, colors.accent, shape)
+                isSelected -> Modifier.border(1.5.dp, colors.accent.copy(alpha = 0.65f), shape)
+                else -> Modifier.border(1.dp, colors.hairlineBorder, shape)
+            }
 
             Row(
                 modifier = Modifier
-                    .weight(if (isSelected) 1.15f else 1f)
+                    .weight(1f)
                     .defaultMinSize(minHeight = 48.dp)
                     .graphicsLayer {
                         scaleX = pressScale
@@ -317,16 +337,12 @@ fun <T> ExpressiveButtonGroup(
                     }
                     .clip(shape)
                     .background(containerColor)
-                    .then(
-                        if (!isSelected) {
-                            Modifier.border(1.dp, colors.hairlineBorder, shape)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .clickable(
+                    .then(borderModifier)
+                    .focusable(interactionSource = interactionSource)
+                    .selectable(
+                        selected = isSelected,
                         interactionSource = interactionSource,
-                        indication = null,
+                        indication = ripple(),
                         role = Role.RadioButton,
                         onClick = { onSelect(optionValue) },
                     )
@@ -349,7 +365,8 @@ fun <T> ExpressiveButtonGroup(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                     ),
                     color = contentColor,
-                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -377,15 +394,17 @@ fun ExpressiveSplitButton(
     val trailingInteraction = remember { MutableInteractionSource() }
     val leadingPressed by leadingInteraction.collectIsPressedAsState()
     val trailingPressed by trailingInteraction.collectIsPressedAsState()
+    val leadingFocused by leadingInteraction.collectIsFocusedAsState()
+    val trailingFocused by trailingInteraction.collectIsFocusedAsState()
 
     val leadingInnerCorner by animateDpAsState(
         targetValue = if (leadingPressed) 14.dp else 6.dp,
-        animationSpec = motion.expressiveSpec(durationMillis = 140),
+        animationSpec = motion.spatialSpec(durationMillis = 140),
         label = "splitLeadingCorner",
     )
     val trailingInnerCorner by animateDpAsState(
         targetValue = if (trailingPressed) 14.dp else 6.dp,
-        animationSpec = motion.expressiveSpec(durationMillis = 140),
+        animationSpec = motion.spatialSpec(durationMillis = 140),
         label = "splitTrailingCorner",
     )
 
@@ -412,9 +431,17 @@ fun ExpressiveSplitButton(
                 .defaultMinSize(minHeight = 48.dp)
                 .clip(leadingShape)
                 .background(colors.accentContainer)
+                .then(
+                    if (leadingFocused) {
+                        Modifier.border(2.dp, colors.accent, leadingShape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .focusable(interactionSource = leadingInteraction)
                 .clickable(
                     interactionSource = leadingInteraction,
-                    indication = null,
+                    indication = ripple(),
                     role = Role.Button,
                     onClick = onPrimaryClick,
                 )
@@ -445,9 +472,17 @@ fun ExpressiveSplitButton(
                 .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 .clip(trailingShape)
                 .background(colors.accentContainer)
+                .then(
+                    if (trailingFocused) {
+                        Modifier.border(2.dp, colors.accent, trailingShape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .focusable(interactionSource = trailingInteraction)
                 .clickable(
                     interactionSource = trailingInteraction,
-                    indication = null,
+                    indication = ripple(),
                     role = Role.Button,
                     onClick = onSecondaryClick,
                 )
@@ -465,12 +500,10 @@ fun ExpressiveSplitButton(
     }
 }
 
-private val POPUP_DESTRUCTIVE_COLOR = Color(0xFFE62D42)
-
 /**
  * Contêiner compartilhado para pop-ups e planilhas contextuais do launcher.
  * No modo GNOME preserva superfície plana e entrada discreta; no modo Expressive
- * usa superfície tonal elevada, borda tonal, alça superior em planilhas inferiores
+ * usa superfície tonal elevada, borda tonal, alça interativa em planilhas inferiores
  * e entrada com física de mola.
  */
 @Composable
@@ -489,6 +522,16 @@ fun OverviewPopupSurface(
     val cardShape = shapes.large
     val backdropInteraction = remember { MutableInteractionSource() }
     val cardInteraction = remember { MutableInteractionSource() }
+    val density = LocalDensity.current
+    val dismissDragThresholdPx = with(density) { 84.dp.toPx() }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var isDraggingSheet by remember { mutableStateOf(false) }
+    val animatedDragOffsetY by animateFloatAsState(
+        targetValue = if (isDraggingSheet) dragOffsetY else 0f,
+        animationSpec = motion.spatialSpec(durationMillis = 180),
+        label = "overviewPopupDragOffset",
+    )
+    val effectiveDragY = if (isDraggingSheet) dragOffsetY else animatedDragOffsetY
 
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
@@ -496,13 +539,18 @@ fun OverviewPopupSurface(
     val entryProgress by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = if (isExpressive) {
-            motion.expressiveSpec(durationMillis = if (bottomSheet) 220 else 200)
+            motion.spatialSpec(durationMillis = if (bottomSheet) 220 else 200)
         } else {
             motion.spatialSpec(durationMillis = if (bottomSheet) 160 else 180)
         },
         label = "overviewPopupEntry",
     )
-    val clampedAlpha = entryProgress.coerceIn(0f, 1f)
+    val dragDismissFraction = if (bottomSheet && dismissDragThresholdPx > 0f) {
+        (effectiveDragY / (dismissDragThresholdPx * 2.2f)).coerceIn(0f, 0.7f)
+    } else {
+        0f
+    }
+    val clampedAlpha = (entryProgress.coerceIn(0f, 1f) * (1f - dragDismissFraction)).coerceIn(0f, 1f)
 
     val containerColor = if (isExpressive) {
         lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.14f)
@@ -533,6 +581,26 @@ fun OverviewPopupSurface(
             vertical = if (bottomSheet) 24.dp else 28.dp,
         )
 
+    val sheetDragModifier = if (bottomSheet) {
+        Modifier.draggable(
+            orientation = Orientation.Vertical,
+            state = rememberDraggableState { delta ->
+                dragOffsetY = (dragOffsetY + delta).coerceAtLeast(0f)
+            },
+            onDragStarted = { isDraggingSheet = true },
+            onDragStopped = { velocity ->
+                isDraggingSheet = false
+                if (dragOffsetY >= dismissDragThresholdPx || velocity > 900f) {
+                    onDismiss()
+                } else {
+                    dragOffsetY = 0f
+                }
+            },
+        )
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = outerModifier,
         contentAlignment = if (bottomSheet) Alignment.BottomCenter else Alignment.Center,
@@ -544,13 +612,13 @@ fun OverviewPopupSurface(
                 .graphicsLayer {
                     if (isExpressive) {
                         if (bottomSheet) {
-                            val scale = 0.88f + 0.12f * entryProgress
+                            val scale = 0.90f + 0.10f * entryProgress
                             scaleX = scale
                             scaleY = scale
                             transformOrigin = TransformOrigin(0.5f, 1f)
-                            translationY = (1f - entryProgress) * 56f
+                            translationY = (1f - entryProgress) * 56f + effectiveDragY
                         } else {
-                            val scale = 0.82f + 0.18f * entryProgress
+                            val scale = 0.86f + 0.14f * entryProgress
                             scaleX = scale
                             scaleY = scale
                             transformOrigin = TransformOrigin.Center
@@ -561,7 +629,7 @@ fun OverviewPopupSurface(
                             val scale = 0.94f + 0.06f * entryProgress
                             scaleX = scale
                             scaleY = scale
-                            translationY = (1f - entryProgress) * 28f
+                            translationY = (1f - entryProgress) * 28f + effectiveDragY
                         } else {
                             val scale = 0.90f + 0.10f * entryProgress
                             scaleX = scale
@@ -580,6 +648,13 @@ fun OverviewPopupSurface(
                 .clip(cardShape)
                 .background(containerColor)
                 .border(width = 1.dp, color = borderColor, shape = cardShape)
+                .then(sheetDragModifier)
+                .semantics {
+                    dismiss {
+                        onDismiss()
+                        true
+                    }
+                }
                 .clickable(
                     interactionSource = cardInteraction,
                     indication = null,
@@ -587,7 +662,7 @@ fun OverviewPopupSurface(
                 ),
         ) {
             if (isExpressive && bottomSheet) {
-                // Alça discreta para reforçar a hierarquia de planilha Material 3 Expressive
+                // Alça funcional para reforçar a hierarquia de planilha Material 3 Expressive
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -640,8 +715,8 @@ fun OverviewPopupActionRow(
 ) {
     val colors = OverviewTheme.colors
     val isExpressive = OverviewTheme.components.isExpressive
-    val effectiveTint = if (destructive) POPUP_DESTRUCTIVE_COLOR else tint
-    val textColor = if (destructive) POPUP_DESTRUCTIVE_COLOR else colors.onSurface
+    val effectiveTint = if (destructive) colors.error else tint
+    val textColor = if (destructive) colors.error else colors.onSurface
     val labelStyle = if (isExpressive) {
         OverviewTheme.typography.rowTitle
     } else {
@@ -669,16 +744,16 @@ fun OverviewPopupActionRow(
                 )
             } else if (isExpressive) {
                 val badgeBg = if (destructive) {
-                    POPUP_DESTRUCTIVE_COLOR.copy(alpha = 0.16f)
+                    colors.errorContainer
                 } else if (effectiveTint == colors.accent) {
                     colors.accentContainer
                 } else {
                     lerp(colors.surfaceContainerHigh, effectiveTint, 0.18f)
                 }
-                val badgeTint = if (effectiveTint == colors.accent && !destructive) {
-                    colors.onAccentContainer
-                } else {
-                    effectiveTint
+                val badgeTint = when {
+                    destructive -> colors.onErrorContainer
+                    effectiveTint == colors.accent -> colors.onAccentContainer
+                    else -> effectiveTint
                 }
                 Box(
                     modifier = Modifier
@@ -726,7 +801,7 @@ fun OverviewPopupActionRow(
             text = label,
             style = labelStyle,
             color = textColor,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }

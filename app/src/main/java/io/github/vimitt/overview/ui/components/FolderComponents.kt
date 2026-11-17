@@ -364,7 +364,7 @@ fun FolderPopupOverlay(
                 Text(
                     text = folderName,
                     style = if (isExpressive) {
-                        OverviewTheme.typography.sectionHeader
+                        MaterialTheme.typography.titleLarge
                     } else {
                         MaterialTheme.typography.titleMedium
                     },

@@ -228,7 +228,7 @@ fun WidgetResizeOverlayFrame(
     )
 
     val frameColor by animateColorAsState(
-        targetValue = if (isCandidateValid) colors.accent else Color(0xFFE01B24),
+        targetValue = if (isCandidateValid) colors.accent else colors.error,
         animationSpec = if (expressiveMotion) motion.effectSpec(120) else snap(),
         label = "resizeFrameColor",
     )
@@ -301,13 +301,13 @@ fun WidgetResizeOverlayFrame(
                 modifier = Modifier
                     .padding(top = 6.dp)
                     .clip(shapes.pill)
-                    .background(if (isCandidateValid) colors.accent else Color(0xFFE01B24))
+                    .background(if (isCandidateValid) colors.accent else colors.error)
                     .padding(horizontal = 10.dp, vertical = 3.dp),
             ) {
                 Text(
                     text = "${candidate.spanX} × ${candidate.spanY}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (isCandidateValid) colors.onAccent else Color.White,
+                    color = if (isCandidateValid) colors.onAccent else colors.onError,
                 )
             }
         }

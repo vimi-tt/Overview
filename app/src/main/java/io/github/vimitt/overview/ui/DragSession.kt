@@ -276,7 +276,7 @@ fun DragGhostOverlay(
 
     val borderColor by animateColorAsState(
         targetValue = if (isOverRemoveZone) {
-            Color(0xFFE01B24)
+            colors.error
         } else {
             colors.accent.copy(alpha = 0.85f)
         },

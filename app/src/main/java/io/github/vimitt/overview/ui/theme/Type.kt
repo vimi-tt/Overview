@@ -200,6 +200,7 @@ fun overviewTypographyTokens(
         displayLarge = OverviewTypography.displayLarge.copy(
             fontWeight = displayWeight,
             fontSize = if (isExpressive) 56.sp else 54.sp,
+            lineHeight = if (isExpressive) 64.sp else 60.sp,
             letterSpacing = if (isExpressive) (-0.8).sp else (-0.5).sp,
         ),
         headlineMedium = TextStyle(
@@ -219,7 +220,7 @@ fun overviewTypographyTokens(
             fontFamily = OverviewFontFamily,
             fontWeight = titleMediumWeight,
             fontSize = titleMediumSize,
-            lineHeight = 22.sp,
+            lineHeight = if (isExpressive) 23.sp else 22.sp,
         ),
         titleSmall = TextStyle(
             fontFamily = OverviewFontFamily,

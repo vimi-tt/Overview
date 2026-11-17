@@ -53,6 +53,26 @@ class OverviewThemeTokensTest {
                     "onAccent WCAG AA large/UI contrast failed for $argb (dark=$isDark)",
                     contrastRatio(colors.onAccent, colors.accent) >= 3.0f,
                 )
+                assertTrue(
+                    "onAccentContainer WCAG AA contrast failed for $argb (dark=$isDark)",
+                    contrastRatio(colors.onAccentContainer, colors.accentContainer) >= 4.5f,
+                )
+                assertTrue(
+                    "error WCAG AA contrast on surfaceContainer failed for $argb (dark=$isDark)",
+                    contrastRatio(colors.error, colors.surfaceContainer) >= 4.5f,
+                )
+                assertTrue(
+                    "onErrorContainer WCAG AA contrast failed for $argb (dark=$isDark)",
+                    contrastRatio(colors.onErrorContainer, colors.errorContainer) >= 4.5f,
+                )
+                assertTrue(
+                    "onTertiaryContainer WCAG AA contrast failed for $argb (dark=$isDark)",
+                    contrastRatio(colors.onTertiaryContainer, colors.tertiaryContainer) >= 4.5f,
+                )
+                assertTrue(
+                    "swatch icon bestOnColor WCAG AA non-text contrast failed for $argb",
+                    contrastRatio(bestOnColor(Color(argb)), Color(argb)) >= 3.0f,
+                )
             }
         }
     }

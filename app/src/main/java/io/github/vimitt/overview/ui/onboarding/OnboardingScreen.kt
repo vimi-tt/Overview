@@ -38,6 +38,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -840,7 +842,9 @@ private fun OnboardingThemeStep(
 
             // Opções GNOME e Material Expressive
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ThemeChoiceCard(
@@ -935,7 +939,11 @@ private fun ThemeChoiceCard(
                 color = if (selected) colors.accent else colors.hairlineBorder,
                 shape = cardShape,
             )
-            .clickable(role = Role.RadioButton, onClick = onClick)
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick,
+            )
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

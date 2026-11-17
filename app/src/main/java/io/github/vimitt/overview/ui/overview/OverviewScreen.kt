@@ -1002,7 +1002,7 @@ private fun OverviewAppActionOverlay(
             Text(
                 text = app.label,
                 style = if (isExpressive) {
-                    OverviewTheme.typography.sectionHeader
+                    MaterialTheme.typography.titleLarge
                 } else {
                     MaterialTheme.typography.titleMedium
                 },
@@ -1093,7 +1093,7 @@ private fun FolderPickerOverlay(
             Text(
                 text = stringResource(R.string.overview_folder_picker_title),
                 style = if (isExpressive) {
-                    OverviewTheme.typography.sectionHeader
+                    MaterialTheme.typography.titleLarge
                 } else {
                     MaterialTheme.typography.titleMedium
                 },

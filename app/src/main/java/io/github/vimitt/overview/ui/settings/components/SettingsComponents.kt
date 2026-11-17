@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import io.github.vimitt.overview.R
 import io.github.vimitt.overview.ui.components.ExpressiveButtonGroup
 import io.github.vimitt.overview.ui.theme.OverviewTheme
+import io.github.vimitt.overview.ui.theme.bestOnColor
 
 /**
  * Estrutura base das páginas de configurações no estilo Adwaita (HeaderBar leve + lista agrupada).
@@ -512,7 +515,8 @@ fun <T> SegmentedRow(
                     .fillMaxWidth()
                     .clip(containerShape)
                     .background(colors.surfaceElevated)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 for ((optionValue, label) in options) {
@@ -520,10 +524,14 @@ fun <T> SegmentedRow(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .defaultMinSize(minHeight = 44.dp)
+                            .defaultMinSize(minHeight = 48.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSelected) colors.accent else Color.Transparent)
-                            .clickable(role = Role.RadioButton) { onSelect(optionValue) }
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(optionValue) },
+                            )
                             .padding(horizontal = 6.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -580,7 +588,7 @@ fun <T> SingleChoiceRow(
                 )
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth().selectableGroup()) {
                     for ((value, label) in options) {
                         val isSelected = value == selected
                         Row(
@@ -588,10 +596,14 @@ fun <T> SingleChoiceRow(
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 48.dp)
                                 .clip(OverviewTheme.shapes.small)
-                                .clickable(role = Role.RadioButton) {
-                                    onSelect(value)
-                                    dialogOpen = false
-                                }
+                                .selectable(
+                                    selected = isSelected,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        onSelect(value)
+                                        dialogOpen = false
+                                    },
+                                )
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -675,16 +687,23 @@ fun ColorPickerRow(
         }
         Spacer(modifier = Modifier.height(12.dp))
         FlowRow(
+            modifier = Modifier.selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             for ((label, argb) in presets) {
                 val isSelected = selectedArgb == argb
+                val swatchColor = Color(argb)
+                val checkTint = bestOnColor(swatchColor)
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .clickable(role = Role.RadioButton) { onSelect(argb) }
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.RadioButton,
+                            onClick = { onSelect(argb) },
+                        )
                         .semantics { contentDescription = label },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -692,7 +711,7 @@ fun ColorPickerRow(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(Color(argb))
+                            .background(swatchColor)
                             .then(
                                 if (isSelected) {
                                     Modifier.border(2.5.dp, colors.onSurface, CircleShape)
@@ -706,7 +725,7 @@ fun ColorPickerRow(
                             Icon(
                                 imageVector = Icons.Filled.Check,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = checkTint,
                                 modifier = Modifier.size(18.dp),
                             )
                         }

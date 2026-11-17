@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -511,7 +513,9 @@ private fun VisualStylePreviewCard(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             StyleMiniPreviewTile(
@@ -571,7 +575,11 @@ private fun StyleMiniPreviewTile(
             .clip(tileShape)
             .background(bgColor)
             .border(borderWidth, borderColor, tileShape)
-            .clickable(role = Role.RadioButton, onClick = onClick)
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick,
+            )
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -698,7 +706,7 @@ private fun IconShapePickerRow(
                 )
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth().selectableGroup()) {
                     for ((shapeOption, label) in options) {
                         val isSelected = shapeOption == selectedShape
                         val itemShape = remember(shapeOption, roundness) {
@@ -709,10 +717,14 @@ private fun IconShapePickerRow(
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 48.dp)
                                 .clip(OverviewTheme.shapes.small)
-                                .clickable(role = Role.RadioButton) {
-                                    onSelect(shapeOption)
-                                    dialogOpen = false
-                                }
+                                .selectable(
+                                    selected = isSelected,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        onSelect(shapeOption)
+                                        dialogOpen = false
+                                    },
+                                )
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -805,7 +817,7 @@ private fun CustomAccentHexDialog(
                     Text(
                         text = stringResource(R.string.settings_custom_accent_invalid_hex),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFE01B24),
+                        color = colors.error,
                     )
                 }
             }
@@ -889,7 +901,8 @@ private fun IconPackPickerDialog(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp),
+                    .height(260.dp)
+                    .selectableGroup(),
             ) {
                 item(key = "system_default") {
                     Row(
@@ -897,7 +910,11 @@ private fun IconPackPickerDialog(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 48.dp)
                             .clip(shapes.small)
-                            .clickable(role = Role.RadioButton) { onSelect(null) }
+                            .selectable(
+                                selected = selectedPackage == null,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(null) },
+                            )
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -960,7 +977,11 @@ private fun IconPackPickerDialog(
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 48.dp)
                                 .clip(shapes.small)
-                                .clickable(role = Role.RadioButton) { onSelect(pack.packageName) }
+                                .selectable(
+                                    selected = selectedPackage == pack.packageName,
+                                    role = Role.RadioButton,
+                                    onClick = { onSelect(pack.packageName) },
+                                )
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

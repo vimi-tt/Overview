@@ -101,6 +101,10 @@ object AdwaitaPalette {
     // Texto sobre papel de parede (tela inicial)
     val WallpaperForeground = Color(0xFFFFFFFF)
     val WallpaperShadow = Color(0x66000000)
+
+    // Cores semânticas de erro
+    val LightError = Color(0xFFD61F33)
+    val DarkError = Color(0xFFFF7B85)
 }
 
 /**
@@ -114,6 +118,14 @@ data class OverviewColors(
     val accentContainer: Color,
     val onAccentContainer: Color,
     val secondaryAccent: Color,
+    val tertiary: Color,
+    val onTertiary: Color,
+    val tertiaryContainer: Color,
+    val onTertiaryContainer: Color,
+    val error: Color,
+    val onError: Color,
+    val errorContainer: Color,
+    val onErrorContainer: Color,
     val windowBackground: Color,
     val surface: Color,
     val surfaceContainer: Color,
@@ -123,6 +135,7 @@ data class OverviewColors(
     val onSurface: Color,
     val onSurfaceMuted: Color,
     val hairlineBorder: Color,
+    val outlineVariant: Color,
     val dashBackground: Color,
     val overviewScrim: Color,
     val wallpaperForeground: Color,
@@ -156,7 +169,7 @@ fun contrastRatio(foreground: Color, background: Color): Float {
 fun bestOnColor(
     background: Color,
     lightOption: Color = Color.White,
-    darkOption: Color = Color(0xFF101820),
+    darkOption: Color = Color(0xFF0D1218),
 ): Color = if (contrastRatio(lightOption, background) >= contrastRatio(darkOption, background)) {
     lightOption
 } else {
@@ -187,6 +200,47 @@ fun ensureWcagAa(
         }
     }
     return candidate
+}
+
+/**
+ * Deriva uma cor terciária harmônica deslocando o matiz em relação ao destaque.
+ */
+private fun deriveHarmonicTertiary(base: Color, isDark: Boolean): Color {
+    val r = base.red
+    val g = base.green
+    val b = base.blue
+    val maxC = max(r, max(g, b))
+    val minC = min(r, min(g, b))
+    val delta = maxC - minC
+
+    var hue = when {
+        delta <= 1e-5f -> 260f
+        maxC == r -> 60f * (((g - b) / delta) % 6f)
+        maxC == g -> 60f * (((b - r) / delta) + 2f)
+        else -> 60f * (((r - g) / delta) + 4f)
+    }
+    if (hue < 0f) hue += 360f
+    val shiftedHue = (hue + 52f) % 360f
+    val sat = (if (maxC <= 1e-5f) 0.42f else (delta / maxC)).coerceIn(0.35f, 0.78f)
+    val value = if (isDark) 0.86f else 0.68f
+
+    val c = value * sat
+    val x = c * (1f - kotlin.math.abs(((shiftedHue / 60f) % 2f) - 1f))
+    val m = value - c
+    val (rp, gp, bp) = when {
+        shiftedHue < 60f -> Triple(c, x, 0f)
+        shiftedHue < 120f -> Triple(x, c, 0f)
+        shiftedHue < 180f -> Triple(0f, c, x)
+        shiftedHue < 240f -> Triple(0f, x, c)
+        shiftedHue < 300f -> Triple(x, 0f, c)
+        else -> Triple(c, 0f, x)
+    }
+    return Color(
+        red = (rp + m).coerceIn(0f, 1f),
+        green = (gp + m).coerceIn(0f, 1f),
+        blue = (bp + m).coerceIn(0f, 1f),
+        alpha = 1f,
+    )
 }
 
 /**
@@ -270,6 +324,37 @@ fun overviewColors(
             ensureWcagAa(resolvedAccent, accentContainer)
         }
 
+        val tertiary = deriveHarmonicTertiary(resolvedAccent, isDark)
+        val onTertiary = bestOnColor(tertiary)
+        val tertiaryContainer = if (isDark) {
+            lerp(AdwaitaPalette.DarkSurfaceElevated, tertiary, 0.24f)
+        } else {
+            lerp(AdwaitaPalette.LightSurface, tertiary, 0.14f)
+        }
+        val onTertiaryContainer = if (isDark) {
+            ensureWcagAa(AdwaitaPalette.DarkOnSurface, tertiaryContainer)
+        } else {
+            ensureWcagAa(tertiary, tertiaryContainer)
+        }
+        val surfaceContainerForCheck = if (isDark) {
+            AdwaitaPalette.DarkSurfaceContainer
+        } else {
+            AdwaitaPalette.LightSurfaceContainer
+        }
+        val baseError = if (isDark) AdwaitaPalette.DarkError else AdwaitaPalette.LightError
+        val resolvedError = ensureWcagAa(baseError, surfaceContainerForCheck, minRatio = 4.5f)
+        val onError = bestOnColor(resolvedError)
+        val errorContainer = if (isDark) {
+            lerp(AdwaitaPalette.DarkSurfaceElevated, resolvedError, 0.28f)
+        } else {
+            lerp(AdwaitaPalette.LightSurface, resolvedError, 0.14f)
+        }
+        val onErrorContainer = if (isDark) {
+            ensureWcagAa(AdwaitaPalette.DarkOnSurface, errorContainer)
+        } else {
+            ensureWcagAa(resolvedError, errorContainer)
+        }
+
         return if (isDark) {
             OverviewColors(
                 isDark = true,
@@ -278,6 +363,14 @@ fun overviewColors(
                 accentContainer = accentContainer,
                 onAccentContainer = onAccentContainer,
                 secondaryAccent = resolvedAccent.copy(alpha = 0.82f),
+                tertiary = tertiary,
+                onTertiary = onTertiary,
+                tertiaryContainer = tertiaryContainer,
+                onTertiaryContainer = onTertiaryContainer,
+                error = resolvedError,
+                onError = onError,
+                errorContainer = errorContainer,
+                onErrorContainer = onErrorContainer,
                 windowBackground = AdwaitaPalette.DarkWindowBackground,
                 surface = AdwaitaPalette.DarkSurface,
                 surfaceContainer = AdwaitaPalette.DarkSurfaceContainer,
@@ -287,6 +380,7 @@ fun overviewColors(
                 onSurface = AdwaitaPalette.DarkOnSurface,
                 onSurfaceMuted = AdwaitaPalette.DarkOnSurfaceMuted,
                 hairlineBorder = AdwaitaPalette.DarkBorder,
+                outlineVariant = AdwaitaPalette.DarkBorder,
                 dashBackground = AdwaitaPalette.DarkDashBackground,
                 overviewScrim = AdwaitaPalette.DarkOverviewScrim,
                 wallpaperForeground = AdwaitaPalette.WallpaperForeground,
@@ -300,6 +394,14 @@ fun overviewColors(
                 accentContainer = accentContainer,
                 onAccentContainer = onAccentContainer,
                 secondaryAccent = resolvedAccent.copy(alpha = 0.85f),
+                tertiary = tertiary,
+                onTertiary = onTertiary,
+                tertiaryContainer = tertiaryContainer,
+                onTertiaryContainer = onTertiaryContainer,
+                error = resolvedError,
+                onError = onError,
+                errorContainer = errorContainer,
+                onErrorContainer = onErrorContainer,
                 windowBackground = AdwaitaPalette.LightWindowBackground,
                 surface = AdwaitaPalette.LightSurface,
                 surfaceContainer = AdwaitaPalette.LightSurfaceContainer,
@@ -309,6 +411,7 @@ fun overviewColors(
                 onSurface = AdwaitaPalette.LightOnSurface,
                 onSurfaceMuted = AdwaitaPalette.LightOnSurfaceMuted,
                 hairlineBorder = AdwaitaPalette.LightBorder,
+                outlineVariant = AdwaitaPalette.LightBorder,
                 dashBackground = AdwaitaPalette.LightDashBackground,
                 overviewScrim = AdwaitaPalette.LightOverviewScrim,
                 wallpaperForeground = AdwaitaPalette.WallpaperForeground,
@@ -356,6 +459,14 @@ fun overviewColors(
         val onAccent = bestOnColor(rawAccent)
         val accentContainer = dynamicScheme.primaryContainer
         val onAccentContainer = ensureWcagAa(dynamicScheme.onPrimaryContainer, accentContainer, minRatio = 4.5f)
+        val tertiary = dynamicScheme.tertiary
+        val onTertiary = bestOnColor(tertiary)
+        val tertiaryContainer = dynamicScheme.tertiaryContainer
+        val onTertiaryContainer = ensureWcagAa(dynamicScheme.onTertiaryContainer, tertiaryContainer, minRatio = 4.5f)
+        val resolvedError = ensureWcagAa(dynamicScheme.error, surfaceContainer, minRatio = 4.5f)
+        val onError = bestOnColor(resolvedError)
+        val errorContainer = dynamicScheme.errorContainer
+        val onErrorContainer = ensureWcagAa(dynamicScheme.onErrorContainer, errorContainer, minRatio = 4.5f)
 
         return OverviewColors(
             isDark = isDark,
@@ -364,6 +475,14 @@ fun overviewColors(
             accentContainer = accentContainer,
             onAccentContainer = onAccentContainer,
             secondaryAccent = dynamicScheme.secondary,
+            tertiary = tertiary,
+            onTertiary = onTertiary,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            error = resolvedError,
+            onError = onError,
+            errorContainer = errorContainer,
+            onErrorContainer = onErrorContainer,
             windowBackground = windowBg,
             surface = surface,
             surfaceContainer = surfaceContainer,
@@ -373,6 +492,7 @@ fun overviewColors(
             onSurface = onSurface,
             onSurfaceMuted = onSurfaceMuted,
             hairlineBorder = dynamicScheme.outlineVariant.copy(alpha = if (isDark) 0.55f else 0.65f),
+            outlineVariant = dynamicScheme.outlineVariant,
             dashBackground = windowBg.copy(alpha = if (isDark) 0.84f else 0.88f),
             overviewScrim = windowBg.copy(alpha = if (isDark) 0.76f else 0.72f),
             wallpaperForeground = AdwaitaPalette.WallpaperForeground,
@@ -388,6 +508,8 @@ fun overviewColors(
     }
     val resolvedAccent = boostExpressiveAccent(baseAccent, isDark)
     val onAccent = bestOnColor(resolvedAccent)
+    val tertiary = deriveHarmonicTertiary(resolvedAccent, isDark)
+    val onTertiary = bestOnColor(tertiary)
 
     return if (isDark) {
         val windowBg = lerp(AdwaitaPalette.DarkWindowBackground, resolvedAccent, 0.06f)
@@ -397,8 +519,16 @@ fun overviewColors(
         val surfaceHigh = lerp(Color(0xFF42444B), resolvedAccent, 0.16f)
         val accentContainer = lerp(AdwaitaPalette.DarkSurfaceElevated, resolvedAccent, 0.34f)
         val onAccentContainer = ensureWcagAa(Color.White, accentContainer, minRatio = 4.5f)
+        val tertiaryContainer = lerp(AdwaitaPalette.DarkSurfaceElevated, tertiary, 0.30f)
+        val onTertiaryContainer = ensureWcagAa(Color.White, tertiaryContainer, minRatio = 4.5f)
+        val resolvedError = ensureWcagAa(AdwaitaPalette.DarkError, surfaceContainer, minRatio = 4.5f)
+        val onError = bestOnColor(resolvedError)
+        val errorContainer = lerp(AdwaitaPalette.DarkSurfaceElevated, resolvedError, 0.30f)
+        val onErrorContainer = ensureWcagAa(Color.White, errorContainer, minRatio = 4.5f)
         val onSurface = ensureWcagAa(AdwaitaPalette.DarkOnSurface, surfaceContainer, minRatio = 4.5f)
         val onSurfaceMuted = ensureWcagAa(AdwaitaPalette.DarkOnSurfaceMuted, surfaceContainer, minRatio = 4.5f)
+        val hairline = lerp(AdwaitaPalette.DarkBorder.copy(alpha = 1f), resolvedAccent, 0.30f)
+            .copy(alpha = 0.22f)
 
         OverviewColors(
             isDark = true,
@@ -407,6 +537,14 @@ fun overviewColors(
             accentContainer = accentContainer,
             onAccentContainer = onAccentContainer,
             secondaryAccent = lerp(resolvedAccent, Color.White, 0.25f),
+            tertiary = tertiary,
+            onTertiary = onTertiary,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            error = resolvedError,
+            onError = onError,
+            errorContainer = errorContainer,
+            onErrorContainer = onErrorContainer,
             windowBackground = windowBg,
             surface = surface,
             surfaceContainer = surfaceContainer,
@@ -415,8 +553,8 @@ fun overviewColors(
             searchFieldBackground = surfaceElevated,
             onSurface = onSurface,
             onSurfaceMuted = onSurfaceMuted,
-            hairlineBorder = lerp(AdwaitaPalette.DarkBorder.copy(alpha = 1f), resolvedAccent, 0.30f)
-                .copy(alpha = 0.22f),
+            hairlineBorder = hairline,
+            outlineVariant = hairline,
             dashBackground = windowBg.copy(alpha = 0.85f),
             overviewScrim = lerp(AdwaitaPalette.DarkOverviewScrim.copy(alpha = 1f), resolvedAccent, 0.08f)
                 .copy(alpha = 0.76f),
@@ -431,8 +569,15 @@ fun overviewColors(
         val surfaceHigh = lerp(Color(0xFFE1E4EA), resolvedAccent, 0.11f)
         val accentContainer = lerp(Color.White, resolvedAccent, 0.18f)
         val onAccentContainer = ensureWcagAa(resolvedAccent, accentContainer, minRatio = 4.5f)
+        val tertiaryContainer = lerp(Color.White, tertiary, 0.18f)
+        val onTertiaryContainer = ensureWcagAa(tertiary, tertiaryContainer, minRatio = 4.5f)
+        val resolvedError = ensureWcagAa(AdwaitaPalette.LightError, surfaceContainer, minRatio = 4.5f)
+        val onError = bestOnColor(resolvedError)
+        val errorContainer = lerp(Color.White, resolvedError, 0.15f)
+        val onErrorContainer = ensureWcagAa(resolvedError, errorContainer, minRatio = 4.5f)
         val onSurface = ensureWcagAa(AdwaitaPalette.LightOnSurface, surfaceContainer, minRatio = 4.5f)
         val onSurfaceMuted = ensureWcagAa(AdwaitaPalette.LightOnSurfaceMuted, surfaceContainer, minRatio = 4.5f)
+        val hairline = lerp(Color(0xFF1F2430), resolvedAccent, 0.35f).copy(alpha = 0.14f)
 
         OverviewColors(
             isDark = false,
@@ -441,6 +586,14 @@ fun overviewColors(
             accentContainer = accentContainer,
             onAccentContainer = onAccentContainer,
             secondaryAccent = lerp(resolvedAccent, Color(0xFF1F2430), 0.15f),
+            tertiary = tertiary,
+            onTertiary = onTertiary,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            error = resolvedError,
+            onError = onError,
+            errorContainer = errorContainer,
+            onErrorContainer = onErrorContainer,
             windowBackground = windowBg,
             surface = surface,
             surfaceContainer = surfaceContainer,
@@ -449,7 +602,8 @@ fun overviewColors(
             searchFieldBackground = surfaceElevated,
             onSurface = onSurface,
             onSurfaceMuted = onSurfaceMuted,
-            hairlineBorder = lerp(Color(0xFF1F2430), resolvedAccent, 0.35f).copy(alpha = 0.14f),
+            hairlineBorder = hairline,
+            outlineVariant = hairline,
             dashBackground = windowBg.copy(alpha = 0.89f),
             overviewScrim = lerp(AdwaitaPalette.LightOverviewScrim.copy(alpha = 1f), resolvedAccent, 0.05f)
                 .copy(alpha = 0.72f),

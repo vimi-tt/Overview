@@ -988,7 +988,7 @@ private fun PinItemConfirmationOverlay(
         ) {
             Text(
                 text = stringResource(titleRes),
-                style = OverviewTheme.typography.sectionHeader,
+                style = MaterialTheme.typography.titleLarge,
                 color = colors.onSurface,
             )
             Row(

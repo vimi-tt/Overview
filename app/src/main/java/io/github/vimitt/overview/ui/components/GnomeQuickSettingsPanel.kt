@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -111,34 +112,42 @@ fun HomeQuickSettingsPill(
         colors.hairlineBorder
     }
 
-    Row(
+    Box(
         modifier = modifier
-            .defaultMinSize(minHeight = 36.dp)
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .clip(shape)
-            .background(pillFill)
-            .border(1.dp, pillBorder, shape)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = openCd }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .semantics { contentDescription = openCd },
+        contentAlignment = Alignment.Center,
     ) {
-        QsSlidersGlyph(tint = colors.onSurface, size = 15.dp)
-        QsBatteryGlyph(
-            level = batteryLevel,
-            isCharging = isCharging,
-            tint = colors.onSurface,
-            accent = colors.accent,
-            size = 16.dp,
-        )
-        Text(
-            text = stringResource(R.string.quick_settings_battery_percent, batteryLevel),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontFeatureSettings = "tnum",
-            ),
-            color = colors.onSurface,
-        )
+        Row(
+            modifier = Modifier
+                .defaultMinSize(minHeight = 36.dp)
+                .clip(shape)
+                .background(pillFill)
+                .border(1.dp, pillBorder, shape)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QsSlidersGlyph(tint = colors.onSurface, size = 15.dp)
+            QsBatteryGlyph(
+                level = batteryLevel,
+                isCharging = isCharging,
+                tint = colors.onSurface,
+                accent = colors.accent,
+                errorColor = colors.error,
+                size = 16.dp,
+            )
+            Text(
+                text = stringResource(R.string.quick_settings_battery_percent, batteryLevel),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontFeatureSettings = "tnum",
+                ),
+                color = colors.onSurface,
+            )
+        }
     }
 }
 
@@ -450,39 +459,47 @@ private fun QuickSettingsHeaderRow(
     ) {
         Row(
             modifier = Modifier
-                .defaultMinSize(minHeight = 36.dp)
+                .defaultMinSize(minHeight = 48.dp)
                 .clip(pillShape)
-                .background(pillBg)
-                .border(1.dp, colors.hairlineBorder, pillShape)
-                .clickable(role = Role.Button, onClick = onBatteryClick)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .clickable(role = Role.Button, onClick = onBatteryClick),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            QsBatteryGlyph(
-                level = batteryLevel,
-                isCharging = isCharging,
-                tint = colors.onSurface,
-                accent = colors.accent,
-                size = 18.dp,
-            )
-            Text(
-                text = if (isCharging) {
-                    stringResource(R.string.quick_settings_battery_charging, batteryLevel)
-                } else {
-                    stringResource(R.string.quick_settings_battery_percent, batteryLevel)
-                },
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontFeatureSettings = "tnum",
-                ),
-                color = colors.onSurface,
-                maxLines = 1,
-            )
+            Row(
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 36.dp)
+                    .clip(pillShape)
+                    .background(pillBg)
+                    .border(1.dp, colors.hairlineBorder, pillShape)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                QsBatteryGlyph(
+                    level = batteryLevel,
+                    isCharging = isCharging,
+                    tint = colors.onSurface,
+                    accent = colors.accent,
+                    errorColor = colors.error,
+                    size = 18.dp,
+                )
+                Text(
+                    text = if (isCharging) {
+                        stringResource(R.string.quick_settings_battery_charging, batteryLevel)
+                    } else {
+                        stringResource(R.string.quick_settings_battery_percent, batteryLevel)
+                    },
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                    color = colors.onSurface,
+                    maxLines = 1,
+                )
+            }
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HeaderCircleButton(
@@ -536,15 +553,22 @@ private fun HeaderCircleButton(
     val colors = OverviewTheme.colors
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(48.dp)
             .clip(CircleShape)
-            .background(colors.surfaceElevated)
-            .border(1.dp, colors.hairlineBorder, CircleShape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        icon()
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(colors.surfaceElevated)
+                .border(1.dp, colors.hairlineBorder, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            icon()
+        }
     }
 }
 
@@ -574,16 +598,10 @@ private fun QuickSettingsSlidersCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        role = Role.Button,
-                        onClick = if (canWriteBrightness) ({}) else onRequestBrightnessPermission,
-                    ),
+                modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 QsSunGlyph(tint = colors.onSurface, size = 18.dp)
@@ -604,10 +622,11 @@ private fun QuickSettingsSlidersCard(
                 Row(
                     modifier = Modifier
                         .weight(1f)
+                        .defaultMinSize(minHeight = 48.dp)
                         .clip(OverviewTheme.shapes.pill)
                         .background(colors.surfaceElevated)
                         .clickable(role = Role.Button, onClick = onRequestBrightnessPermission)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -628,12 +647,12 @@ private fun QuickSettingsSlidersCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val volumeCd = stringResource(R.string.quick_settings_volume)
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .clickable(role = Role.Button, onClick = onToggleMute)
                     .semantics { contentDescription = volumeCd },
@@ -833,7 +852,12 @@ private fun GnomeToggleTile(
             .clip(tileShape)
             .background(fillColor)
             .border(1.dp, borderColor, tileShape)
-            .clickable(enabled = enabled, role = Role.Switch, onClick = onClick)
+            .toggleable(
+                value = active,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = { onClick() },
+            )
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -981,20 +1005,27 @@ private fun QuickSettingsMediaCard(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPrevClick, modifier = Modifier.size(34.dp)) {
+            IconButton(onClick = onPrevClick, modifier = Modifier.size(48.dp)) {
                 SkipTrackGlyph(forward = false, tint = colors.onSurface, size = 16.dp)
             }
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(colors.accentContainer)
                     .clickable(role = Role.Button, onClick = onPlayPauseClick),
                 contentAlignment = Alignment.Center,
             ) {
-                PlayPauseGlyph(isPlaying = isPlaying, tint = colors.onAccentContainer, size = 17.dp)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(colors.accentContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PlayPauseGlyph(isPlaying = isPlaying, tint = colors.onAccentContainer, size = 17.dp)
+                }
             }
-            IconButton(onClick = onNextClick, modifier = Modifier.size(34.dp)) {
+            IconButton(onClick = onNextClick, modifier = Modifier.size(48.dp)) {
                 SkipTrackGlyph(forward = true, tint = colors.onSurface, size = 16.dp)
             }
         }
@@ -1009,6 +1040,7 @@ private fun QsBatteryGlyph(
     isCharging: Boolean,
     tint: Color,
     accent: Color,
+    errorColor: Color,
     size: Dp,
 ) {
     Canvas(modifier = Modifier.size(size)) {
@@ -1031,7 +1063,7 @@ private fun QsBatteryGlyph(
         val fillFrac = (level / 100f).coerceIn(0.06f, 1f)
         val fillColor = when {
             isCharging -> accent
-            level <= 15 -> Color(0xFFE01B24)
+            level <= 15 -> errorColor
             else -> tint
         }
         drawRoundRect(

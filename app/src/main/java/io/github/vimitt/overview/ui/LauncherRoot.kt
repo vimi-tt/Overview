@@ -959,7 +959,7 @@ private fun HomeContextMenuOverlay(
         Text(
             text = stringResource(R.string.home_menu_title),
             style = if (isExpressive) {
-                OverviewTheme.typography.sectionHeader
+                MaterialTheme.typography.titleMedium
             } else {
                 MaterialTheme.typography.labelMedium
             },
@@ -1036,7 +1036,7 @@ private fun HomeFolderAppActionOverlay(
             Text(
                 text = app.label,
                 style = if (isExpressive) {
-                    OverviewTheme.typography.sectionHeader
+                    MaterialTheme.typography.titleLarge
                 } else {
                     MaterialTheme.typography.titleMedium
                 },
