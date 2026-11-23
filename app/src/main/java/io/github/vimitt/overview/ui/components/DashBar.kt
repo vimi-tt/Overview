@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
@@ -58,25 +60,40 @@ fun DashBar(
 
     val containerShape = if (isExpressive) OverviewTheme.shapes.pill else OverviewTheme.shapes.dash
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
-    val backgroundColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.22f).copy(alpha = clampedAlpha)
+    val bgTop = if (isExpressive) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.26f).copy(alpha = clampedAlpha)
+    } else {
+        lerp(colors.dashBackground, Color.White, if (colors.isDark) 0.06f else 0.22f).copy(alpha = clampedAlpha)
+    }
+    val bgBottom = if (isExpressive) {
+        lerp(colors.surfaceContainer, colors.accentContainer, 0.16f).copy(alpha = clampedAlpha)
     } else {
         colors.dashBackground.copy(alpha = clampedAlpha)
     }
-    val borderColor = if (isExpressive) {
-        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * clampedAlpha).coerceIn(0f, 1f))
+    val backgroundBrush = Brush.verticalGradient(colors = listOf(bgTop, bgBottom))
+
+    val rimTop = if (isExpressive) {
+        lerp(colors.outlineVariant, Color.White, if (colors.isDark) 0.22f else 0.50f)
+            .copy(alpha = (0.85f * clampedAlpha).coerceIn(0f, 1f))
     } else {
-        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * clampedAlpha).coerceIn(0f, 1f))
+        lerp(colors.hairlineBorder, Color.White, if (colors.isDark) 0.18f else 0.60f)
+            .copy(alpha = (0.90f * clampedAlpha).coerceIn(0f, 1f))
     }
+    val rimBottom = if (isExpressive) {
+        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * clampedAlpha * 0.7f).coerceIn(0f, 1f))
+    } else {
+        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * clampedAlpha * 0.7f).coerceIn(0f, 1f))
+    }
+    val borderBrush = Brush.verticalGradient(colors = listOf(rimTop, rimBottom))
 
     Row(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
             .then(
-                if (isExpressive && clampedAlpha > 0.15f) {
+                if (clampedAlpha > 0.15f) {
                     Modifier.shadow(
-                        elevation = (6f * clampedAlpha).dp,
+                        elevation = ((if (isExpressive) 8f else 4f) * clampedAlpha).dp,
                         shape = containerShape,
                         clip = false,
                     )
@@ -85,11 +102,11 @@ fun DashBar(
                 },
             )
             .clip(containerShape)
-            .background(backgroundColor)
-            .border(width = 1.dp, color = borderColor, shape = containerShape)
+            .background(backgroundBrush)
+            .border(width = 1.dp, brush = borderBrush, shape = containerShape)
             .padding(
                 horizontal = if (isExpressive) 14.dp else 12.dp,
-                vertical = if (isExpressive) 8.dp else 6.dp,
+                vertical = if (isExpressive) 9.dp else 7.dp,
             ),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,

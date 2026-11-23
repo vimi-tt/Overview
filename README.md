@@ -8,7 +8,7 @@
 
 Construído do zero em **Kotlin** e **Jetpack Compose**, com foco em gestos fluidos (60/120 Hz), personalização completa e fidelidade à estética limpa do GNOME para dispositivos móveis.
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-1.1-3584e4?style=flat-square)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.2-3584e4?style=flat-square)
 ![Android](https://img.shields.io/badge/Android-12%2B%20(API%2031--35)-3ddc84?style=flat-square&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff?style=flat-square&logo=kotlin&logoColor=white)
 ![Licença](https://img.shields.io/badge/Licen%C3%A7a-GPL--3.0-orange?style=flat-square)

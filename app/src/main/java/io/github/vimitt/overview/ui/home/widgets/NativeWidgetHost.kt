@@ -449,7 +449,7 @@ fun NativeWidgetPickerThumbnail(
     val isExpressive = OverviewTheme.components.isExpressive
     val cardShape = if (isExpressive) shapes.dash else shapes.medium
     val bg = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.30f)
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.22f)
     } else {
         colors.surfaceElevated
     }
@@ -460,12 +460,12 @@ fun NativeWidgetPickerThumbnail(
             .clip(cardShape)
             .background(bg)
             .border(
-                width = if (isExpressive) 1.2.dp else 1.dp,
-                color = if (isExpressive) colors.accent.copy(alpha = 0.36f) else colors.hairlineBorder,
+                width = 1.dp,
+                color = if (isExpressive) colors.accent.copy(alpha = 0.28f) else colors.hairlineBorder,
                 shape = cardShape,
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -474,68 +474,206 @@ fun NativeWidgetPickerThumbnail(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f),
             ) {
-                if (isExpressive) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(colors.accent),
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(if (isExpressive) CircleShape else shapes.small)
+                        .background(if (isExpressive) colors.accentContainer else colors.accent.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val iconTint = if (isExpressive) colors.onAccentContainer else colors.accent
+                    when (type) {
+                        NativeWidgetType.WEATHER -> WeatherGlyph(
+                            weatherCode = 1,
+                            isDay = true,
+                            tint = iconTint,
+                            accent = colors.accent,
+                            size = 16.dp,
+                        )
+                        NativeWidgetType.AGENDA,
+                        NativeWidgetType.DAILY_SUMMARY,
+                        -> CalendarGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.MEDIA_PLAYER -> MusicNoteGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.DEVICE_STATUS -> BatteryBoltGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.QUICK_NOTES -> NoteGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.TASKS -> ChecklistGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.TIMER_STOPWATCH -> AlarmBellGlyph(tint = iconTint, size = 15.dp)
+                        NativeWidgetType.FREQUENT_APPS -> Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(iconTint))
+                            Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(iconTint.copy(alpha = 0.65f)))
+                        }
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = stringResource(type.titleRes),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold,
+                        ),
+                        color = colors.onSurface,
+                    )
+                    Text(
+                        text = stringResource(type.descriptionRes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceMuted,
+                        maxLines = 1,
                     )
                 }
-                Text(
-                    text = stringResource(type.titleRes),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold,
-                    ),
-                    color = colors.onSurface,
-                )
             }
             Box(
                 modifier = Modifier
                     .clip(if (isExpressive) shapes.pill else shapes.small)
                     .background(if (isExpressive) colors.accentContainer else colors.surfaceContainer)
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
             ) {
                 Text(
                     text = "${type.defaultSpanX}×${type.defaultSpanY}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFeatureSettings = "tnum",
+                    ),
                     color = if (isExpressive) colors.onAccentContainer else colors.onSurfaceMuted,
                 )
             }
         }
-        Text(
-            text = stringResource(type.descriptionRes),
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.onSurfaceMuted,
-        )
+
+        // Mini pré-visualização reconhecível específica do tipo de widget
         Row(
-            modifier = Modifier.padding(top = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shapes.medium)
+                .background(colors.surface.copy(alpha = 0.72f))
+                .border(1.dp, colors.hairlineBorder.copy(alpha = 0.7f), shapes.medium)
+                .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(if (isExpressive) 14.dp else 6.dp)
-                    .clip(if (isExpressive) CircleShape else shapes.small)
-                    .background(colors.accent),
-            )
-            Box(
-                modifier = Modifier
-                    .width(if (isExpressive) 62.dp else 44.dp)
-                    .height(if (isExpressive) 7.dp else 3.dp)
-                    .clip(CircleShape)
-                    .background(colors.accent.copy(alpha = if (isExpressive) 0.65f else 0.45f)),
-            )
-            Box(
-                modifier = Modifier
-                    .width(30.dp)
-                    .height(if (isExpressive) 7.dp else 3.dp)
-                    .clip(CircleShape)
-                    .background(colors.onSurfaceMuted.copy(alpha = 0.25f)),
-            )
+            when (type) {
+                NativeWidgetType.WEATHER -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        WeatherGlyph(weatherCode = 0, isDay = true, tint = colors.onSurfaceMuted, accent = colors.accent, size = 20.dp)
+                        Text(
+                            text = "24°",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = colors.onSurface,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(text = "18° — 27°", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceMuted)
+                    }
+                }
+                NativeWidgetType.AGENDA -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Box(modifier = Modifier.width(3.dp).height(16.dp).clip(CircleShape).background(colors.accent))
+                        Box(
+                            modifier = Modifier
+                                .clip(shapes.pill)
+                                .background(colors.accentContainer)
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                        ) {
+                            Text(text = "14:00", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = colors.onAccentContainer)
+                        }
+                        Box(modifier = Modifier.width(72.dp).height(6.dp).clip(CircleShape).background(colors.onSurface.copy(alpha = 0.28f)))
+                    }
+                }
+                NativeWidgetType.DAILY_SUMMARY -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(colors.accent))
+                        Box(modifier = Modifier.width(86.dp).height(6.dp).clip(CircleShape).background(colors.onSurface.copy(alpha = 0.30f)))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        WeatherGlyph(weatherCode = 1, isDay = true, tint = colors.onSurfaceMuted, accent = colors.accent, size = 14.dp)
+                        Text(text = "23°", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = colors.onSurface)
+                    }
+                }
+                NativeWidgetType.MEDIA_PLAYER -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier.size(22.dp).clip(shapes.small).background(colors.accentContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            MusicNoteGlyph(tint = colors.onAccentContainer, size = 12.dp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Box(modifier = Modifier.width(68.dp).height(5.dp).clip(CircleShape).background(colors.onSurface.copy(alpha = 0.35f)))
+                            Box(modifier = Modifier.width(42.dp).height(4.dp).clip(CircleShape).background(colors.onSurfaceMuted.copy(alpha = 0.30f)))
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.size(22.dp).clip(CircleShape).background(colors.accent),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PlayPauseGlyph(isPlaying = false, tint = colors.onAccent, size = 10.dp)
+                    }
+                }
+                NativeWidgetType.DEVICE_STATUS -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "86%", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold), color = colors.accent)
+                        Box(modifier = Modifier.width(80.dp).height(5.dp).clip(CircleShape).background(colors.surfaceContainerHigh)) {
+                            Box(modifier = Modifier.width(66.dp).height(5.dp).clip(CircleShape).background(colors.accent))
+                        }
+                    }
+                    Text(text = "Wi-Fi", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceMuted)
+                }
+                NativeWidgetType.TIMER_STOPWATCH -> {
+                    Text(
+                        text = "05:00",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                        color = colors.onSurface,
+                    )
+                    Box(
+                        modifier = Modifier.size(22.dp).clip(CircleShape).background(colors.accentContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PlayPauseGlyph(isPlaying = false, tint = colors.onAccentContainer, size = 10.dp)
+                    }
+                }
+                NativeWidgetType.TASKS -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(colors.accent))
+                        Box(modifier = Modifier.width(74.dp).height(5.dp).clip(CircleShape).background(colors.onSurface.copy(alpha = 0.30f)))
+                    }
+                    Text(text = "2/4", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = colors.accent)
+                }
+                NativeWidgetType.QUICK_NOTES -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(modifier = Modifier.width(3.dp).height(16.dp).clip(CircleShape).background(colors.accent))
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Box(modifier = Modifier.width(96.dp).height(5.dp).clip(CircleShape).background(colors.onSurface.copy(alpha = 0.32f)))
+                            Box(modifier = Modifier.width(62.dp).height(4.dp).clip(CircleShape).background(colors.onSurfaceMuted.copy(alpha = 0.28f)))
+                        }
+                    }
+                }
+                NativeWidgetType.FREQUENT_APPS -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        repeat(4) { idx ->
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(shapes.small)
+                                    .background(
+                                        if (idx == 0) colors.accentContainer else colors.surfaceContainerHigh,
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

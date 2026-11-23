@@ -4,6 +4,7 @@ import android.text.format.DateFormat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
@@ -70,6 +75,12 @@ fun AgendaNativeWidget(
     val isExpressive = OverviewTheme.components.isExpressive
     val is24Hour = DateFormat.is24HourFormat(context)
     val locale = remember { Locale.getDefault() }
+    val todayDayNum = remember(locale) {
+        SimpleDateFormat("d", locale).format(Date())
+    }
+    val todayWeekday = remember(locale) {
+        SimpleDateFormat("EEE", locale).format(Date()).uppercase(locale)
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -77,6 +88,12 @@ fun AgendaNativeWidget(
     ) {
         NativeWidgetHeader(
             title = stringResource(R.string.native_widget_agenda_title),
+            icon = {
+                CalendarGlyph(
+                    tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                    size = 13.dp,
+                )
+            },
             trailing = {
                 if (hasPermission && events.isNotEmpty() && spanX >= 2) {
                     NativeWidgetActionPill(
@@ -126,19 +143,54 @@ fun AgendaNativeWidget(
             }
 
             events.isEmpty() -> {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .clickable(role = Role.Button, onClick = onOpenCalendarApp),
-                    contentAlignment = Alignment.CenterStart,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    if (spanX >= 2) {
+                        Column(
+                            modifier = Modifier
+                                .clip(shapes.medium)
+                                .background(
+                                    if (isExpressive) colors.accentContainer else colors.surfaceElevated,
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isExpressive) colors.accent.copy(alpha = 0.22f) else colors.hairlineBorder,
+                                    shape = shapes.medium,
+                                )
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = todayWeekday,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = if (isExpressive) colors.onAccentContainer else colors.accent,
+                            )
+                            Text(
+                                text = todayDayNum,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFeatureSettings = "tnum",
+                                ),
+                                color = if (isExpressive) colors.onAccentContainer else colors.onSurface,
+                            )
+                        }
+                    }
                     Text(
                         text = stringResource(R.string.native_widget_agenda_empty),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = colors.onSurfaceMuted,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -167,61 +219,66 @@ fun AgendaNativeWidget(
                                 SimpleDateFormat(fmt, locale).format(Date(event.beginMs))
                             }
                         }
+                        val isPrimaryEvent = index == 0
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(if (isExpressive) shapes.medium else shapes.small)
                                 .then(
-                                    if (isExpressive) {
+                                    if (isPrimaryEvent) {
                                         Modifier
-                                            .background(lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.30f))
+                                            .background(
+                                                if (isExpressive) {
+                                                    lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.38f)
+                                                } else {
+                                                    lerp(colors.surfaceElevated, colors.accentContainer, 0.14f)
+                                                },
+                                            )
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (isExpressive) colors.accent.copy(alpha = 0.24f) else colors.hairlineBorder,
+                                                shape = if (isExpressive) shapes.medium else shapes.small,
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    } else if (isExpressive) {
+                                        Modifier
+                                            .background(colors.surfaceContainerHigh.copy(alpha = 0.65f))
                                             .padding(horizontal = 8.dp, vertical = 5.dp)
                                     } else {
-                                        Modifier.padding(vertical = 2.dp)
+                                        Modifier.padding(horizontal = 4.dp, vertical = 3.dp)
                                     },
                                 )
                                 .clickable(role = Role.Button) { onOpenEvent(event) },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
                         ) {
-                            if (isExpressive) {
+                            Box(
+                                modifier = Modifier
+                                    .width(if (isPrimaryEvent) 3.5.dp else 2.5.dp)
+                                    .height(if (isPrimaryEvent) 18.dp else 14.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isPrimaryEvent) colors.accent else colors.accent.copy(alpha = 0.55f)),
+                            )
+                            if (spanX >= 2) {
                                 Box(
                                     modifier = Modifier
-                                        .width(3.dp)
-                                        .height(18.dp)
-                                        .clip(CircleShape)
-                                        .background(colors.accent),
-                                )
-                                if (spanX >= 2) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(shapes.pill)
-                                            .background(colors.accentContainer)
-                                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                                    ) {
-                                        Text(
-                                            text = timeLabel,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontFeatureSettings = "tnum",
-                                            ),
-                                            color = colors.onAccentContainer,
-                                            maxLines = 1,
+                                        .clip(shapes.pill)
+                                        .background(
+                                            if (isPrimaryEvent) {
+                                                colors.accentContainer
+                                            } else {
+                                                colors.surfaceContainerHigh.copy(alpha = 0.85f)
+                                            },
                                         )
-                                    }
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(colors.accent),
-                                )
-                                if (spanX >= 2) {
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                ) {
                                     Text(
                                         text = timeLabel,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
-                                        color = colors.onSurfaceMuted,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = if (isPrimaryEvent) FontWeight.Bold else FontWeight.Medium,
+                                            fontFeatureSettings = "tnum",
+                                        ),
+                                        color = if (isPrimaryEvent) colors.onAccentContainer else colors.onSurfaceMuted,
                                         maxLines = 1,
                                     )
                                 }
@@ -229,7 +286,7 @@ fun AgendaNativeWidget(
                             Text(
                                 text = event.title,
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.Medium,
+                                    fontWeight = if (isPrimaryEvent) FontWeight.Bold else FontWeight.Medium,
                                 ),
                                 color = colors.onSurface,
                                 maxLines = 1,
@@ -287,6 +344,15 @@ fun WeatherNativeWidget(
     ) {
         NativeWidgetHeader(
             title = weather?.location?.displayLabel ?: stringResource(R.string.native_widget_weather_title),
+            icon = {
+                WeatherGlyph(
+                    weatherCode = weather?.weatherCode ?: 0,
+                    isDay = weather?.isDay ?: true,
+                    tint = if (isExpressive) colors.onAccentContainer else colors.onSurfaceMuted,
+                    accent = if (isExpressive) colors.onAccentContainer else colors.accent,
+                    size = 13.dp,
+                )
+            },
             trailing = {
                 if (isLoading && isExpressive) {
                     ExpressiveLoadingIndicator(size = 18.dp)
@@ -372,8 +438,9 @@ fun WeatherNativeWidget(
                     Text(
                         text = "${weather.temperatureC.roundToInt()}°",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = if (spanX <= 1 || spanY <= 1) 26.sp else 36.sp,
-                            fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            fontSize = if (spanX <= 1 || spanY <= 1) 28.sp else 40.sp,
+                            letterSpacing = (-1.2).sp,
+                            fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.Bold,
                             fontFeatureSettings = "tnum",
                         ),
                         color = colors.onSurface,
@@ -381,40 +448,71 @@ fun WeatherNativeWidget(
                 }
 
                 if (spanX >= 2) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        if (isExpressive) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(shapes.pill)
-                                    .background(colors.accentContainer.copy(alpha = 0.7f))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(wmoWeatherDescriptionRes(weather.weatherCode)),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = colors.onAccentContainer,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                    val tempRange = (weather.maxTempC - weather.minTempC).coerceAtLeast(1.0)
+                    val tempPos = ((weather.temperatureC - weather.minTempC) / tempRange).toFloat().coerceIn(0.08f, 0.92f)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(shapes.pill)
+                                .background(
+                                    if (isExpressive) {
+                                        colors.accentContainer.copy(alpha = 0.82f)
+                                    } else {
+                                        colors.surfaceElevated
+                                    },
                                 )
-                            }
-                        } else {
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
                             Text(
                                 text = stringResource(wmoWeatherDescriptionRes(weather.weatherCode)),
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                color = colors.onSurface,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.SemiBold,
+                                ),
+                                color = if (isExpressive) colors.onAccentContainer else colors.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Text(
-                            text = stringResource(
-                                R.string.native_widget_weather_min_max,
-                                weather.minTempC.roundToInt(),
-                                weather.maxTempC.roundToInt(),
-                            ),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceMuted,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Text(
+                                text = "${weather.minTempC.roundToInt()}°",
+                                style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                                color = colors.onSurfaceMuted,
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(34.dp)
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.surfaceContainerHigh),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(tempPos)
+                                        .fillMaxHeight()
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                colors = listOf(colors.accent.copy(alpha = 0.55f), colors.accent),
+                                            ),
+                                        ),
+                                )
+                            }
+                            Text(
+                                text = "${weather.maxTempC.roundToInt()}°",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFeatureSettings = "tnum",
+                                ),
+                                color = colors.onSurface,
+                            )
+                        }
                     }
                 }
             }
@@ -531,87 +629,197 @@ fun DeviceStatusNativeWidget(
     ) {
         NativeWidgetHeader(
             title = stringResource(R.string.native_widget_device_title),
+            icon = {
+                BatteryBoltGlyph(
+                    tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                    size = 13.dp,
+                )
+            },
             trailing = {
                 if (spanX >= 2) {
-                    NativeWidgetActionPill(
-                        label = status.networkLabel,
-                        emphasized = status.isOnline && isExpressive,
-                        onClick = onOpenSettings,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(shapes.pill)
+                            .background(
+                                if (status.isOnline && isExpressive) {
+                                    colors.accentContainer.copy(alpha = 0.85f)
+                                } else {
+                                    colors.surfaceElevated
+                                },
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (status.isOnline) colors.accent else colors.onSurfaceMuted.copy(alpha = 0.5f),
+                                ),
+                        )
+                        Text(
+                            text = status.networkLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = if (isExpressive) FontWeight.Bold else FontWeight.Medium,
+                            ),
+                            color = if (status.isOnline && isExpressive) colors.onAccentContainer else colors.onSurface,
+                            maxLines = 1,
+                        )
+                    }
                 }
             },
         )
 
         if (spanY <= 1) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = if (spanX <= 1) "${status.batteryLevel}%" else batteryLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.SemiBold,
-                            fontFeatureSettings = "tnum",
-                        ),
-                        color = if (status.isCharging && isExpressive) colors.accent else colors.onSurface,
-                        maxLines = 1,
-                    )
-                    if (spanX >= 2) {
-                        Text(
-                            text = storageLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceMuted,
-                            maxLines = 1,
-                        )
-                    }
-                }
-                if (isExpressive) {
-                    ExpressiveWavyProgressBar(
-                        progress = animatedBatteryFraction,
-                        color = colors.accent,
-                        trackColor = colors.surfaceContainerHigh.copy(alpha = 0.65f),
-                        animateWave = status.isCharging && isVisible && expressiveMotion,
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(5.dp)
-                            .clip(shapes.small)
-                            .background(colors.surfaceContainerHigh.copy(alpha = 0.7f)),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                DeviceBatteryRing(
+                    level = status.batteryLevel,
+                    fraction = animatedBatteryFraction,
+                    isCharging = status.isCharging,
+                    ringSize = if (spanX <= 1) 34.dp else 40.dp,
+                )
+                if (spanX >= 2) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(animatedBatteryFraction)
-                                .fillMaxHeight()
-                                .clip(shapes.small)
-                                .background(colors.accent),
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.native_widget_storage_label),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.onSurfaceMuted,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = storageLabel,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFeatureSettings = "tnum",
+                                ),
+                                color = colors.onSurface,
+                                maxLines = 1,
+                            )
+                        }
+                        if (isExpressive) {
+                            ExpressiveWavyProgressBar(
+                                progress = animatedStorageFraction,
+                                color = colors.accent,
+                                trackColor = colors.surfaceContainerHigh.copy(alpha = 0.65f),
+                                animateWave = status.isCharging && isVisible && expressiveMotion,
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.surfaceContainerHigh.copy(alpha = 0.75f)),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(animatedStorageFraction)
+                                        .fillMaxHeight()
+                                        .clip(CircleShape)
+                                        .background(colors.accent),
+                                )
+                            }
+                        }
                     }
                 }
             }
         } else {
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                DeviceMetricRow(
-                    label = stringResource(R.string.native_widget_battery_label),
-                    valueText = batteryLabel,
+                DeviceBatteryRing(
+                    level = status.batteryLevel,
                     fraction = animatedBatteryFraction,
-                    isExpressive = isExpressive,
-                    animateWavy = status.isCharging && isVisible && expressiveMotion,
+                    isCharging = status.isCharging,
+                    ringSize = 54.dp,
                 )
-                DeviceMetricRow(
-                    label = stringResource(R.string.native_widget_storage_label),
-                    valueText = storageLabel,
-                    fraction = animatedStorageFraction,
-                    isExpressive = isExpressive,
-                    animateWavy = false,
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DeviceMetricRow(
+                        label = stringResource(R.string.native_widget_battery_label),
+                        valueText = batteryLabel,
+                        fraction = animatedBatteryFraction,
+                        isExpressive = isExpressive,
+                        animateWavy = status.isCharging && isVisible && expressiveMotion,
+                    )
+                    DeviceMetricRow(
+                        label = stringResource(R.string.native_widget_storage_label),
+                        valueText = storageLabel,
+                        fraction = animatedStorageFraction,
+                        isExpressive = isExpressive,
+                        animateWavy = false,
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun DeviceBatteryRing(
+    level: Int,
+    fraction: Float,
+    isCharging: Boolean,
+    ringSize: androidx.compose.ui.unit.Dp,
+) {
+    val colors = OverviewTheme.colors
+    val trackColor = colors.surfaceContainerHigh.copy(alpha = 0.85f)
+    val arcColor = if (level <= 15 && !isCharging) colors.error else colors.accent
+    val strokeDp = if (ringSize >= 50.dp) 5.dp else 4.dp
+
+    Box(
+        modifier = Modifier.size(ringSize),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(ringSize)) {
+            val strokePx = strokeDp.toPx()
+            drawArc(
+                color = trackColor,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round),
+            )
+            drawArc(
+                color = arcColor,
+                startAngle = -90f,
+                sweepAngle = (fraction.coerceIn(0.03f, 1f) * 360f),
+                useCenter = false,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (isCharging && ringSize >= 48.dp) {
+                BatteryBoltGlyph(tint = arcColor, size = 10.dp)
+            }
+            Text(
+                text = "$level%",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = if (ringSize >= 50.dp) 12.sp else 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFeatureSettings = "tnum",
+                ),
+                color = colors.onSurface,
+                maxLines = 1,
+            )
         }
     }
 }

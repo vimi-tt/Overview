@@ -1196,82 +1196,83 @@ private fun DockSearchBarPill(
     val shape = OverviewTheme.shapes.pill
     val clampedAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val effectiveAlpha = clampedAlpha.coerceAtLeast(0.28f)
-    val backgroundColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.18f).copy(alpha = effectiveAlpha)
+    val bgTop = if (isExpressive) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.22f).copy(alpha = effectiveAlpha)
+    } else {
+        lerp(colors.dashBackground, Color.White, if (colors.isDark) 0.05f else 0.20f).copy(alpha = effectiveAlpha)
+    }
+    val bgBottom = if (isExpressive) {
+        lerp(colors.surfaceContainer, colors.accentContainer, 0.12f).copy(alpha = effectiveAlpha)
     } else {
         colors.dashBackground.copy(alpha = effectiveAlpha)
     }
-    val borderColor = if (isExpressive) {
-        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * effectiveAlpha).coerceIn(0f, 1f))
+    val backgroundBrush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(bgTop, bgBottom))
+    val rimTop = if (isExpressive) {
+        lerp(colors.outlineVariant, Color.White, if (colors.isDark) 0.20f else 0.45f)
+            .copy(alpha = (0.85f * effectiveAlpha).coerceIn(0f, 1f))
     } else {
-        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * effectiveAlpha).coerceIn(0f, 1f))
+        lerp(colors.hairlineBorder, Color.White, if (colors.isDark) 0.16f else 0.55f)
+            .copy(alpha = (0.85f * effectiveAlpha).coerceIn(0f, 1f))
     }
+    val rimBottom = if (isExpressive) {
+        colors.outlineVariant.copy(alpha = (colors.outlineVariant.alpha * effectiveAlpha * 0.7f).coerceIn(0f, 1f))
+    } else {
+        colors.hairlineBorder.copy(alpha = (colors.hairlineBorder.alpha * effectiveAlpha * 0.7f).coerceIn(0f, 1f))
+    }
+    val borderBrush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(rimTop, rimBottom))
 
     Row(
         modifier = modifier
             .widthIn(max = 420.dp)
             .fillMaxWidth()
             .defaultMinSize(minHeight = 48.dp)
-            .then(
-                if (isExpressive) {
-                    Modifier.shadow(
-                        elevation = (4f * effectiveAlpha).dp,
-                        shape = shape,
-                        clip = false,
-                    )
-                } else {
-                    Modifier
-                },
+            .shadow(
+                elevation = ((if (isExpressive) 5f else 3f) * effectiveAlpha).dp,
+                shape = shape,
+                clip = false,
             )
             .clip(shape)
-            .background(backgroundColor)
+            .background(backgroundBrush)
             .border(
                 width = 1.dp,
-                color = borderColor,
+                brush = borderBrush,
                 shape = shape,
             )
             .clickable(role = Role.Button, onClick = onClick)
             .padding(
-                horizontal = if (isExpressive) 12.dp else 16.dp,
-                vertical = if (isExpressive) 8.dp else 10.dp,
+                horizontal = 12.dp,
+                vertical = 8.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isExpressive) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(colors.accentContainer.copy(alpha = (0.85f + 0.15f * effectiveAlpha))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.search_apps_content_description),
-                    tint = colors.onAccentContainer,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.search_apps_hint),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = colors.onSurface.copy(alpha = 0.85f),
-            )
-        } else {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isExpressive) {
+                        colors.accentContainer.copy(alpha = (0.85f + 0.15f * effectiveAlpha))
+                    } else {
+                        colors.accent.copy(alpha = 0.14f)
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search_apps_content_description),
-                tint = colors.onSurfaceMuted,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.search_apps_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceMuted,
+                tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                modifier = Modifier.size(16.dp),
             )
         }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = stringResource(R.string.search_apps_hint),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isExpressive) FontWeight.SemiBold else FontWeight.Medium,
+            ),
+            color = colors.onSurface.copy(alpha = 0.84f),
+        )
     }
 }
 

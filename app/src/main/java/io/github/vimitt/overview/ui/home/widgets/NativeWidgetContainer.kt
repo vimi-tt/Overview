@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -101,16 +103,32 @@ fun NativeWidgetCard(
     )
     val containerShape = if (isExpressive) RoundedCornerShape(cornerRadius) else shapes.large
 
-    val containerColor = if (isExpressive) {
-        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.16f).copy(alpha = 0.94f)
+    val surfaceTopColor = if (isExpressive) {
+        lerp(colors.surfaceContainerHigh, colors.accentContainer, 0.22f).copy(alpha = 0.96f)
+    } else {
+        lerp(colors.surfaceElevated, colors.accentContainer, 0.06f).copy(alpha = 0.92f)
+    }
+    val surfaceBottomColor = if (isExpressive) {
+        lerp(colors.surfaceContainer, colors.accentContainer, 0.12f).copy(alpha = 0.94f)
     } else {
         colors.surface.copy(alpha = 0.88f)
     }
-    val borderColor = when {
+    val containerBrush = Brush.verticalGradient(
+        colors = listOf(surfaceTopColor, surfaceBottomColor),
+    )
+    val rimTopColor = when {
         isMoving -> colors.accent
-        isExpressive -> colors.outlineVariant
-        else -> colors.hairlineBorder
+        isExpressive -> lerp(colors.outlineVariant, Color.White, if (colors.isDark) 0.18f else 0.45f)
+        else -> lerp(colors.hairlineBorder, Color.White, if (colors.isDark) 0.14f else 0.55f)
     }
+    val rimBottomColor = when {
+        isMoving -> colors.accent
+        isExpressive -> colors.outlineVariant.copy(alpha = 0.65f)
+        else -> colors.hairlineBorder.copy(alpha = 0.75f)
+    }
+    val borderBrush = Brush.verticalGradient(
+        colors = listOf(rimTopColor, rimBottomColor),
+    )
     val borderWidth = if (isMoving) 2.dp else 1.dp
 
     val haptic = LocalHapticFeedback.current
@@ -172,16 +190,14 @@ fun NativeWidgetCard(
                     onDragCancel = { currentOnDragCancel() },
                 )
             }
-            .then(
-                if (isExpressive) {
-                    Modifier.shadow(elevation = 4.dp, shape = containerShape, clip = false)
-                } else {
-                    Modifier
-                },
+            .shadow(
+                elevation = if (isExpressive) 6.dp else 3.dp,
+                shape = containerShape,
+                clip = false,
             )
             .clip(containerShape)
-            .background(containerColor)
-            .border(width = borderWidth, color = borderColor, shape = containerShape)
+            .background(containerBrush)
+            .border(width = borderWidth, brush = borderBrush, shape = containerShape)
             .then(
                 if (onCardTap != null) {
                     Modifier.clickable(role = Role.Button, onClick = onCardTap)
@@ -227,6 +243,7 @@ fun NativeWidgetCard(
 @Composable
 fun NativeWidgetHeader(
     title: String,
+    icon: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val colors = OverviewTheme.colors
@@ -239,43 +256,56 @@ fun NativeWidgetHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        if (isExpressive) {
-            Row(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            if (icon != null) {
                 Box(
                     modifier = Modifier
-                        .size(6.dp)
+                        .size(22.dp)
+                        .clip(if (isExpressive) CircleShape else shapes.small)
+                        .background(
+                            if (isExpressive) {
+                                colors.accentContainer.copy(alpha = 0.85f)
+                            } else {
+                                colors.accent.copy(alpha = 0.14f)
+                            },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    icon()
+                }
+            } else if (isExpressive) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
                         .clip(CircleShape)
                         .background(colors.accent),
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = title,
-                    style = typography.sectionHeader.copy(
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
-        } else {
             Text(
-                text = title.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    letterSpacing = 0.7.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = colors.onSurfaceMuted,
+                text = if (isExpressive || icon != null) title else title.uppercase(),
+                style = if (isExpressive) {
+                    typography.sectionHeader.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                } else {
+                    MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.5.sp,
+                        letterSpacing = if (icon != null) 0.15.sp else 0.7.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                color = if (isExpressive) colors.onSurface else colors.onSurface.copy(alpha = 0.82f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
             )
         }
         if (trailing != null) {
+            Spacer(modifier = Modifier.width(6.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -358,7 +388,7 @@ fun NativeWidgetActionPill(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

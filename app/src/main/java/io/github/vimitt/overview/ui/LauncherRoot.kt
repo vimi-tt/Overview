@@ -520,6 +520,7 @@ fun LauncherRoot(
                                 null,
                             )
                         }
+                        onRemoveAppFromDock(finished.payload.app.key)
                     } else if (target != null && target.isValid) {
                         onDropAppFromOverviewAt(
                             finished.payload.app,
@@ -527,6 +528,7 @@ fun LauncherRoot(
                             target.cellY,
                             target.page,
                         )
+                        onRemoveAppFromDock(finished.payload.app.key)
                     }
                 }
             },

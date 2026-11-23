@@ -172,11 +172,17 @@ fun MediaPlayerNativeWidget(
         if (spanY >= 2) {
             NativeWidgetHeader(
                 title = stringResource(R.string.native_widget_media_title),
+                icon = {
+                    MusicNoteGlyph(
+                        tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                        size = 13.dp,
+                    )
+                },
                 trailing = {
-                    if (isExpressive && media.isPlaying && isVisible) {
+                    if (media.isPlaying && isVisible) {
                         ExpressiveEqualizerBars(
                             color = colors.accent,
-                            animate = animateWhenVisible,
+                            animate = animateWhenVisible || !motion.reducedMotion,
                         )
                     }
                 },
@@ -220,10 +226,9 @@ fun MediaPlayerNativeWidget(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    PlayPauseGlyph(
-                        isPlaying = media.isPlaying,
-                        tint = if (isExpressive) colors.onAccentContainer else colors.onSurfaceMuted,
-                        size = 18.dp,
+                    MusicNoteGlyph(
+                        tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                        size = 20.dp,
                     )
                 }
             }
@@ -268,13 +273,20 @@ fun MediaPlayerNativeWidget(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 if (spanX >= 3) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
+                            .background(
+                                if (hasSession) {
+                                    colors.surfaceContainerHigh.copy(alpha = 0.72f)
+                                } else {
+                                    Color.Transparent
+                                },
+                            )
                             .clickable(enabled = hasSession, role = Role.Button, onClick = onSkipPrevious),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -356,8 +368,15 @@ fun MediaPlayerNativeWidget(
 
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
+                        .background(
+                            if (hasSession) {
+                                colors.surfaceContainerHigh.copy(alpha = 0.72f)
+                            } else {
+                                Color.Transparent
+                            },
+                        )
                         .clickable(enabled = hasSession, role = Role.Button, onClick = onSkipNext),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -438,6 +457,12 @@ fun QuickNotesNativeWidget(
     ) {
         NativeWidgetHeader(
             title = stringResource(R.string.native_widget_notes_title),
+            icon = {
+                NoteGlyph(
+                    tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                    size = 13.dp,
+                )
+            },
             trailing = {
                 if (notes.size > 1 && spanX >= 2) {
                     Text(
@@ -452,24 +477,17 @@ fun QuickNotesNativeWidget(
                 }
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(28.dp)
                         .clip(if (isExpressive) CircleShape else shapes.small)
-                        .background(if (isExpressive) colors.accent else colors.surfaceElevated)
-                        .then(
-                            if (!isExpressive) {
-                                Modifier.border(1.dp, colors.hairlineBorder, shapes.small)
-                            } else {
-                                Modifier
-                            },
-                        )
+                        .background(if (isExpressive) colors.accent else colors.accentContainer)
                         .clickable(role = Role.Button, onClick = onCreateNote),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = stringResource(R.string.native_widget_notes_save),
-                        tint = if (isExpressive) colors.onAccent else colors.accent,
-                        modifier = Modifier.size(15.dp),
+                        tint = if (isExpressive) colors.onAccent else colors.onAccentContainer,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             },
@@ -558,6 +576,12 @@ fun TasksNativeWidget(
     ) {
         NativeWidgetHeader(
             title = stringResource(R.string.native_widget_tasks_title),
+            icon = {
+                ChecklistGlyph(
+                    tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                    size = 13.dp,
+                )
+            },
             trailing = {
                 if (doneCount > 0 && spanX >= 2) {
                     NativeWidgetActionPill(
@@ -565,11 +589,11 @@ fun TasksNativeWidget(
                         emphasized = false,
                         onClick = onClearCompleted,
                     )
-                } else if (isExpressive && tasks.isNotEmpty() && spanX >= 2) {
+                } else if (tasks.isNotEmpty() && spanX >= 2) {
                     Box(
                         modifier = Modifier
                             .clip(shapes.pill)
-                            .background(colors.surfaceContainerHigh.copy(alpha = 0.8f))
+                            .background(colors.surfaceContainerHigh.copy(alpha = 0.85f))
                             .padding(horizontal = 7.dp, vertical = 2.dp),
                     ) {
                         Text(
@@ -584,28 +608,40 @@ fun TasksNativeWidget(
                 }
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(28.dp)
                         .clip(if (isExpressive) CircleShape else shapes.small)
-                        .background(if (isExpressive) colors.accent else colors.surfaceElevated)
-                        .then(
-                            if (!isExpressive) {
-                                Modifier.border(1.dp, colors.hairlineBorder, shapes.small)
-                            } else {
-                                Modifier
-                            },
-                        )
+                        .background(if (isExpressive) colors.accent else colors.accentContainer)
                         .clickable(role = Role.Button, onClick = onAddTask),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = stringResource(R.string.native_widget_tasks_add),
-                        tint = if (isExpressive) colors.onAccent else colors.accent,
-                        modifier = Modifier.size(15.dp),
+                        tint = if (isExpressive) colors.onAccent else colors.onAccentContainer,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             },
         )
+
+        if (tasks.isNotEmpty() && spanY >= 2) {
+            val progressFraction = (doneCount.toFloat() / tasks.size.toFloat()).coerceIn(0f, 1f)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceContainerHigh.copy(alpha = 0.72f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progressFraction)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(colors.accent),
+                )
+            }
+        }
 
         if (tasks.isEmpty()) {
             Box(

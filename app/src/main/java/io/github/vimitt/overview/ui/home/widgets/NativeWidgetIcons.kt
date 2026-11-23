@@ -55,10 +55,12 @@ fun WeatherGlyph(
             0 -> {
                 if (isDay) {
                     val center = Offset(w * 0.5f, h * 0.5f)
-                    drawCircle(color = accent, radius = w * 0.24f, center = center)
+                    // Halo suave de calor solar
+                    drawCircle(color = accent.copy(alpha = 0.22f), radius = w * 0.36f, center = center)
+                    drawCircle(color = accent, radius = w * 0.22f, center = center)
                     for (i in 0 until 8) {
                         val rad = Math.toRadians(i * 45.0)
-                        val r1 = w * 0.34f
+                        val r1 = w * 0.32f
                         val r2 = w * 0.44f
                         drawLine(
                             color = accent,
@@ -75,41 +77,129 @@ fun WeatherGlyph(
                         )
                     }
                 } else {
-                    drawCircle(
-                        color = accent,
-                        radius = w * 0.30f,
-                        center = Offset(w * 0.48f, h * 0.50f),
-                        style = Stroke(width = stroke * 1.4f),
-                    )
+                    // Lua crescente limpa com pequenas estrelas
+                    val moonPath = Path().apply {
+                        moveTo(w * 0.56f, h * 0.16f)
+                        cubicTo(
+                            w * 0.28f, h * 0.20f,
+                            w * 0.18f, h * 0.50f,
+                            w * 0.34f, h * 0.72f,
+                        )
+                        cubicTo(
+                            w * 0.48f, h * 0.88f,
+                            w * 0.76f, h * 0.84f,
+                            w * 0.84f, h * 0.64f,
+                        )
+                        cubicTo(
+                            w * 0.64f, h * 0.70f,
+                            w * 0.48f, h * 0.56f,
+                            w * 0.48f, h * 0.38f,
+                        )
+                        cubicTo(
+                            w * 0.48f, h * 0.28f,
+                            w * 0.52f, h * 0.20f,
+                            w * 0.56f, h * 0.16f,
+                        )
+                        close()
+                    }
+                    drawPath(path = moonPath, color = accent)
+                    drawCircle(color = accent.copy(alpha = 0.75f), radius = w * 0.045f, center = Offset(w * 0.76f, h * 0.26f))
+                    drawCircle(color = accent.copy(alpha = 0.55f), radius = w * 0.03f, center = Offset(w * 0.84f, h * 0.40f))
                 }
             }
 
             1, 2 -> {
-                drawCircle(color = accent, radius = w * 0.20f, center = Offset(w * 0.66f, h * 0.34f))
+                if (isDay) {
+                    drawCircle(color = accent.copy(alpha = 0.22f), radius = w * 0.28f, center = Offset(w * 0.66f, h * 0.34f))
+                    drawCircle(color = accent, radius = w * 0.19f, center = Offset(w * 0.66f, h * 0.34f))
+                } else {
+                    drawCircle(color = accent.copy(alpha = 0.85f), radius = w * 0.16f, center = Offset(w * 0.68f, h * 0.32f))
+                }
                 drawRoundRect(
                     color = tint,
-                    topLeft = Offset(w * 0.16f, h * 0.42f),
-                    size = Size(w * 0.62f, h * 0.34f),
+                    topLeft = Offset(w * 0.14f, h * 0.44f),
+                    size = Size(w * 0.64f, h * 0.34f),
                     cornerRadius = CornerRadius(w * 0.17f, w * 0.17f),
                 )
-                drawCircle(color = tint, radius = w * 0.17f, center = Offset(w * 0.40f, h * 0.42f))
+                drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.38f, h * 0.44f))
+                drawCircle(color = tint, radius = w * 0.13f, center = Offset(w * 0.56f, h * 0.46f))
             }
 
-            51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99 -> {
+            45, 48 -> {
+                drawRoundRect(
+                    color = tint.copy(alpha = 0.88f),
+                    topLeft = Offset(w * 0.16f, h * 0.28f),
+                    size = Size(w * 0.68f, h * 0.28f),
+                    cornerRadius = CornerRadius(w * 0.14f, w * 0.14f),
+                )
+                drawCircle(color = tint.copy(alpha = 0.88f), radius = w * 0.16f, center = Offset(w * 0.42f, h * 0.28f))
+                drawLine(
+                    color = accent.copy(alpha = 0.78f),
+                    start = Offset(w * 0.18f, h * 0.68f),
+                    end = Offset(w * 0.82f, h * 0.68f),
+                    strokeWidth = stroke,
+                    cap = StrokeCap.Round,
+                )
+                drawLine(
+                    color = tint.copy(alpha = 0.65f),
+                    start = Offset(w * 0.26f, h * 0.82f),
+                    end = Offset(w * 0.74f, h * 0.82f),
+                    strokeWidth = stroke,
+                    cap = StrokeCap.Round,
+                )
+            }
+
+            71, 73, 75, 77, 85, 86 -> {
                 drawRoundRect(
                     color = tint,
-                    topLeft = Offset(w * 0.16f, h * 0.28f),
+                    topLeft = Offset(w * 0.16f, h * 0.26f),
                     size = Size(w * 0.68f, h * 0.32f),
                     cornerRadius = CornerRadius(w * 0.16f, w * 0.16f),
                 )
-                drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.44f, h * 0.28f))
-                val dropColor = if (weatherCode >= 95) accent else accent.copy(alpha = 0.92f)
+                drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.44f, h * 0.26f))
                 for (i in 0..2) {
-                    val x = w * (0.30f + i * 0.20f)
+                    val x = w * (0.28f + i * 0.22f)
+                    val y = if (i == 1) h * 0.79f else h * 0.71f
+                    drawCircle(color = accent, radius = w * 0.055f, center = Offset(x, y))
+                }
+            }
+
+            95, 96, 99 -> {
+                drawRoundRect(
+                    color = tint,
+                    topLeft = Offset(w * 0.14f, h * 0.24f),
+                    size = Size(w * 0.72f, h * 0.32f),
+                    cornerRadius = CornerRadius(w * 0.16f, w * 0.16f),
+                )
+                drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.42f, h * 0.24f))
+                val bolt = Path().apply {
+                    moveTo(w * 0.54f, h * 0.56f)
+                    lineTo(w * 0.40f, h * 0.74f)
+                    lineTo(w * 0.52f, h * 0.74f)
+                    lineTo(w * 0.44f, h * 0.92f)
+                    lineTo(w * 0.64f, h * 0.68f)
+                    lineTo(w * 0.52f, h * 0.68f)
+                    close()
+                }
+                drawPath(path = bolt, color = accent)
+            }
+
+            51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82 -> {
+                drawRoundRect(
+                    color = tint,
+                    topLeft = Offset(w * 0.16f, h * 0.26f),
+                    size = Size(w * 0.68f, h * 0.32f),
+                    cornerRadius = CornerRadius(w * 0.16f, w * 0.16f),
+                )
+                drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.44f, h * 0.26f))
+                val dropColor = accent.copy(alpha = 0.92f)
+                for (i in 0..2) {
+                    val x = w * (0.29f + i * 0.21f)
+                    val topY = if (i == 1) h * 0.70f else h * 0.65f
                     drawLine(
                         color = dropColor,
-                        start = Offset(x, h * 0.68f),
-                        end = Offset(x - w * 0.05f, h * 0.85f),
+                        start = Offset(x, topY),
+                        end = Offset(x - w * 0.06f, topY + h * 0.18f),
                         strokeWidth = stroke,
                         cap = StrokeCap.Round,
                     )
@@ -123,7 +213,7 @@ fun WeatherGlyph(
                     size = Size(w * 0.72f, h * 0.36f),
                     cornerRadius = CornerRadius(w * 0.18f, w * 0.18f),
                 )
-                drawCircle(color = tint, radius = w * 0.20f, center = Offset(w * 0.42f, h * 0.38f))
+                drawCircle(color = tint, radius = w * 0.20f, center = Offset(w * 0.40f, h * 0.38f))
                 drawCircle(color = tint, radius = w * 0.15f, center = Offset(w * 0.62f, h * 0.40f))
             }
         }
@@ -240,6 +330,172 @@ fun AlarmBellGlyph(
             color = tint,
             start = Offset(w * 0.82f, h * 0.24f),
             end = Offset(w * 0.70f, h * 0.14f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+fun BatteryBoltGlyph(
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val path = Path().apply {
+            moveTo(w * 0.56f, h * 0.10f)
+            lineTo(w * 0.24f, h * 0.54f)
+            lineTo(w * 0.48f, h * 0.54f)
+            lineTo(w * 0.40f, h * 0.90f)
+            lineTo(w * 0.76f, h * 0.44f)
+            lineTo(w * 0.52f, h * 0.44f)
+            close()
+        }
+        drawPath(path = path, color = tint)
+    }
+}
+
+@Composable
+fun CalendarGlyph(
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = (w * 0.11f).coerceAtLeast(1.4f)
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.14f, h * 0.24f),
+            size = Size(w * 0.72f, h * 0.62f),
+            cornerRadius = CornerRadius(w * 0.14f, w * 0.14f),
+            style = Stroke(width = stroke),
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.16f, h * 0.44f),
+            end = Offset(w * 0.84f, h * 0.44f),
+            strokeWidth = stroke,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.34f, h * 0.14f),
+            end = Offset(w * 0.34f, h * 0.30f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.66f, h * 0.14f),
+            end = Offset(w * 0.66f, h * 0.30f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+fun MusicNoteGlyph(
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = (w * 0.11f).coerceAtLeast(1.4f)
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.42f, h * 0.72f),
+            end = Offset(w * 0.42f, h * 0.24f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.78f, h * 0.64f),
+            end = Offset(w * 0.78f, h * 0.18f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.42f, h * 0.24f),
+            end = Offset(w * 0.78f, h * 0.18f),
+            strokeWidth = stroke * 1.2f,
+            cap = StrokeCap.Round,
+        )
+        drawCircle(color = tint, radius = w * 0.13f, center = Offset(w * 0.32f, h * 0.74f))
+        drawCircle(color = tint, radius = w * 0.13f, center = Offset(w * 0.68f, h * 0.66f))
+    }
+}
+
+@Composable
+fun NoteGlyph(
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = (w * 0.11f).coerceAtLeast(1.4f)
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.18f, h * 0.14f),
+            size = Size(w * 0.64f, h * 0.72f),
+            cornerRadius = CornerRadius(w * 0.14f, w * 0.14f),
+            style = Stroke(width = stroke),
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.32f, h * 0.40f),
+            end = Offset(w * 0.68f, h * 0.40f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.32f, h * 0.60f),
+            end = Offset(w * 0.58f, h * 0.60f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+fun ChecklistGlyph(
+    tint: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = (w * 0.11f).coerceAtLeast(1.4f)
+        val check = Path().apply {
+            moveTo(w * 0.16f, h * 0.36f)
+            lineTo(w * 0.28f, h * 0.48f)
+            lineTo(w * 0.44f, h * 0.26f)
+        }
+        drawPath(path = check, color = tint, style = Stroke(width = stroke, cap = StrokeCap.Round))
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.54f, h * 0.38f),
+            end = Offset(w * 0.86f, h * 0.38f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawCircle(color = tint, radius = w * 0.08f, center = Offset(w * 0.28f, h * 0.70f))
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.54f, h * 0.70f),
+            end = Offset(w * 0.86f, h * 0.70f),
             strokeWidth = stroke,
             cap = StrokeCap.Round,
         )

@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -102,34 +103,40 @@ fun OverviewSearchBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 50.dp)
+            .heightIn(min = 52.dp)
+            .shadow(
+                elevation = if (isFocused) 6.dp else 3.dp,
+                shape = shape,
+                clip = false,
+            )
             .clip(shape)
             .background(backgroundColor)
             .border(width = borderWidth, color = borderColor, shape = shape)
-            .padding(start = if (isExpressive) 10.dp else 16.dp, end = 6.dp),
+            .padding(start = 10.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isExpressive) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(if (isFocused) colors.accentContainer else colors.surfaceElevated),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = stringResource(R.string.search_apps_content_description),
-                    tint = if (isFocused) colors.onAccentContainer else colors.onSurfaceMuted,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        } else {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        isFocused -> colors.accentContainer
+                        isExpressive -> colors.surfaceElevated
+                        else -> colors.accent.copy(alpha = 0.12f)
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = stringResource(R.string.search_apps_content_description),
-                tint = if (isFocused) colors.accent else colors.onSurfaceMuted,
-                modifier = Modifier.size(20.dp),
+                tint = when {
+                    isFocused -> colors.onAccentContainer
+                    isExpressive -> colors.onSurfaceMuted
+                    else -> colors.accent
+                },
+                modifier = Modifier.size(18.dp),
             )
         }
 

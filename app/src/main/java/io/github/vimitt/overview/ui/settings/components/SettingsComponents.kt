@@ -248,13 +248,33 @@ fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
+            val isExpressive = OverviewTheme.components.isExpressive
+            val badgeShape = if (isExpressive) CircleShape else OverviewTheme.shapes.small
             Box(
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(badgeShape)
+                    .background(
+                        if (isExpressive) {
+                            colors.accentContainer.copy(alpha = 0.72f)
+                        } else {
+                            colors.accent.copy(alpha = 0.12f)
+                        },
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (isExpressive) {
+                            colors.accent.copy(alpha = 0.18f)
+                        } else {
+                            colors.accent.copy(alpha = 0.16f)
+                        },
+                        shape = badgeShape,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 icon()
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
         }
 
         Column(modifier = Modifier.weight(1f)) {

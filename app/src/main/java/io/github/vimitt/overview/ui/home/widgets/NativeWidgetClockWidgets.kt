@@ -131,6 +131,12 @@ fun DailySummaryNativeWidget(
         ) {
             NativeWidgetHeader(
                 title = stringResource(R.string.native_widget_daily_summary_title),
+                icon = {
+                    CalendarGlyph(
+                        tint = if (isExpressive) colors.onAccentContainer else colors.accent,
+                        size = 13.dp,
+                    )
+                },
                 trailing = {
                     if (alarmShort != null) {
                         SummaryAlarmChip(
@@ -585,8 +591,9 @@ fun TimerStopwatchNativeWidget(
                 Text(
                     text = formattedClock,
                     style = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = if (spanY <= 1) 22.sp else 32.sp,
-                        fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                        fontSize = if (spanY <= 1) 24.sp else 36.sp,
+                        letterSpacing = (-0.8).sp,
+                        fontWeight = if (isExpressive) FontWeight.ExtraBold else FontWeight.Bold,
                         fontFeatureSettings = "tnum",
                     ),
                     color = if (timerFinished || (isExpressive && isRunning)) colors.accent else colors.onSurface,

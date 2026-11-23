@@ -116,16 +116,28 @@ fun GnomeTopBarPill(
     val shape = OverviewTheme.shapes.pill
     val isExpressive = OverviewTheme.components.isExpressive
 
-    val pillFill = if (isExpressive) {
-        lerp(colors.dashBackground, colors.accentContainer, 0.24f)
+    val pillTop = if (isExpressive) {
+        lerp(colors.dashBackground, colors.accentContainer, 0.28f)
+    } else {
+        lerp(colors.dashBackground, Color.White, if (colors.isDark) 0.06f else 0.20f)
+    }
+    val pillBottom = if (isExpressive) {
+        lerp(colors.dashBackground, colors.accentContainer, 0.16f)
     } else {
         colors.dashBackground
     }
-    val pillBorder = if (isExpressive) {
-        colors.accent.copy(alpha = 0.28f)
+    val pillBrush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(pillTop, pillBottom))
+    val rimTop = if (isExpressive) {
+        lerp(colors.accent.copy(alpha = 0.34f), Color.White, if (colors.isDark) 0.18f else 0.45f)
     } else {
-        colors.hairlineBorder
+        lerp(colors.hairlineBorder, Color.White, if (colors.isDark) 0.16f else 0.55f)
     }
+    val rimBottom = if (isExpressive) {
+        colors.accent.copy(alpha = 0.20f)
+    } else {
+        colors.hairlineBorder.copy(alpha = 0.70f)
+    }
+    val pillBorderBrush = androidx.compose.ui.graphics.Brush.verticalGradient(colors = listOf(rimTop, rimBottom))
 
     Box(
         modifier = modifier
@@ -138,10 +150,15 @@ fun GnomeTopBarPill(
         Row(
             modifier = Modifier
                 .defaultMinSize(minHeight = 36.dp)
+                .shadow(
+                    elevation = if (isExpressive) 5.dp else 3.dp,
+                    shape = shape,
+                    clip = false,
+                )
                 .clip(shape)
-                .background(pillFill)
-                .border(1.dp, pillBorder, shape)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
+                .background(pillBrush)
+                .border(1.dp, pillBorderBrush, shape)
+                .padding(horizontal = 13.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
