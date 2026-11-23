@@ -69,7 +69,7 @@ Código-fonte oficial: **[github.com/vimi-tt/Overview](https://github.com/vimi-t
   <tr>
     <td align="center"><img src="docs/screenshots/04-quick-settings.png" width="240" alt="Configurações rápidas estilo GNOME" /><br /><sub><b>Configurações rápidas GNOME</b></sub></td>
     <td align="center"><img src="docs/screenshots/05-settings.png" width="240" alt="Central de configurações" /><br /><sub><b>Configurações e backup JSON</b></sub></td>
-    <td align="center"><img src="docs/screenshots/06-about.png" width="240" alt="Tela Sobre 1.0.0" /><br /><sub><b>Sobre (1.0.0)</b></sub></td>
+    <td align="center"><img src="docs/screenshots/06-about.png" width="240" alt="Tela Sobre 1.2" /><br /><sub><b>Sobre (1.2)</b></sub></td>
   </tr>
 </table>
 </div>

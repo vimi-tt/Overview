@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overview Launcher 1.0.0 — Interface Preview & Pure Screenshots</title>
+  <title>Overview Launcher 1.2 — Interface Preview &amp; Pure Screenshots</title>
   <style>
     @font-face {
       font-family: "Adwaita Sans";
@@ -276,25 +276,65 @@
       background: color-mix(in srgb, var(--on-surface) 38%, transparent);
     }
 
-    /* Top Right Quick Settings Pill */
-    .qs-pill {
+    /* GNOME Top Bar (3 interactive pills: Pages, Clock, Quick Settings) */
+    .gnome-topbar {
       position: absolute;
       top: 44px;
+      left: 16px;
       right: 16px;
-      height: 36px;
-      padding: 0 12px;
-      border-radius: 999px;
-      background: var(--dash-bg);
-      border: 1px solid var(--hairline);
-      backdrop-filter: blur(18px);
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .top-pill {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(58, 60, 68, 0.84), rgba(34, 36, 42, 0.82));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(18px);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       font-size: 12px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
       color: var(--on-surface);
-      z-index: 10;
+    }
+
+    body[data-theme="light"] .top-pill {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 244, 248, 0.86));
+      border-color: rgba(0, 0, 0, 0.10);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    body[data-style="expressive"] .top-pill {
+      background: linear-gradient(180deg, color-mix(in srgb, var(--dash-bg) 74%, var(--accent) 26%), color-mix(in srgb, var(--dash-bg) 84%, var(--accent) 16%));
+      border-color: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.2));
+    }
+
+    .top-pages-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .top-pages-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.4;
+    }
+
+    .top-pages-dot.active {
+      width: 14px;
+      opacity: 1;
+      background: var(--accent-dark-variant);
     }
 
     /* Home Screen */
@@ -380,28 +420,191 @@
     }
 
     .cell-card {
-      background: rgba(42, 46, 54, 0.78);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      backdrop-filter: blur(20px);
+      background: linear-gradient(180deg, rgba(56, 60, 70, 0.90), rgba(38, 41, 48, 0.86));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(22px);
       border-radius: var(--radius-card);
-      padding: 12px 14px;
+      padding: 11px 12px;
       color: #fff;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 6px;
       overflow: hidden;
+    }
+
+    body[data-theme="light"] .cell-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 245, 250, 0.90));
+      border-color: rgba(0, 0, 0, 0.08);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      color: var(--on-surface);
+    }
+
+    body[data-style="expressive"] .cell-card {
+      background: linear-gradient(180deg, rgba(54, 64, 82, 0.94), rgba(40, 46, 58, 0.92));
+      border-color: rgba(98, 160, 234, 0.28);
+      border-radius: 26px;
     }
 
     .cell-card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 6px;
       font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: inherit;
+    }
+
+    .widget-title-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .widget-header-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: rgba(53, 132, 228, 0.22);
       color: #93c5fd;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    body[data-style="expressive"] .widget-header-badge {
+      border-radius: 50%;
+    }
+
+    .widget-pill-badge {
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      font-size: 10px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .online-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #62a0ea;
+    }
+
+    .weather-hero-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .weather-temp {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .weather-range-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.86;
+    }
+
+    .weather-range-track {
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+    }
+
+    .weather-range-fill {
+      width: 72%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(98, 160, 234, 0.65), #62a0ea);
+    }
+
+    .device-body {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: auto 0;
+    }
+
+    .battery-ring-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .battery-ring-label {
+      position: absolute;
+      font-size: 11.5px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .device-metrics {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .device-metric-head {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .device-metric-head span:first-child {
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.72;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .device-metric-head span:last-child {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .device-bar-track {
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+    }
+
+    .device-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: #3584e4;
     }
 
     .task-list {
@@ -606,29 +809,56 @@
 
     .dock-search-pill {
       width: 100%;
-      height: 44px;
+      height: 46px;
       border-radius: 999px;
-      background: var(--dash-bg);
-      border: 1px solid var(--hairline);
-      backdrop-filter: blur(16px);
+      background: linear-gradient(180deg, rgba(56, 58, 66, 0.86), rgba(36, 36, 40, 0.84));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(18px);
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 0 16px;
+      gap: 11px;
+      padding: 0 12px;
       font-size: 14px;
-      color: var(--on-surface-muted);
+      font-weight: 500;
+      color: var(--on-surface);
+    }
+
+    body[data-theme="light"] .dock-search-pill {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 244, 248, 0.86));
+      border-color: rgba(0, 0, 0, 0.09);
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .search-icon-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(53, 132, 228, 0.18);
+      color: var(--accent-dark-variant);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .dash-bar {
       width: 100%;
       border-radius: var(--radius-dash);
-      background: var(--dash-bg);
-      border: 1px solid var(--hairline);
+      background: linear-gradient(180deg, rgba(58, 60, 68, 0.88), rgba(34, 36, 42, 0.86));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.16);
       backdrop-filter: blur(18px);
       padding: 9px 12px;
       display: flex;
       align-items: center;
       justify-content: space-around;
+    }
+
+    body[data-theme="light"] .dash-bar {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 244, 248, 0.88));
+      border-color: rgba(0, 0, 0, 0.09);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
 
     .dash-bar .app-icon {
@@ -655,13 +885,14 @@
     }
 
     .search-bar {
-      height: 50px;
+      height: 52px;
       border-radius: 999px;
       background: var(--search-fill);
       border: 1px solid var(--hairline);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
       display: flex;
       align-items: center;
-      padding: 0 8px 0 16px;
+      padding: 0 8px 0 10px;
       gap: 10px;
       color: var(--on-surface-muted);
       font-size: 15px;
@@ -896,13 +1127,22 @@
     }
 
     .settings-row-icon {
-      width: 24px;
-      height: 24px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent);
+      color: var(--accent-dark-variant);
       flex-shrink: 0;
+    }
+
+    body[data-style="expressive"] .settings-row-icon {
+      border-radius: 50%;
+      background: var(--accent-container);
+      color: var(--on-accent-container);
     }
 
     .settings-row-text {
@@ -927,7 +1167,7 @@
     .settings-divider {
       height: 1px;
       background: var(--hairline);
-      margin-left: 54px;
+      margin-left: 66px;
     }
 
     .settings-divider.no-inset {
@@ -969,7 +1209,7 @@
   <header class="toolbar">
     <div class="toolbar-brand">
       <div>
-        <h1>Overview Launcher 1.0.0 — Preview &amp; Prints Puros</h1>
+        <h1>Overview Launcher 1.2 — Preview &amp; Prints Puros</h1>
         <span>Adwaita Sans · GNOME / Expressive · 412×915</span>
       </div>
     </div>
@@ -994,14 +1234,17 @@
   <script>
     const TEXTS = {
       pt: {
-        dateLong: "Segunda, 16 de novembro",
-        dateShort: "Seg, 16 nov",
+        dateLong: "Segunda, 23 de novembro",
+        dateShort: "23 nov · 10:20",
         city: "Florianópolis",
+        weatherCond: "Ensolarado",
+        deviceTitle: "Dispositivo",
+        storageLabel: "Armazenamento",
         searchApps: "Pesquisar aplicativos…",
         searchQuick: "Pesquisar apps…",
         tasksTitle: "Tarefas de hoje",
-        task1: "Finalizar v1.0.0 do Overview",
-        task2: "Gerar papel de parede padrão",
+        task1: "Finalizar v1.2 do Overview",
+        task2: "Renovar aparência dos widgets",
         task3: "Publicar release no GitHub",
         task4: "Capturar prints da interface",
         mediaTitle: "Midnight City",
@@ -1040,7 +1283,7 @@
           backupSec: "Backup e restauração",
           export: "Exportar backup", exportSub: "Salva preferências, pastas e layout da tela inicial em JSON",
           restore: "Restaurar backup", restoreSub: "Importa preferências e layout de um arquivo salvo",
-          about: "Sobre", aboutSub: "1.0.0 · GPL-3.0"
+          about: "Sobre", aboutSub: "1.2 · GPL-3.0"
         },
         about: {
           title: "Sobre",
@@ -1049,26 +1292,29 @@
           version: "Versão",
           license: "Licença",
           source: "Código-fonte no GitHub",
-          secNew: "Novidades da versão 1.0",
-          h1: "Tela inicial multipáginas e pastas",
-          h1Sub: "Navegue em até 5 páginas, arraste ícones pelas bordas e organize apps em pastas na Home",
-          h2: "Configurações rápidas GNOME e widgets",
-          h2Sub: "Painel próprio estilo Adwaita, clima com previsão, ferramentas de relógio, agenda, tarefas e notas",
-          h3: "Integração nativa ao Android",
-          h3Sub: "App Shortcuts, fixação de atalhos e widgets externos, desinstalação direta e Predictive Back",
-          h4: "Idiomas e backup em JSON",
-          h4Sub: "Tradução completa em português e inglês com exportação e restauração local"
+          secNew: "Novidades da versão 1.2",
+          h1: "Visual renovado e widgets nativos",
+          h1Sub: "Superfícies com profundidade tonal, anel de bateria, faixa térmica no clima e seletor com miniaturas reais",
+          h2: "Barra superior GNOME em 3 áreas",
+          h2Sub: "Acesso rápido para páginas da Home, relógio/calendário interativo e Configurações Rápidas",
+          h3: "Drag & drop da dock sem duplicação",
+          h3Sub: "Arraste apps da dock diretamente para a grade ou pastas da tela inicial de forma limpa",
+          h4: "Configurações adaptativas e M3 Expressive",
+          h4Sub: "Layout List-Detail em telas amplas, ícones em badges tonais e backup completo em JSON"
         }
       },
       en: {
-        dateLong: "Monday, November 16",
-        dateShort: "Mon, Nov 16",
+        dateLong: "Monday, November 23",
+        dateShort: "Nov 23 · 10:20",
         city: "Florianópolis",
+        weatherCond: "Clear sky",
+        deviceTitle: "Device",
+        storageLabel: "Storage",
         searchApps: "Search apps…",
         searchQuick: "Search apps…",
         tasksTitle: "Today's tasks",
-        task1: "Finalize Overview v1.0.0",
-        task2: "Generate default wallpaper",
+        task1: "Finalize Overview v1.2",
+        task2: "Refresh widget appearance",
         task3: "Publish GitHub release",
         task4: "Capture UI screenshots",
         mediaTitle: "Midnight City",
@@ -1107,7 +1353,7 @@
           backupSec: "Backup & restore",
           export: "Export backup", exportSub: "Save preferences, folders, and home layout to a JSON file",
           restore: "Restore backup", restoreSub: "Import preferences and layout from a previously saved file",
-          about: "About", aboutSub: "1.0.0 · GPL-3.0"
+          about: "About", aboutSub: "1.2 · GPL-3.0"
         },
         about: {
           title: "About",
@@ -1116,15 +1362,15 @@
           version: "Version",
           license: "License",
           source: "Source code on GitHub",
-          secNew: "What's new in 1.0",
-          h1: "Multi-page home screen & folders",
-          h1Sub: "Swipe across up to 5 pages, drag shortcuts across edges, and group apps directly on Home",
-          h2: "GNOME quick settings & widgets",
-          h2Sub: "Custom Adwaita quick settings panel, weather forecast, clock tools, calendar, tasks, and notes",
-          h3: "Native Android launcher integration",
-          h3Sub: "App Shortcuts, pinned shortcut & widget requests, direct uninstall, and Predictive Back",
-          h4: "Localization & JSON backup",
-          h4Sub: "Full English & Portuguese support plus export/restore of settings and layout"
+          secNew: "What's new in 1.2",
+          h1: "Refreshed visuals & native widgets",
+          h1Sub: "Tonal depth surfaces, circular battery gauge, weather range bar, and rich picker previews",
+          h2: "3-area GNOME top bar",
+          h2Sub: "Quick pills for Home pages, interactive clock/calendar, and Quick Settings",
+          h3: "Clean dock drag & drop",
+          h3Sub: "Move dock apps directly to the home grid or folders without duplication",
+          h4: "Adaptive settings & M3 Expressive",
+          h4Sub: "List-Detail layout on large screens, tonal icon badges, and full JSON backup"
         }
       }
     };
@@ -1205,12 +1451,24 @@
       `;
     }
 
-    function qsPill() {
+    function gnomeTopBar(t) {
       return `
-        <div class="qs-pill">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="17" height="10" rx="2"/><rect x="4" y="9" width="11" height="6" rx="1" fill="#3584e4" stroke="none"/><path d="M21 10v4" stroke-linecap="round"/></svg>
-          <span>87%</span>
+        <div class="gnome-topbar">
+          <div class="top-pill">
+            <div class="top-pages-dots">
+              <span class="top-pages-dot active"></span>
+              <span class="top-pages-dot"></span>
+              <span class="top-pages-dot"></span>
+            </div>
+          </div>
+          <div class="top-pill">
+            <span>${t.dateShort}</span>
+          </div>
+          <div class="top-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="17" height="10" rx="2"/><rect x="4" y="9" width="11" height="6" rx="1" fill="#3584e4" stroke="none"/><path d="M21 10v4" stroke-linecap="round"/></svg>
+            <span>87%</span>
+          </div>
         </div>
       `;
     }
@@ -1220,7 +1478,9 @@
         <div class="dock-stack">
           <div class="overview-handle"></div>
           <div class="dock-search-pill">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+            <span class="search-icon-badge">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+            </span>
             <span>${t.searchQuick}</span>
           </div>
           <div class="dash-bar">
@@ -1238,7 +1498,7 @@
       if (id === "home-clean") {
         return `
           ${statusBar(false)}
-          ${qsPill()}
+          ${gnomeTopBar(t)}
           <div class="home-body">
             <div class="clock-hero">
               <div class="clock-time">10:20</div>
@@ -1260,26 +1520,57 @@
       if (id === "home-widgets") {
         return `
           ${statusBar(false)}
-          ${qsPill()}
+          ${gnomeTopBar(t)}
           <div class="home-body">
-            <div class="clock-hero compact">
+            <div class="clock-hero compact" style="margin-top: 46px;">
               <div class="clock-time">10:20</div>
               <div class="clock-date-row">
-                <div class="clock-date-chip">${t.dateShort}</div>
+                <div class="clock-date-chip">${t.dateLong}</div>
                 <div class="clock-weather-chip"><span>24°</span></div>
               </div>
             </div>
             <div class="home-grid">
-              <div class="cell-card" style="grid-column: 1 / span 4; grid-row: 1 / span 2;">
+              <div class="cell-card" style="grid-column: 1 / span 2; grid-row: 1 / span 2;">
                 <div class="cell-card-header">
-                  <span>${t.tasksTitle}</span>
-                  <span style="opacity:.75;">1 / 4</span>
+                  <span class="widget-title-group">
+                    <span class="widget-header-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#fbd38d"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" stroke="#fbd38d" stroke-width="2.2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.city}</span>
+                  </span>
                 </div>
-                <div class="task-list">
-                  <div class="task-item done"><span class="task-dot done">${svgIcon("M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z", 10, "#fff")}</span><span>${t.task1}</span></div>
-                  <div class="task-item"><span class="task-dot"></span><span>${t.task2}</span></div>
-                  <div class="task-item"><span class="task-dot"></span><span>${t.task3}</span></div>
-                  <div class="task-item"><span class="task-dot"></span><span>${t.task4}</span></div>
+                <div class="weather-hero-row">
+                  <div class="weather-temp">24°</div>
+                  <span class="widget-pill-badge">${t.weatherCond}</span>
+                </div>
+                <div class="weather-range-row">
+                  <span>18°</span>
+                  <div class="weather-range-track"><div class="weather-range-fill"></div></div>
+                  <span>27°</span>
+                </div>
+              </div>
+              <div class="cell-card" style="grid-column: 3 / span 2; grid-row: 1 / span 2;">
+                <div class="cell-card-header">
+                  <span class="widget-title-group">
+                    <span class="widget-header-badge">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-2 8 9-12h-7z"/></svg>
+                    </span>
+                    <span>${t.deviceTitle}</span>
+                  </span>
+                  <span class="widget-pill-badge"><span class="online-dot"></span>Wi-Fi</span>
+                </div>
+                <div class="device-body">
+                  <div class="battery-ring-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52">
+                      <circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="5"/>
+                      <circle cx="26" cy="26" r="21" fill="none" stroke="#62a0ea" stroke-width="5" stroke-linecap="round" stroke-dasharray="114.8 132" transform="rotate(-90 26 26)"/>
+                    </svg>
+                    <span class="battery-ring-label">87%</span>
+                  </div>
+                  <div class="device-metrics">
+                    <div class="device-metric-head"><span>${t.storageLabel}</span><span>64 GB</span></div>
+                    <div class="device-bar-track"><div class="device-bar-fill" style="width:52%;"></div></div>
+                  </div>
                 </div>
               </div>
               <div class="cell-card" style="grid-column: 1 / span 4; grid-row: 3 / span 1; padding: 10px 12px;">
@@ -1319,7 +1610,9 @@
             ${statusBar(!isDark)}
             <div class="overview-content">
               <div class="search-bar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+                <span class="search-icon-badge">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+                </span>
                 <span>${t.searchApps}</span>
                 <div class="search-bar-spacer"></div>
                 <div class="search-icon-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="15" cy="7" r="2.2" fill="currentColor"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2.2" fill="currentColor"/></svg></div>
@@ -1497,7 +1790,7 @@
               <div>
                 <div class="settings-section-title">${a.secApp}</div>
                 <div class="settings-group">
-                  <div class="settings-row"><div class="settings-row-text"><strong>${a.version}</strong><span>1.0.0 (3)</span></div></div>
+                  <div class="settings-row"><div class="settings-row-text"><strong>${a.version}</strong><span>1.2 (5)</span></div></div>
                   <div class="settings-divider no-inset"></div>
                   <div class="settings-row"><div class="settings-row-text"><strong>${a.license}</strong><span>GPL-3.0</span></div></div>
                   <div class="settings-divider no-inset"></div>
@@ -1530,7 +1823,7 @@
       { id: "overview", title: "03 · Overview + Pastas + Busca" },
       { id: "quick-settings", title: "04 · Configurações Rápidas GNOME" },
       { id: "settings", title: "05 · Central de Configurações" },
-      { id: "about", title: "06 · Sobre 1.0.0" }
+      { id: "about", title: "06 · Sobre 1.2" }
     ];
 
     const params = new URLSearchParams(window.location.search);
